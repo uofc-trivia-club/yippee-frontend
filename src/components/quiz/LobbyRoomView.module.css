@@ -1,0 +1,12 @@
+.button {
+    background: var(--gradient-primary);
+    color: white;
+    transition: transform 0.2s;
+    width: fit-content;
+    align-self: center;
+}
+
+.button:hover {
+    transform: scale(1.05) !important;
+    background: var(--gradient-secondary) !important;
+}

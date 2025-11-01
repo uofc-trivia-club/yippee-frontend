@@ -1,0 +1,32 @@
+.quizPreview {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.quizCard {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quizCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.navButton {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.navButton:hover {
+  opacity: 1;
+}
+
+.option {
+  transition: background-color 0.2s ease;
+}
+
+.option:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}

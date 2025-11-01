@@ -1,0 +1,24 @@
+.buttonContainer {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.button {
+    background: linear-gradient(45deg, #FF9A8B 30%, #FF6B95 90%) !important;
+    color: white !important;
+    transition: transform 0.2s !important;
+    width: 200px;
+    padding: 10px 20px;
+}
+
+.button:hover {
+    transform: scale(1.05) !important;
+    background: linear-gradient(45deg, #FF6B95 30%, #FF9A8B 90%) !important;
+}
