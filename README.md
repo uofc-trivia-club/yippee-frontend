@@ -1,46 +1,110 @@
-# Getting Started with Create React App
+# Yippee Front-End
+Yippee is a real-time multiplayer quiz game built with React, TypeScript, and Material-UI. Users can create quizzes, host live game sessions, and compete with others using WebSockets.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+---
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Create custom multiple-choice quizzes
+- Host real-time quiz games with unique room codes
+- Join live games and compete against others
+- Real-time leaderboards and scoring
+- Lobby chat for players and hosts
+- Multiple themes: Pink, Blue, Purple, Dark Mode
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Tech Stack
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### Frontend
+- React 18 + TypeScript
+- Material-UI (MUI)
+- Redux Toolkit
+- React Router
+- WebSockets
+- tsparticles
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Getting Started
 
-### `npm run build`
+### Prerequisites
+- [Node.js](https://nodejs.org/en/download)
+- npm 
+- [Backend server](https://github.com/uofc-trivia-club/yippee-backend/issues) running
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Installation
+git clone <repository-url>
+cd yippee
+npm install
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Development
+npm start
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Runs the app at http://localhost:3000
 
-### `npm run eject`
+### Production Build
+npm run build
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+---
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🧭 Application Flow
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Home
+- Host Game
+- Join Game
+- Create Quiz
+- Resources
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Create Quiz
+- Add questions and multiple-choice answers
+- Set difficulty (1–10), points, and optional hints
+- Submit via /api/create-quiz
 
-## Learn More
+### Host Game
+- Select a quiz
+- Create lobby (room code generated)
+- Configure settings and start game
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Join Game
+- Enter player name and room code
+- Wait in lobby until game starts
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Lobby
+- Player list and chat
+- Host controls game settings and start
+
+### Game Session
+- Host controls question flow
+- Players submit answers
+- Live leaderboard updates
+
+---
+
+## WebSocket Integration
+
+### Key Commands
+- createLobby
+- joinLobby
+- sendLobbyMessage
+- startGame
+- submitAnswer
+- nextQuestion
+
+### State Management
+WebSocket and game state are managed with Redux:
+- Room code
+- Players
+- Questions
+- Scores
+- Connection status
+
+---
+
+## Key Files
+
+App.tsx – Routing and theme setup  
+Game.tsx – Lobby, active game, and results  
+types.ts – Shared TypeScript types  
+SelectQuiz.tsx – Quiz selection UI  
+PlayerCard.tsx – Player display component  
