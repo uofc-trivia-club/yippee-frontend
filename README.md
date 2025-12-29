@@ -17,12 +17,12 @@ Yippee is a real-time multiplayer quiz game built with React, TypeScript, and Ma
 ## Tech Stack
 
 ### Frontend
-- React 18 + TypeScript
-- Material-UI (MUI)
-- Redux Toolkit
-- React Router
-- WebSockets
-- tsparticles
+- **React 18 + TypeScript** ([React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/))
+- **Material-UI (MUI)** – https://mui.com/
+- **Redux Toolkit** – https://redux-toolkit.js.org/
+- **React Router** – https://reactrouter.com/
+- **WebSockets** – https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
+- **tsparticles** – https://particles.js.org/
 
 ---
 
@@ -34,7 +34,7 @@ Yippee is a real-time multiplayer quiz game built with React, TypeScript, and Ma
 - [Backend server](https://github.com/uofc-trivia-club/yippee-backend/issues) running
 
 ### Installation
-git clone <repository-url>
+git clone https://github.com/uofc-trivia-club/yippee-frontend.git
 cd yippee
 npm install
 
@@ -48,7 +48,7 @@ npm run build
 
 ---
 
-## 🧭 Application Flow
+## Application Flow
 
 ### Home
 - Host Game
