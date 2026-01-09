@@ -51,6 +51,21 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                             }
                             break;
+                            
+                        case "Quiz changed":
+                            if (data.lobby) {
+                                store.dispatch(gameActions.setGameStatus(data.lobby.status || "Waiting"));
+                                if (data.lobby.currentQuestion) {
+                                    store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
+                                }
+                            }
+                            if (data.clientsInLobby) {
+                                store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
+                            }
+                            store.dispatch(gameActions.setSubmittedAnswer(false));
+                            store.dispatch(gameActions.setShowLeaderboard(false));
+                            store.dispatch(gameActions.setFinalQuestionLeaderboard(false));
+                            break;
 
                         case "Game start":
                             if (data.lobby?.status) {
