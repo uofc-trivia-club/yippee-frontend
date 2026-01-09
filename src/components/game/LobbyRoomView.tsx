@@ -1,5 +1,5 @@
 import { Box, Button, IconButton, InputAdornment, TextField, Typography, useTheme } from "@mui/material";
-import { GameSettings, User } from "../../stores/types";
+import { GameSettings, Quiz, User } from "../../stores/types";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
@@ -16,6 +16,7 @@ export default function LobbyRoomView() {
   const [lobbyMessage, setLobbyMessage] = useState("");
   const userDetails = useSelector((state: RootState) => state.game.user); // get current user details from Redux
   const [error, setError] = useState<string | null>(null);
+  const [changeQuizJson, setChangeQuizJson] = useState<string>("");
   const [gameSettings, setGameSettings] = useState<GameSettings>({
     questionTime: 30,
     enableMessagesDuringGame: true,
@@ -27,13 +28,13 @@ export default function LobbyRoomView() {
   // Set CSS variables for the module styles with improved dark mode
   useEffect(() => {
     document.documentElement.style.setProperty(
-      '--gradient-primary', 
+      '--gradient-primary',
       theme.palette.mode === 'dark'
         ? `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.primary.main} 90%)`
         : `linear-gradient(45deg, ${theme.palette.primary.light} 30%, ${theme.palette.primary.main} 90%)`
     );
     document.documentElement.style.setProperty(
-      '--gradient-secondary', 
+      '--gradient-secondary',
       theme.palette.mode === 'dark'
         ? `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`
         : `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`
@@ -43,8 +44,8 @@ export default function LobbyRoomView() {
   const handleSendMessage = () => {
     // send a message to be displayed to the lobby
     if (!lobbyMessage.trim()) {
-        console.log("can not be set empty");
-        return;
+      console.log("can not be set empty");
+      return;
     }
 
     // update the user details with the message sent
@@ -54,12 +55,12 @@ export default function LobbyRoomView() {
       userMessage: lobbyMessage,
       points: 0,
     } as User;
-        
+
     // execute the "createLobby" WebSocket command
     executeWebSocketCommand(
-        "sendLobbyMessage",
-        { roomCode: game.roomCode, user: user },
-        (errorMessage) => setError(errorMessage)
+      "sendLobbyMessage",
+      { roomCode: game.roomCode, user: user },
+      (errorMessage) => setError(errorMessage)
     );
     // reset the message to be blank
     setLobbyMessage("")
@@ -70,11 +71,32 @@ export default function LobbyRoomView() {
     console.log("Starting the Game")
     dispatch(gameActions.setGameSettings(gameSettings));
     executeWebSocketCommand(
-        "startGame",
-        { roomCode: game.roomCode, user: userDetails, gameSettings: gameSettings},
-        (errorMessage) => setError(errorMessage)
+      "startGame",
+      { roomCode: game.roomCode, user: userDetails, gameSettings: gameSettings },
+      (errorMessage) => setError(errorMessage)
     );
   }
+
+  const handleChangeQuiz = () => {
+    try {
+      const parsed = JSON.parse(changeQuizJson) as Quiz;
+
+      if (!parsed || !Array.isArray((parsed as any).quizQuestions) || (parsed as any).quizQuestions.length === 0) {
+        setError("Quiz JSON must include quizQuestions with at least 1 question.");
+        return;
+      }
+
+      executeWebSocketCommand(
+        "changeQuiz",
+        { roomCode: game.roomCode, user: userDetails, quiz: parsed },
+        (errorMessage) => setError(errorMessage)
+      );
+
+      setChangeQuizJson("");
+    } catch {
+      setError("Invalid quiz JSON. Please paste a valid Quiz object.");
+    }
+  };
 
   return (
     <Box sx={{ padding: 4 }}>
@@ -108,36 +130,36 @@ export default function LobbyRoomView() {
           <Typography variant="body1">No players connected yet.</Typography>
         )}
       </Box>
-        {/* TODO: add restrictions on the messages you can send*/}
+      {/* TODO: add restrictions on the messages you can send*/}
 
       <TextField
-          id="message"
-          label="Type Message"
-          variant="outlined"
-          fullWidth
-          value={lobbyMessage}
-          onChange={(e) => setLobbyMessage(e.target.value)}
-          slotProps={{
-              input: {
-                  endAdornment: (
-                      <InputAdornment position="end">
-                          <IconButton
-                              onClick={handleSendMessage}
-                              disabled={!lobbyMessage.trim()}
-                              edge="end"
-                              sx={{
-                                  color: lobbyMessage.trim() ? theme.palette.primary.main : 'rgba(0, 0, 0, 0.26)',
-                                  '&:hover': {
-                                      color: theme.palette.primary.light
-                                  }
-                              }}
-                          >
-                              <SendIcon />
-                          </IconButton>
-                      </InputAdornment>
-                  )
-              }
-          }}
+        id="message"
+        label="Type Message"
+        variant="outlined"
+        fullWidth
+        value={lobbyMessage}
+        onChange={(e) => setLobbyMessage(e.target.value)}
+        slotProps={{
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  onClick={handleSendMessage}
+                  disabled={!lobbyMessage.trim()}
+                  edge="end"
+                  sx={{
+                    color: lobbyMessage.trim() ? theme.palette.primary.main : 'rgba(0, 0, 0, 0.26)',
+                    '&:hover': {
+                      color: theme.palette.primary.light
+                    }
+                  }}
+                >
+                  <SendIcon />
+                </IconButton>
+              </InputAdornment>
+            )
+          }
+        }}
       />
 
       {error && (
@@ -151,15 +173,37 @@ export default function LobbyRoomView() {
             You are the host. Manage the game and start the quiz.
           </Typography>
           <ManageGameSettings onSettingsChange={setGameSettings} />
-          <Button 
-            variant="contained" 
-            color="primary" 
-            sx={{ 
-              marginTop: 2, 
+          <Typography variant="h6" sx={{ marginTop: 3 }}>
+            Change Quiz
+          </Typography>
+          <TextField
+            label="Quiz JSON"
+            variant="outlined"
+            fullWidth
+            multiline
+            minRows={6}
+            value={changeQuizJson}
+            onChange={(e) => setChangeQuizJson(e.target.value)}
+          />
+          <Button
+            variant="contained"
+            color="secondary"
+            sx={{ marginTop: 2, fontWeight: "bold", color: "#ffffff" }}
+            onClick={handleChangeQuiz}
+            disabled={!changeQuizJson.trim()}
+            className={styles.button}
+          >
+            Change Quiz
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            sx={{
+              marginTop: 2,
               fontWeight: 'bold',
               color: '#ffffff' // Ensure white text
-            }} 
-            onClick={handleStartGame} 
+            }}
+            onClick={handleStartGame}
             className={styles.button}
           >
             Start Game
@@ -167,11 +211,11 @@ export default function LobbyRoomView() {
         </Box>
       ) : userDetails.userRole === "player" ? (
         <>
-        <Box>
-          <Typography variant="body1">
-            You are a player. Wait for the host to start the game.
-          </Typography>
-        </Box>
+          <Box>
+            <Typography variant="body1">
+              You are a player. Wait for the host to start the game.
+            </Typography>
+          </Box>
         </>
       ) : (
         <Typography variant="body1">Loading...</Typography>
