@@ -25,7 +25,7 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
         const response = await fetch("http://localhost:8080/api/get-quizzes");
         if (!response.ok) throw new Error("Failed to fetch quizzes");
         const data = await response.json();
-        setQuizzes(data);
+        setQuizzes(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching quizzes:", error);
       } finally {
@@ -50,13 +50,13 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
       setPreviewOpen(false);
     }
   };
-  
+
   const handleNextQuestion = () => {
     if (selectedQuiz && currentQuestionIndex < selectedQuiz.quizQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
-  
+
   const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
@@ -88,15 +88,15 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
               }}
               onClick={() => handleCardClick(quiz)}
             >
-              <Box sx={{ 
-                width: '100%', 
-                height: 80, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                mb: 1, 
-                bgcolor: theme.palette.action.hover, 
-                borderRadius: 1 
+              <Box sx={{
+                width: '100%',
+                height: 80,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 1,
+                bgcolor: theme.palette.action.hover,
+                borderRadius: 1
               }}>
                 <ImageIcon sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
               </Box>
@@ -150,15 +150,15 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
                 }}
                 onClick={() => handleCardClick(quiz)}
               >
-                <Box sx={{ 
-                  width: '100%', 
-                  height: 80, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  mb: 1, 
-                  bgcolor: theme.palette.action.hover, 
-                  borderRadius: 1 
+                <Box sx={{
+                  width: '100%',
+                  height: 80,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 1,
+                  bgcolor: theme.palette.action.hover,
+                  borderRadius: 1
                 }}>
                   <ImageIcon sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
                 </Box>
@@ -195,15 +195,15 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
         <DialogTitle sx={{ fontWeight: 700, fontSize: 24, pb: 0 }}>{selectedQuiz?.quizName}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ 
-              width: 80, 
-              height: 80, 
-              bgcolor: theme.palette.action.hover, 
-              borderRadius: 2, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              mb: 2 
+            <Box sx={{
+              width: 80,
+              height: 80,
+              bgcolor: theme.palette.action.hover,
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 2
             }}>
               <ImageIcon sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
             </Box>
@@ -211,16 +211,16 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
           </Box>
           <Divider sx={{ mb: 2 }} />
           <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>Questions:</Typography>
-          <Box sx={{ 
-            bgcolor: theme.palette.action.hover, 
-            borderRadius: 2, 
-            p: 2, 
-            mb: 2, 
-            minHeight: 100, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            position: 'relative' 
+          <Box sx={{
+            bgcolor: theme.palette.action.hover,
+            borderRadius: 2,
+            p: 2,
+            mb: 2,
+            minHeight: 100,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            position: 'relative'
           }}>
             {selectedQuiz?.quizQuestions && selectedQuiz.quizQuestions.length > 0 ? (
               <>
@@ -265,8 +265,8 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
           </Box>
         </DialogContent>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, p: 2 }}>
-          <Button 
-            onClick={() => setDetailsOpen(false)} 
+          <Button
+            onClick={() => setDetailsOpen(false)}
             variant="outlined"
             sx={{
               borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : undefined,
@@ -275,9 +275,9 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleSelectQuiz} 
-            variant="contained" 
+          <Button
+            onClick={handleSelectQuiz}
+            variant="contained"
             color="primary"
             sx={{
               bgcolor: theme.palette.primary.main,
@@ -291,14 +291,14 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
           </Button>
         </Box>
       </Dialog>
-      
+
       {/* Quiz Preview Dialog */}
-      <Dialog 
-        open={previewOpen} 
+      <Dialog
+        open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         maxWidth="md"
         PaperProps={{
-          sx: { 
+          sx: {
             borderRadius: 2,
             minWidth: { xs: '90%', sm: '80%', md: '600px' },
             maxWidth: '800px',
@@ -308,26 +308,26 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
       >
         {selectedQuiz && (
           <>
-            <DialogTitle sx={{ 
-              pt: 3, 
-              pb: 0, 
+            <DialogTitle sx={{
+              pt: 3,
+              pb: 0,
               fontSize: { xs: '1.5rem', sm: '2rem' },
               textAlign: 'center',
               fontWeight: 'bold'
             }}>
               {selectedQuiz.quizName}
             </DialogTitle>
-            
+
             <DialogContent sx={{ p: 4 }}>
-              <Box sx={{ 
+              <Box sx={{
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center', 
-                mb: 3 
+                alignItems: 'center',
+                mb: 3
               }}>
-                <Paper 
+                <Paper
                   elevation={0}
-                  sx={{ 
+                  sx={{
                     width: '100%',
                     maxWidth: 120,
                     height: 120,
@@ -341,21 +341,21 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
                 >
                   <ImageIcon sx={{ fontSize: 60, color: theme.palette.text.secondary }} />
                 </Paper>
-                
+
                 <Typography variant="body1" sx={{ textAlign: 'center', color: theme.palette.text.secondary }}>
                   {selectedQuiz.quizDescription || "This is a quiz on " + selectedQuiz.quizName.toLowerCase()}
                 </Typography>
               </Box>
-              
+
               <Divider sx={{ my: 2 }} />
-              
+
               <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
                 Questions:
               </Typography>
-              
-              <Paper 
-                elevation={0} 
-                sx={{ 
+
+              <Paper
+                elevation={0}
+                sx={{
                   bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
                   p: 3,
                   borderRadius: 2,
@@ -366,61 +366,61 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
                 }}
               >
                 {/* Question Navigation */}
-                <Box sx={{ 
-                  display: 'flex', 
+                <Box sx={{
+                  display: 'flex',
                   alignItems: 'center',
                   width: '100%',
                   justifyContent: 'space-between',
                   mb: 2
                 }}>
-                  <IconButton 
+                  <IconButton
                     onClick={handlePrevQuestion}
                     disabled={currentQuestionIndex === 0}
-                    sx={{ 
-                      bgcolor: currentQuestionIndex > 0 ? 
-                        (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 
-                        'transparent' 
+                    sx={{
+                      bgcolor: currentQuestionIndex > 0 ?
+                        (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') :
+                        'transparent'
                     }}
                   >
                     <ArrowBackIosNewIcon fontSize="small" />
                   </IconButton>
-                  
+
                   <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
                     Question {currentQuestionIndex + 1} of {selectedQuiz.quizQuestions.length}
                   </Typography>
-                  
-                  <IconButton 
+
+                  <IconButton
                     onClick={handleNextQuestion}
                     disabled={currentQuestionIndex >= selectedQuiz.quizQuestions.length - 1}
-                    sx={{ 
-                      bgcolor: currentQuestionIndex < selectedQuiz.quizQuestions.length - 1 ? 
-                        (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 
-                        'transparent' 
+                    sx={{
+                      bgcolor: currentQuestionIndex < selectedQuiz.quizQuestions.length - 1 ?
+                        (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') :
+                        'transparent'
                     }}
                   >
                     <ArrowForwardIosIcon fontSize="small" />
                   </IconButton>
                 </Box>
-                
+
                 {/* Question Content */}
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>
                     {selectedQuiz.quizQuestions[currentQuestionIndex]?.question || "No question available"}
                   </Typography>
-                  
+
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                     Options:
                   </Typography>
-                  
+
                   <Box sx={{ ml: 2 }}>
-                    {(selectedQuiz.quizQuestions[currentQuestionIndex]?.options || 
-                     [...(selectedQuiz.quizQuestions[currentQuestionIndex]?.correctAnswers || []),
+                    {(selectedQuiz.quizQuestions[currentQuestionIndex]?.options ||
+                      [...(selectedQuiz.quizQuestions[currentQuestionIndex]?.correctAnswers || []),
                       ...(selectedQuiz.quizQuestions[currentQuestionIndex]?.incorrectAnswers || [])]
                     ).map((option, idx) => (
-                      <Typography 
-                        key={idx} 
-                        variant="body2" 
-                        sx={{ 
+                      <Typography
+                        key={idx}
+                        variant="body2"
+                        sx={{
                           mb: 0.5,
                           py: 0.5,
                           px: 1,
@@ -433,10 +433,10 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
                     ))}
                   </Box>
                 </Box>
-                
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   mt: 'auto',
                   pt: 1
@@ -447,19 +447,19 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
                 </Box>
               </Paper>
             </DialogContent>
-            
+
             <DialogActions sx={{ p: 3, pt: 0 }}>
-              <Button 
-                onClick={() => setPreviewOpen(false)} 
-                variant="outlined" 
+              <Button
+                onClick={() => setPreviewOpen(false)}
+                variant="outlined"
                 sx={{ px: 3 }}
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={handleSelectQuiz} 
-                variant="contained" 
-                color="primary" 
+              <Button
+                onClick={handleSelectQuiz}
+                variant="contained"
+                color="primary"
                 sx={{ px: 3 }}
               >
                 Select This Quiz
