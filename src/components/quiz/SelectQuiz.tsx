@@ -8,6 +8,9 @@ import { Quiz } from '../../stores/types';
 
 const MAX_VISIBLE = 5;
 
+const getQuizImageUrl = (imageId: string) =>
+  `http://localhost:8080/api/images/${imageId}`;
+
 export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz) => void }) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,13 +28,23 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
         const response = await fetch("http://localhost:8080/api/get-quizzes");
         if (!response.ok) throw new Error("Failed to fetch quizzes");
         const data = await response.json();
-        setQuizzes(Array.isArray(data) ? data : []);
+
+        const normalised: Quiz[] = Array.isArray(data)
+          ? data.map((q: any) => ({
+            ...q,
+            id: normaliseObjectId(q.id),
+            imageId: normaliseObjectId(q.imageId),
+          }))
+          : [];
+
+        setQuizzes(normalised);
       } catch (error) {
         console.error("Error fetching quizzes:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchQuizzes();
   }, []);
 
@@ -63,6 +76,9 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
     }
   };
 
+  const normaliseObjectId = (val: any): string | undefined =>
+    typeof val === "string" ? val : undefined;
+
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -88,17 +104,27 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
               }}
               onClick={() => handleCardClick(quiz)}
             >
-              <Box sx={{
-                width: '100%',
-                height: 80,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 1,
-                bgcolor: theme.palette.action.hover,
-                borderRadius: 1
-              }}>
-                <ImageIcon sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
+              <Box
+                sx={{
+                  width: "100%",
+                  height: 80,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  mb: 1,
+                  bgcolor: theme.palette.action.hover,
+                  borderRadius: 1,
+                }}
+              >
+                {typeof quiz.imageId === "string" ? (
+                  <img
+                    src={getQuizImageUrl(quiz.imageId)}
+                    alt={`${quiz.quizName} thumbnail`}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }}
+                  />
+                ) : (
+                  <ImageIcon sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
+                )}
               </Box>
               <Typography variant="subtitle1" noWrap>{quiz.quizName}</Typography>
               <Typography
