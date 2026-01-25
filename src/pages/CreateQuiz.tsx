@@ -30,6 +30,7 @@ export default function CreateQuiz() {
   const theme = useTheme();
   const [quizName, setQuizName] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [currentCategory, setCurrentCategory] = useState("");
   const [difficulty, setDifficulty] = useState(1);
   const [questions, setQuestions] = useState<QuizQuestionForm[]>([{
@@ -105,65 +106,100 @@ export default function CreateQuiz() {
   };
 
   const transformQuestionForSubmission = (question: QuizQuestionForm): QuizQuestion => {
-      return {
-        question: question.question,
-        points: question.points,
-        difficulty: question.difficulty,
-        hint: question.hint,
-        type: question.type,
-        category: question.category,
-        correctAnswers: question.options
-          .filter(opt => opt.isCorrect)
-          .map(opt => opt.text),
-        incorrectAnswers: question.options
-          .filter(opt => !opt.isCorrect)
-          .map(opt => opt.text),
-      } as QuizQuestion;
+    return {
+      question: question.question,
+      points: question.points,
+      difficulty: question.difficulty,
+      hint: question.hint,
+      type: question.type,
+      category: question.category,
+      correctAnswers: question.options
+        .filter(opt => opt.isCorrect)
+        .map(opt => opt.text),
+      incorrectAnswers: question.options
+        .filter(opt => !opt.isCorrect)
+        .map(opt => opt.text),
+    } as QuizQuestion;
   };
 
-  const handleSubmit = async () => {
-    const transformedQuestions = questions.map(transformQuestionForSubmission);
-    
-    const quiz: Quiz = {
-      quizName,
-      quizDescription,
-      createdBy: "Test_User",
-      quizQuestions: transformedQuestions,
-    };
+ const handleSubmit = async () => {
+  const transformedQuestions = questions.map(transformQuestionForSubmission);
 
-    console.log('Submitting quiz:', JSON.stringify(quiz, null, 2));
+  const quiz: Quiz = {
+    quizName,
+    quizDescription,
+    createdBy: "Test_User",
+    quizQuestions: transformedQuestions,
+    // BE doesn't store imageID in create-quiz
+  };
 
-    try {
-      const response = await fetch("http://localhost:8080/api/create-quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(quiz),
-      });
+  try {
+    // 1) Create quiz first
+    const createResp = await fetch("http://localhost:8080/api/create-quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(quiz),
+    });
 
-      if (response.ok) {
-        alert("Quiz created successfully!");
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to create quiz: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error("Error creating quiz:", error);
-      alert("Failed to connect to server");
+    if (!createResp.ok) {
+      const errText = await createResp.text();
+      alert(`Failed to create quiz: ${errText}`);
+      return;
     }
-  };
 
-  const handleDialogOpen = () => setOpenDialog(true);
-  const handleDialogClose = () => setOpenDialog(false);
-  const handleDialogConfirm = async () => {
-    setOpenDialog(false);
-    await handleSubmit();
-  };
+    const createData = await createResp.json();
+
+    // backend returns { id: ... }
+    const createdQuizId =
+      typeof createData.id === "string"
+        ? createData.id
+        : createData.id?.$oid || createData.id?.Hex || createData.id?.hex;
+
+    if (!createdQuizId) {
+      alert("Quiz created, but could not read returned quiz id.");
+      return;
+    }
+
+    // 2) Upload image (optional) to /api/quizzes/{id}/image
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append("image", imageFile); // MUST be "image"
+
+      const uploadResp = await fetch(
+        `http://localhost:8080/api/quizzes/${createdQuizId}/image`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!uploadResp.ok) {
+        const errText = await uploadResp.text();
+        alert(`Quiz created but image upload failed: ${errText}`);
+        return;
+      }
+    }
+
+    alert("Quiz created successfully!");
+  } catch (error) {
+    console.error("Error creating quiz:", error);
+    alert("Failed to connect to server");
+  }
+};
+
+const handleDialogOpen = () => setOpenDialog(true);
+const handleDialogClose = () => setOpenDialog(false);
+
+const handleDialogConfirm = async () => {
+  setOpenDialog(false);
+  await handleSubmit();
+};
 
   return (
     <div className={styles.container}>
-      <Box 
-        className={styles.innerBox} 
-        sx={{ 
+      <Box
+        className={styles.innerBox}
+        sx={{
           backgroundColor: theme.palette.background.paper,
           boxShadow: theme.palette.mode === 'dark'
             ? '0px 4px 20px rgba(0, 0, 0, 0.5)'
@@ -205,23 +241,38 @@ export default function CreateQuiz() {
               style: { color: theme.palette.mode === 'dark' ? theme.palette.text.primary : undefined }
             }}
           />
+          <Button variant="outlined" component="label" sx={{ mt: 2 }}>
+            Upload Quiz Image
+            <input
+              type="file"
+              hidden
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+            />
+          </Button>
+
+          {imageFile && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Selected image: {imageFile.name}
+            </Typography>
+          )}
           {questions.map((q, questionIndex) => (
-            <Box 
-              key={questionIndex} 
-              sx={{ 
-                marginBottom: 4, 
-                padding: 2, 
-                border: `1px solid ${theme.palette.divider}`, 
+            <Box
+              key={questionIndex}
+              sx={{
+                marginBottom: 4,
+                padding: 2,
+                border: `1px solid ${theme.palette.divider}`,
                 borderRadius: 2,
-                backgroundColor: theme.palette.mode === 'dark' 
-                  ? theme.palette.background.default 
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? theme.palette.background.default
                   : '#f8f8f8',
                 color: theme.palette.text.primary,
               }}
             >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Question {questionIndex + 1}</Typography>
-                <IconButton 
+                <IconButton
                   onClick={() => deleteQuestion(questionIndex)}
                   sx={{ color: theme.palette.mode === 'dark' ? theme.palette.error.light : theme.palette.error.main }}
                 >
@@ -257,8 +308,8 @@ export default function CreateQuiz() {
                   style: { color: theme.palette.mode === 'dark' ? theme.palette.text.primary : undefined }
                 }}
               />
-              <DifficultySlider 
-                difficulty={q.difficulty} 
+              <DifficultySlider
+                difficulty={q.difficulty}
                 onChange={(newVal) => handleQuestionChange(questionIndex, "difficulty", newVal)}
               />
               <TextField
@@ -314,7 +365,7 @@ export default function CreateQuiz() {
                     label="Correct"
                     sx={{ color: theme.palette.text.primary }}
                   />
-                  <IconButton 
+                  <IconButton
                     size="small"
                     onClick={() => deleteOption(questionIndex, optionIndex)}
                     sx={{ color: theme.palette.mode === 'dark' ? theme.palette.error.light : theme.palette.error.main }}
@@ -323,12 +374,12 @@ export default function CreateQuiz() {
                   </IconButton>
                 </Box>
               ))}
-              <Button 
-                variant="outlined" 
-                size="small" 
+              <Button
+                variant="outlined"
+                size="small"
                 onClick={() => addOption(questionIndex)}
-                sx={{ 
-                  mt: 1, 
+                sx={{
+                  mt: 1,
                   borderColor: theme.palette.mode === 'dark' ? theme.palette.primary.light : undefined,
                   color: theme.palette.mode === 'dark' ? theme.palette.primary.light : undefined,
                 }}
@@ -338,11 +389,11 @@ export default function CreateQuiz() {
               </Button>
             </Box>
           ))}
-          <Button 
-            variant="contained" 
-            color="secondary" 
-            onClick={addQuestion} 
-            sx={{ 
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={addQuestion}
+            sx={{
               marginRight: 2,
               bgcolor: theme.palette.secondary.main,
               color: '#ffffff',
@@ -354,11 +405,11 @@ export default function CreateQuiz() {
           >
             Add Question
           </Button>
-          <Button 
-            variant="contained" 
-            color="secondary" 
+          <Button
+            variant="contained"
+            color="secondary"
             onClick={handleDialogOpen}
-            sx={{ 
+            sx={{
               bgcolor: theme.palette.secondary.main,
               color: '#ffffff',
               fontWeight: 'bold',
@@ -369,8 +420,8 @@ export default function CreateQuiz() {
           >
             Submit Quiz
           </Button>
-          <Dialog 
-            open={openDialog} 
+          <Dialog
+            open={openDialog}
             onClose={handleDialogClose}
             PaperProps={{
               sx: {
@@ -385,8 +436,8 @@ export default function CreateQuiz() {
               </DialogContentText>
             </DialogContent>
             <DialogActions>
-              <Button 
-                onClick={handleDialogClose} 
+              <Button
+                onClick={handleDialogClose}
                 color="primary"
                 sx={{
                   color: theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.main,
@@ -394,11 +445,11 @@ export default function CreateQuiz() {
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={handleDialogConfirm} 
-                color="secondary" 
+              <Button
+                onClick={handleDialogConfirm}
+                color="secondary"
                 variant="contained"
-                sx={{ 
+                sx={{
                   bgcolor: theme.palette.secondary.main,
                   color: '#ffffff',
                   fontWeight: 'bold',
