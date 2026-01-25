@@ -51,7 +51,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                             }
                             break;
-                            
+
                         case "Quiz changed":
                             if (data.lobby) {
                                 store.dispatch(gameActions.setGameStatus(data.lobby.status || "Waiting"));
@@ -77,13 +77,20 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             break;
 
                         case "Show leaderboard":
-                            store.dispatch(gameActions.setShowLeaderboard(true))
+                            if (data.clientsInLobby) {
+                                store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
+                            }
+                            store.dispatch(gameActions.setShowLeaderboard(true));
                             break;
 
                         case "Show leaderboard - Final Question":
-                            store.dispatch(gameActions.setShowLeaderboard(true))
-                            store.dispatch(gameActions.setFinalQuestionLeaderboard(true))
+                            if (data.clientsInLobby) {
+                                store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
+                            }
+                            store.dispatch(gameActions.setShowLeaderboard(true));
+                            store.dispatch(gameActions.setFinalQuestionLeaderboard(true));
                             break;
+
 
                         case "Next question":
                             if (data.lobby?.currentQuestion) {

@@ -139,26 +139,12 @@ export default function LobbyRoomView() {
         fullWidth
         value={lobbyMessage}
         onChange={(e) => setLobbyMessage(e.target.value)}
-        slotProps={{
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  onClick={handleSendMessage}
-                  disabled={!lobbyMessage.trim()}
-                  edge="end"
-                  sx={{
-                    color: lobbyMessage.trim() ? theme.palette.primary.main : 'rgba(0, 0, 0, 0.26)',
-                    '&:hover': {
-                      color: theme.palette.primary.light
-                    }
-                  }}
-                >
-                  <SendIcon />
-                </IconButton>
-              </InputAdornment>
-            )
-          }
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              ...
+            </InputAdornment>
+          ),
         }}
       />
 
