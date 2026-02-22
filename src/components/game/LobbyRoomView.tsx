@@ -3,12 +3,13 @@ import { GameSettings, Quiz, User } from "../../stores/types";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
-import ManageGameSettings from "../quiz/ManageGameSettings"; // Fixed import path
+import ManageGameSettings from "../quiz/ManageGameSettings";
+import SelectQuiz from "../quiz/SelectQuiz";
 import { RootState } from "../../stores/store";
 import SendIcon from '@mui/icons-material/Send';
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
-import styles from './LobbyRoomView.module.css'; // This path now points to the correct location
+import styles from './LobbyRoomView.module.css';
 
 export default function LobbyRoomView() {
   const theme = useTheme();
@@ -16,7 +17,6 @@ export default function LobbyRoomView() {
   const [lobbyMessage, setLobbyMessage] = useState("");
   const userDetails = useSelector((state: RootState) => state.game.user); // get current user details from Redux
   const [error, setError] = useState<string | null>(null);
-  const [changeQuizJson, setChangeQuizJson] = useState<string>("");
   const [gameSettings, setGameSettings] = useState<GameSettings>({
     questionTime: 30,
     enableMessagesDuringGame: true,
@@ -63,39 +63,26 @@ export default function LobbyRoomView() {
       (errorMessage) => setError(errorMessage)
     );
     // reset the message to be blank
-    setLobbyMessage("")
-  }
+    setLobbyMessage("");
+  };
 
   const handleStartGame = () => {
     // TODO: ensure that there is at least one player
-    console.log("Starting the Game")
+    console.log("Starting the Game");
     dispatch(gameActions.setGameSettings(gameSettings));
     executeWebSocketCommand(
       "startGame",
       { roomCode: game.roomCode, user: userDetails, gameSettings: gameSettings },
       (errorMessage) => setError(errorMessage)
     );
-  }
+  };
 
-  const handleChangeQuiz = () => {
-    try {
-      const parsed = JSON.parse(changeQuizJson) as Quiz;
-
-      if (!parsed || !Array.isArray((parsed as any).quizQuestions) || (parsed as any).quizQuestions.length === 0) {
-        setError("Quiz JSON must include quizQuestions with at least 1 question.");
-        return;
-      }
-
-      executeWebSocketCommand(
-        "changeQuiz",
-        { roomCode: game.roomCode, user: userDetails, quiz: parsed },
-        (errorMessage) => setError(errorMessage)
-      );
-
-      setChangeQuizJson("");
-    } catch {
-      setError("Invalid quiz JSON. Please paste a valid Quiz object.");
-    }
+  const handleChangeQuiz = (quiz: Quiz) => {
+    executeWebSocketCommand(
+      "changeQuiz",
+      { roomCode: game.roomCode, user: userDetails, quiz },
+      (errorMessage) => setError(errorMessage)
+    );
   };
 
   return (
@@ -111,7 +98,8 @@ export default function LobbyRoomView() {
       {/* host displayed */}
       <Typography variant="h5" gutterBottom>
         Host: {game.clientsInLobby.find((user) => user.userRole === "host")?.userName || "Loading..."}
-        {game.clientsInLobby.find((user) => user.userRole === "host")?.userMessage && `: ${game.clientsInLobby.find((user) => user.userRole === "host")?.userMessage}`}
+        {game.clientsInLobby.find((user) => user.userRole === "host")?.userMessage &&
+          `: ${game.clientsInLobby.find((user) => user.userRole === "host")?.userMessage}`}
       </Typography>
       <Typography variant="h6" gutterBottom>
         Players:
@@ -154,40 +142,46 @@ export default function LobbyRoomView() {
         </Typography>
       )}
       {userDetails.userRole === "host" ? (
-        <Box>
+        <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
           <Typography variant="body1">
             You are the host. Manage the game and start the quiz.
           </Typography>
+
           <ManageGameSettings onSettingsChange={setGameSettings} />
-          <Typography variant="h6" sx={{ marginTop: 3 }}>
-            Change Quiz
-          </Typography>
-          <TextField
-            label="Quiz JSON"
-            variant="outlined"
-            fullWidth
-            multiline
-            minRows={6}
-            value={changeQuizJson}
-            onChange={(e) => setChangeQuizJson(e.target.value)}
-          />
-          <Button
-            variant="contained"
-            color="secondary"
-            sx={{ marginTop: 2, fontWeight: "bold", color: "#ffffff" }}
-            onClick={handleChangeQuiz}
-            disabled={!changeQuizJson.trim()}
-            className={styles.button}
+
+          <Box
+            sx={{
+              mt: 2,
+              p: 2,
+              borderRadius: 2,
+              border: `1px dashed ${theme.palette.divider}`,
+              bgcolor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.02)"
+                  : "rgba(0,0,0,0.02)",
+            }}
           >
-            Change Quiz
-          </Button>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Change Quiz
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mb: 2 }}
+            >
+              Pick a different quiz for this room. The change will apply for
+              everyone in the lobby.
+            </Typography>
+            <SelectQuiz onSelectQuiz={handleChangeQuiz} compact />
+          </Box>
+
           <Button
             variant="contained"
             color="primary"
             sx={{
               marginTop: 2,
-              fontWeight: 'bold',
-              color: '#ffffff' // Ensure white text
+              fontWeight: "bold",
+              color: "#ffffff",
             }}
             onClick={handleStartGame}
             className={styles.button}
