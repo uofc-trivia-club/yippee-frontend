@@ -186,7 +186,15 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
                   bgcolor: theme.palette.action.hover,
                   borderRadius: 1
                 }}>
-                  <ImageIcon sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
+                  {typeof quiz.imageId === "string" ? (
+                    <img
+                      src={getQuizImageUrl(quiz.imageId)}
+                      alt={`${quiz.quizName} thumbnail`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }}
+                    />
+                  ) : (
+                    <ImageIcon sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
+                  )}
                 </Box>
                 <Typography variant="subtitle1" noWrap>{quiz.quizName}</Typography>
                 <Typography
@@ -351,23 +359,19 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
                 alignItems: 'center',
                 mb: 3
               }}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    width: '100%',
-                    maxWidth: 120,
-                    height: 120,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    borderRadius: 2,
-                    mb: 2
-                  }}
-                >
-                  <ImageIcon sx={{ fontSize: 60, color: theme.palette.text.secondary }} />
+                <Paper sx={{ width: "100%", maxWidth: 320, borderRadius: 2, mb: 2, overflow: "hidden" }}>
+                  {selectedQuiz.imageId ? (
+                    <img
+                      src={getQuizImageUrl(selectedQuiz.imageId)}
+                      alt={`${selectedQuiz.quizName} thumbnail`}
+                      style={{ width: "100%", height: "auto", display: "block" }}
+                    />
+                  ) : (
+                    <Box sx={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ImageIcon sx={{ fontSize: 60, color: theme.palette.text.secondary }} />
+                    </Box>
+                  )}
                 </Paper>
-
                 <Typography variant="body1" sx={{ textAlign: 'center', color: theme.palette.text.secondary }}>
                   {selectedQuiz.quizDescription || "This is a quiz on " + selectedQuiz.quizName.toLowerCase()}
                 </Typography>
