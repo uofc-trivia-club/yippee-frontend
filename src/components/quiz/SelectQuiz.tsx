@@ -1,39 +1,73 @@
-import { Box, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fade, IconButton, InputAdornment, TextField, Typography, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  Paper,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import { useEffect, useState } from "react";
 
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CloseIcon from '@mui/icons-material/Close';
-import ImageIcon from '@mui/icons-material/Image';
-import { Quiz } from '../../stores/types';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import SearchIcon from '@mui/icons-material/Search';
-import TuneIcon from '@mui/icons-material/Tune';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ImageIcon from "@mui/icons-material/Image";
+import { Quiz } from "../../stores/types";
+import styles from "./SelectQuiz.module.css";
 
-export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz) => void }) {
+const MAX_VISIBLE = 5;
+
+const getQuizImageUrl = (imageId: string) =>
+  `http://localhost:8080/api/images/${imageId}`;
+
+interface SelectQuizProps {
+  onSelectQuiz: (quiz: Quiz) => void;
+  compact?: boolean;
+}
+
+export default function SelectQuiz({ onSelectQuiz, compact = false }: SelectQuizProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
-  const [hoveredQuizId, setHoveredQuizId] = useState<string | null>(null);
-  const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+  const [questionPage, setQuestionPage] = useState(0);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [confirmedQuizId, setConfirmedQuizId] = useState<string | null>(null);
   const theme = useTheme();
 
   useEffect(() => {
+    const normaliseObjectId = (val: any): string | undefined =>
+      typeof val === "string" ? val : undefined;
+
     const fetchQuizzes = async () => {
       try {
         const response = await fetch("http://localhost:8080/api/get-quizzes");
         if (!response.ok) throw new Error("Failed to fetch quizzes");
         const data = await response.json();
-        setQuizzes(data);
+
+        const normalised: Quiz[] = Array.isArray(data)
+          ? data.map((q: any) => ({
+              ...q,
+              id: normaliseObjectId(q.id),
+              imageId: normaliseObjectId(q.imageId),
+            }))
+          : [];
+
+        setQuizzes(normalised);
       } catch (error) {
         console.error("Error fetching quizzes:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchQuizzes();
   }, []);
 
@@ -80,328 +114,462 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
   const handleConfirmSelection = () => {
     if (selectedQuiz) {
       onSelectQuiz(selectedQuiz);
-      handleCloseModal();
+      if (selectedQuiz.id) {
+        setConfirmedQuizId(selectedQuiz.id);
+      }
+      setPreviewOpen(false);
     }
   };
 
-  const getDifficultyColor = (quiz: Quiz) => {
-    const avgDifficulty = quiz.quizQuestions.reduce((sum, q) => sum + q.difficulty, 0) / quiz.quizQuestions.length;
-    if (avgDifficulty <= 2) return theme.palette.success.main;
-    if (avgDifficulty <= 4) return theme.palette.warning.main;
-    return theme.palette.error.main;
+  const handleNextQuestion = () => {
+    if (selectedQuiz && currentQuestionIndex < selectedQuiz.quizQuestions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+    }
   };
 
-  const getDifficultyLabel = (quiz: Quiz) => {
-    const avgDifficulty = quiz.quizQuestions.reduce((sum, q) => sum + q.difficulty, 0) / quiz.quizQuestions.length;
-    if (avgDifficulty <= 2) return "Easy";
-    if (avgDifficulty <= 4) return "Medium";
-    return "Hard";
+  const handlePrevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex((prev) => prev - 1);
+    }
   };
 
   return (
-    <Box>
-      {/* Compact Selection Button */}
-      <Button
-        variant="contained"
-        size="large"
-        onClick={handleOpenModal}
-        disabled={loading}
-        fullWidth
-        sx={{
-          py: 1.5,
-          fontSize: '1rem',
-          fontWeight: 'bold',
-          borderRadius: 2,
-          textTransform: 'none',
-          bgcolor: theme.palette.secondary.main,
-          color: '#fff',
-          '&:hover': {
-            bgcolor: theme.palette.secondary.dark,
-          },
-          transition: 'all 0.2s ease',
-        }}
-      >
-        {loading ? <CircularProgress size={24} color="inherit" /> : 'Select Quiz'}
-      </Button>
-      
-      {quizzes.length > 0 && (
-        <Typography 
-          variant="caption" 
-          color="text.secondary" 
-          sx={{ display: 'block', textAlign: 'center', mt: 1 }}
-        >
-          {quizzes.length} quiz{quizzes.length !== 1 ? 'zes' : ''} available
+    <Box sx={{ p: compact ? 0 : 4 }}>
+      {!compact && (
+        <Typography variant="h4" gutterBottom>
+          Select a Quiz
         </Typography>
       )}
 
-      {/* Modal Dialog (NOT fullScreen) */}
+      {loading ? (
+        <CircularProgress />
+      ) : quizzes.length > 0 ? (
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            alignItems: "stretch",
+            width: "100%",
+            maxWidth: "100%",
+            overflowX: "auto",
+            pb: 1,
+          }}
+        >
+          {visibleQuizzes.map((quiz, index) => {
+            const isSelected = confirmedQuizId != null && quiz.id === confirmedQuizId;
+
+            return (
+              <Box
+                key={quiz.id ?? index}
+                className={styles.quizCard}
+                sx={{
+                  width: 160,
+                  minWidth: 160,
+                  borderWidth: isSelected ? 2 : 1,
+                  borderStyle: "solid",
+                  borderColor: isSelected
+                    ? theme.palette.primary.main
+                    : theme.palette.divider,
+                  borderRadius: "8px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  background: isSelected
+                    ? theme.palette.mode === "dark"
+                      ? "rgba(33,150,243,0.12)"
+                      : "rgba(33,150,243,0.06)"
+                    : theme.palette.background.paper,
+                  boxShadow: isSelected
+                    ? `0 0 0 2px ${theme.palette.primary.main}33`
+                    : "none",
+                  p: 1,
+                }}
+                onClick={() => handleCardClick(quiz)}
+              >
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: 90,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
+                    bgcolor: theme.palette.action.hover,
+                    borderRadius: 1,
+                    overflow: "hidden",
+                  }}
+                >
+                  {typeof quiz.imageId === "string" ? (
+                    <img
+                      src={getQuizImageUrl(quiz.imageId)}
+                      alt={`${quiz.quizName} thumbnail`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        borderRadius: 4,
+                      }}
+                    />
+                  ) : (
+                    <ImageIcon
+                      sx={{ fontSize: 48, color: theme.palette.text.disabled }}
+                    />
+                  )}
+                </Box>
+                <Typography variant="subtitle1" noWrap>
+                  {quiz.quizName}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="textSecondary"
+                  sx={{
+                    display: "block",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "100%",
+                  }}
+                >
+                  {quiz.quizDescription}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="textSecondary"
+                  display="block"
+                  sx={{ mt: 0.5 }}
+                >
+                  Created by: {quiz.createdBy}
+                </Typography>
+                {isSelected && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      mt: 0.5,
+                      fontWeight: 600,
+                      color: theme.palette.primary.main,
+                    }}
+                  >
+                    Selected
+                  </Typography>
+                )}
+              </Box>
+            );
+          })}
+          {moreQuizzes.length > 0 && (
+            <Button
+              variant="outlined"
+              onClick={() => setDialogOpen(true)}
+              sx={{
+                width: 100,
+                minWidth: 100,
+                height: 90,
+                fontSize: "0.9rem",
+                p: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                alignSelf: "center",
+              }}
+            >
+              More Quizzes
+            </Button>
+          )}
+        </Box>
+      ) : (
+        <Typography>No quizzes available.</Typography>
+      )}
+
+      {/* More Quizzes Dialog */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Select a Quiz</DialogTitle>
+        <DialogContent>
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              justifyContent: "flex-start",
+            }}
+          >
+            {moreQuizzes.map((quiz, index) => {
+              const isSelected = confirmedQuizId != null && quiz.id === confirmedQuizId;
+
+              return (
+                <Box
+                  key={quiz.id ?? index}
+                  className={styles.quizCard}
+                  sx={{
+                    borderWidth: isSelected ? 2 : 1,
+                    borderStyle: "solid",
+                    borderColor: isSelected
+                      ? theme.palette.primary.main
+                      : theme.palette.divider,
+                    borderRadius: "8px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    background: isSelected
+                      ? theme.palette.mode === "dark"
+                        ? "rgba(33,150,243,0.12)"
+                        : "rgba(33,150,243,0.06)"
+                      : theme.palette.background.paper,
+                    boxShadow: isSelected
+                      ? `0 0 0 2px ${theme.palette.primary.main}33`
+                      : "none",
+                    p: 1,
+                    width: 160,
+                    minWidth: 160,
+                    m: 1,
+                  }}
+                  onClick={() => handleCardClick(quiz)}
+                >
+                  <Box
+                    sx={{
+                      width: "100%",
+                      height: 90,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 1,
+                      bgcolor: theme.palette.action.hover,
+                      borderRadius: 1,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {typeof quiz.imageId === "string" ? (
+                      <img
+                        src={getQuizImageUrl(quiz.imageId)}
+                        alt={`${quiz.quizName} thumbnail`}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          borderRadius: 4,
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon
+                        sx={{ fontSize: 48, color: theme.palette.text.disabled }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant="subtitle1" noWrap>
+                    {quiz.quizName}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="textSecondary"
+                    sx={{
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
+                    }}
+                  >
+                    {quiz.quizDescription}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="textSecondary"
+                    display="block"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Created by: {quiz.createdBy}
+                  </Typography>
+                  {isSelected && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        mt: 0.5,
+                        fontWeight: 600,
+                        color: theme.palette.primary.main,
+                      }}
+                    >
+                      Selected
+                    </Typography>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quiz Details Dialog */}
       <Dialog
-        open={modalOpen}
-        onClose={handleCloseModal}
-        maxWidth="lg"
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        maxWidth="sm"
         fullWidth
-        TransitionComponent={Fade}
-        TransitionProps={{ timeout: 300 }}
         PaperProps={{
           sx: {
             bgcolor: theme.palette.background.paper,
-            height: '85vh',
-            maxHeight: '85vh',
-            borderRadius: 3,
-          }
+          },
         }}
       >
-        <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
-          {/* Header with Search */}
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 24, pb: 0 }}>
+          {selectedQuiz?.quizName}
+        </DialogTitle>
+        <DialogContent>
           <Box
             sx={{
-              flexShrink: 0,
-              bgcolor: theme.palette.background.paper,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              mb: 2,
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-              <Typography variant="h5" fontWeight="bold" sx={{ flex: 1 }}>
-                Select a Quiz
-              </Typography>
-              <IconButton onClick={handleCloseModal} size="small">
-                <CloseIcon />
-              </IconButton>
-            </Box>
-
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Search by name, creator, or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                bgcolor: theme.palette.action.hover,
+                borderRadius: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 2,
+              }}
+            >
+              <ImageIcon
+                sx={{ fontSize: 48, color: theme.palette.text.disabled }}
               />
-              <IconButton 
-                size="small"
-                sx={{ 
-                  bgcolor: theme.palette.mode === 'dark' 
-                    ? 'rgba(255,255,255,0.05)' 
-                    : 'rgba(0,0,0,0.03)',
-                }}
-              >
-                <TuneIcon />
-              </IconButton>
             </Box>
-
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-              {filteredQuizzes.length} quiz{filteredQuizzes.length !== 1 ? 'zes' : ''} found
+            <Typography
+              variant="subtitle1"
+              sx={{ mb: 2, textAlign: "center", color: theme.palette.text.secondary }}
+            >
+              {selectedQuiz?.quizDescription}
             </Typography>
           </Box>
-
-          {/* Quiz Grid - Scrollable */}
-          <Box sx={{ 
-            flex: 1,
-            overflow: 'auto',
-            p: 2,
-          }}>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                <CircularProgress size={48} />
-              </Box>
-            ) : filteredQuizzes.length > 0 ? (
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: {
-                  xs: '1fr',
-                  sm: 'repeat(2, 1fr)',
-                  md: 'repeat(3, 1fr)',
-                },
-                gap: 2
-              }}>
-                {filteredQuizzes.map((quiz, index) => {
-                  const isSelected = selectedQuiz?.quizName === quiz.quizName;
-                  const isHovered = hoveredQuizId === quiz.quizName;
-                  
-                  return (
-                    <Card
-                      key={index}
-                      onClick={() => handleSelectQuizCard(quiz)}
-                      onMouseEnter={() => setHoveredQuizId(quiz.quizName)}
-                      onMouseLeave={() => setHoveredQuizId(null)}
-                      sx={{
-                        cursor: 'pointer',
-                        position: 'relative',
-                        transition: 'all 0.2s ease',
-                        border: `2px solid ${
-                          isSelected 
-                            ? theme.palette.primary.main 
-                            : 'transparent'
-                        }`,
-                        transform: isHovered || isSelected ? 'translateY(-4px)' : 'translateY(0)',
-                        '&:hover': {
-                          boxShadow: theme.palette.mode === 'dark'
-                            ? '0 8px 16px rgba(0,0,0,0.4)'
-                            : '0 8px 16px rgba(0,0,0,0.15)',
-                        }
-                      }}
-                    >
-                      {isSelected && (
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            zIndex: 2,
-                          }}
-                        >
-                          <CheckCircleIcon 
-                            sx={{ 
-                              color: theme.palette.primary.main,
-                              fontSize: 28,
-                            }} 
-                          />
-                        </Box>
-                      )}
-
-                      <CardContent sx={{ p: 2 }}>
-                        <Box
-                          sx={{
-                            width: '100%',
-                            height: 100,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mb: 1.5,
-                            borderRadius: 1,
-                            bgcolor: theme.palette.mode === 'dark'
-                              ? 'rgba(255,255,255,0.05)'
-                              : 'rgba(0,0,0,0.03)',
-                          }}
-                        >
-                          <ImageIcon 
-                            sx={{ 
-                              fontSize: 48, 
-                              color: theme.palette.text.disabled,
-                            }} 
-                          />
-                        </Box>
-
-                        <Typography 
-                          variant="subtitle1" 
-                          sx={{ 
-                            fontWeight: 600,
-                            mb: 0.5,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            minHeight: '2.8em',
-                          }}
-                        >
-                          {quiz.quizName}
-                        </Typography>
-
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            display: 'block',
-                            mb: 1,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {quiz.quizDescription || 'No description'}
-                        </Typography>
-
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1 }}>
-                          <Chip
-                            label={`${quiz.quizQuestions.length} Q's`}
-                            size="small"
-                            sx={{ fontSize: '0.7rem' }}
-                          />
-                          <Chip
-                            label={getDifficultyLabel(quiz)}
-                            size="small"
+          <Divider sx={{ mb: 2 }} />
+          <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+            Questions:
+          </Typography>
+          <Box
+            sx={{
+              bgcolor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.05)"
+                  : "rgba(0,0,0,0.03)",
+              borderRadius: 2,
+              p: 2,
+              mb: 2,
+              minHeight: 100,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              position: "relative",
+            }}
+          >
+            {selectedQuiz?.quizQuestions && selectedQuiz.quizQuestions.length > 0 ? (
+              <>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    width: "100%",
+                  }}
+                >
+                  <Button
+                    onClick={() => setQuestionPage((prev) => Math.max(prev - 1, 0))}
+                    disabled={questionPage === 0}
+                    sx={{ minWidth: 0, p: 1 }}
+                  >
+                    <ArrowBackIosNewIcon fontSize="small" />
+                  </Button>
+                  <Box sx={{ flex: 1, px: 2 }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      {questionPage + 1}.{" "}
+                      {selectedQuiz.quizQuestions[questionPage].question}
+                    </Typography>
+                    {/* Show answers if available */}
+                    {selectedQuiz.quizQuestions[questionPage].correctAnswers &&
+                    selectedQuiz.quizQuestions[questionPage].incorrectAnswers ? (
+                      <Box>
+                        {[
+                          ...(selectedQuiz.quizQuestions[questionPage].correctAnswers ||
+                            []),
+                          ...(selectedQuiz.quizQuestions[questionPage].incorrectAnswers ||
+                            []),
+                        ].map((ans, idx) => (
+                          <Typography
+                            key={idx}
+                            variant="body2"
                             sx={{
-                              bgcolor: getDifficultyColor(quiz),
-                              color: '#fff',
-                              fontSize: '0.7rem',
+                              ml: 2,
+                              color: selectedQuiz.quizQuestions[
+                                questionPage
+                              ].correctAnswers.includes(ans)
+                                ? "success.main"
+                                : "text.secondary",
                             }}
-                          />
-                        </Box>
-
-                        {/* Preview Button */}
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<VisibilityIcon fontSize="small" />}
-                          onClick={(e) => handlePreviewQuiz(quiz, e)}
-                          fullWidth
-                          sx={{ 
-                            textTransform: 'none',
-                            fontSize: '0.75rem',
-                            py: 0.5,
-                          }}
-                        >
-                          Preview Questions
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </Box>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <SearchIcon sx={{ fontSize: 48, color: theme.palette.text.disabled, mb: 2 }} />
-                <Typography variant="body1" color="text.secondary">
-                  No quizzes found
+                          >
+                            - {ans}
+                          </Typography>
+                        ))}
+                      </Box>
+                    ) : null}
+                  </Box>
+                  <Button
+                    onClick={() =>
+                      setQuestionPage((prev) =>
+                        Math.min(prev + 1, selectedQuiz.quizQuestions.length - 1)
+                      )
+                    }
+                    disabled={questionPage === selectedQuiz.quizQuestions.length - 1}
+                    sx={{ minWidth: 0, p: 1 }}
+                  >
+                    <ArrowForwardIosIcon fontSize="small" />
+                  </Button>
+                </Box>
+                <Typography variant="caption" sx={{ mt: 1 }}>
+                  Question {questionPage + 1} of {selectedQuiz.quizQuestions.length}
                 </Typography>
-              </Box>
+              </>
+            ) : (
+              <Typography variant="body2" color="textSecondary">
+                No questions available.
+              </Typography>
             )}
           </Box>
         </DialogContent>
-
-        {/* Confirmation Footer */}
-        <DialogActions 
-          sx={{ 
-            borderTop: `1px solid ${theme.palette.divider}`,
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 1,
             p: 2,
-            bgcolor: theme.palette.mode === 'dark' 
-              ? 'rgba(255,255,255,0.02)' 
-              : 'rgba(0,0,0,0.02)',
           }}
         >
-          <Box sx={{ flex: 1 }}>
-            {selectedQuiz && (
-              <Typography variant="body2" color="text.secondary">
-                Selected: <strong>{selectedQuiz.quizName}</strong>
-              </Typography>
-            )}
-          </Box>
-          <Button 
-            onClick={handleCloseModal}
+          <Button
+            onClick={() => setDetailsOpen(false)}
             variant="outlined"
+            sx={{
+              borderColor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255, 255, 255, 0.3)"
+                  : undefined,
+              color:
+                theme.palette.mode === "dark"
+                  ? theme.palette.common.white
+                  : undefined,
+            }}
           >
             Cancel
           </Button>
           <Button
-            onClick={handleConfirmSelection}
+            onClick={handleSelectQuiz}
             variant="contained"
-            color="secondary"
-            disabled={!selectedQuiz}
+            color="primary"
             sx={{
-              bgcolor: theme.palette.secondary.main,
-              color: '#fff',
-              '&:hover': {
-                bgcolor: theme.palette.secondary.dark,
+              bgcolor: theme.palette.primary.main,
+              color:
+                theme.palette.mode === "dark"
+                  ? theme.palette.common.white
+                  : undefined,
+              "&:hover": {
+                bgcolor: theme.palette.primary.dark,
               },
             }}
           >
@@ -412,31 +580,224 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
 
       {/* Quiz Preview Dialog */}
       <Dialog
-        open={!!previewQuiz}
-        onClose={handleClosePreview}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
         maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
+            borderRadius: 2,
+            minWidth: { xs: "90%", sm: "80%", md: "600px" },
+            maxWidth: "800px",
             bgcolor: theme.palette.background.paper,
-            maxHeight: '85vh',
-            borderRadius: 3,
-          }
+          },
         }}
       >
         {previewQuiz && (
           <>
-            <DialogTitle sx={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <IconButton size="small" onClick={handleClosePreview}>
-                  <ArrowBackIcon />
-                </IconButton>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" fontWeight="bold">
-                    {previewQuiz.quizName}
+            <DialogTitle
+              sx={{
+                pt: 3,
+                pb: 0,
+                fontSize: { xs: "1.5rem", sm: "2rem" },
+                textAlign: "center",
+                fontWeight: "bold",
+              }}
+            >
+              {selectedQuiz.quizName}
+            </DialogTitle>
+
+            <DialogContent sx={{ p: 4 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  mb: 3,
+                }}
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    width: "100%",
+                    maxWidth: 320,
+                    borderRadius: 2,
+                    mb: 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  {typeof selectedQuiz.imageId === "string" ? (
+                    <img
+                      src={getQuizImageUrl(selectedQuiz.imageId)}
+                      alt={`${selectedQuiz.quizName} thumbnail`}
+                      style={{
+                        width: "100%",
+                        height: "auto",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        height: 180,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        bgcolor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(0,0,0,0.05)",
+                      }}
+                    >
+                      <ImageIcon
+                        sx={{ fontSize: 60, color: theme.palette.text.secondary }}
+                      />
+                    </Box>
+                  )}
+                </Paper>
+
+                <Typography
+                  variant="body1"
+                  sx={{ textAlign: "center", color: theme.palette.text.secondary }}
+                >
+                  {selectedQuiz.quizDescription ||
+                    "This is a quiz on " + selectedQuiz.quizName.toLowerCase()}
+                </Typography>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography
+                variant="h6"
+                sx={{ mb: 1, fontWeight: "bold" }}
+              >
+                Questions:
+              </Typography>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  bgcolor:
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.03)",
+                  p: 3,
+                  borderRadius: 2,
+                  position: "relative",
+                  minHeight: 150,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                {/* Question Navigation */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    width: "100%",
+                    justifyContent: "space-between",
+                    mb: 2,
+                  }}
+                >
+                  <IconButton
+                    onClick={handlePrevQuestion}
+                    disabled={currentQuestionIndex === 0}
+                    sx={{
+                      bgcolor:
+                        currentQuestionIndex > 0
+                          ? theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(0,0,0,0.05)"
+                          : "transparent",
+                    }}
+                  >
+                    <ArrowBackIosNewIcon fontSize="small" />
+                  </IconButton>
+
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ fontWeight: "medium" }}
+                  >
+                    Question {currentQuestionIndex + 1} of{" "}
+                    {selectedQuiz.quizQuestions.length}
                   </Typography>
+
+                  <IconButton
+                    onClick={handleNextQuestion}
+                    disabled={
+                      currentQuestionIndex >=
+                      selectedQuiz.quizQuestions.length - 1
+                    }
+                    sx={{
+                      bgcolor:
+                        currentQuestionIndex <
+                        selectedQuiz.quizQuestions.length - 1
+                          ? theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(0,0,0,0.05)"
+                          : "transparent",
+                    }}
+                  >
+                    <ArrowForwardIosIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+
+                {/* Question Content */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    {selectedQuiz.quizQuestions[currentQuestionIndex]?.question ||
+                      "No question available"}
+                  </Typography>
+
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
+                    Options:
+                  </Typography>
+
+                  <Box sx={{ ml: 2 }}>
+                    {(
+                      selectedQuiz.quizQuestions[currentQuestionIndex]?.options || [
+                        ...(selectedQuiz.quizQuestions[currentQuestionIndex]
+                          ?.correctAnswers || []),
+                        ...(selectedQuiz.quizQuestions[currentQuestionIndex]
+                          ?.incorrectAnswers || []),
+                      ]
+                    ).map((option, idx) => (
+                      <Typography
+                        key={idx}
+                        variant="body2"
+                        sx={{
+                          mb: 0.5,
+                          py: 0.5,
+                          px: 1,
+                          borderRadius: 1,
+                          bgcolor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(255,255,255,0.05)"
+                              : "rgba(0,0,0,0.03)",
+                        }}
+                      >
+                        {idx + 1}. {option}
+                      </Typography>
+                    ))}
+                  </Box>
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mt: "auto",
+                    pt: 1,
+                  }}
+                >
                   <Typography variant="caption" color="text.secondary">
-                    Preview questions
+                    {currentQuestionIndex + 1} of{" "}
+                    {selectedQuiz.quizQuestions.length}
                   </Typography>
                 </Box>
               </Box>
@@ -555,21 +916,19 @@ export default function SelectQuiz({ onSelectQuiz }: { onSelectQuiz: (quiz: Quiz
               })}
             </DialogContent>
 
-            <DialogActions sx={{ borderTop: `1px solid ${theme.palette.divider}`, p: 2 }}>
-              <Button onClick={handleClosePreview}>
-                Back to Selection
+            <DialogActions sx={{ p: 3, pt: 0 }}>
+              <Button
+                onClick={() => setPreviewOpen(false)}
+                variant="outlined"
+                sx={{ px: 3 }}
+              >
+                Cancel
               </Button>
               <Button
+                onClick={handleSelectQuiz}
                 variant="contained"
-                color="secondary"
-                onClick={() => {
-                  handleSelectQuizCard(previewQuiz);
-                  handleClosePreview();
-                }}
-                sx={{
-                  bgcolor: theme.palette.secondary.main,
-                  color: '#fff',
-                }}
+                color="primary"
+                sx={{ px: 3 }}
               >
                 Select This Quiz
               </Button>

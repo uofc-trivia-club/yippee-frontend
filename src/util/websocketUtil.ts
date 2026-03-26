@@ -21,11 +21,12 @@ export const useCheckConnection = () => {
 };
 
 // Define command types for better type safety
-type WebSocketCommandType = 
+type WebSocketCommandType =
   | "createLobby"
   | "joinLobby"
   | "sendLobbyMessage"
   | "startGame"
+  | "changeQuiz"
   | "submitAnswer"
   | "showLeaderboard"
   | "nextQuestion"
@@ -63,6 +64,12 @@ const WebSocketCommands: Record<WebSocketCommandType, WebSocketCommand> = {
       webSocket.send(JSON.stringify({ action: "startGame", roomCode, user, gameSettings }));
     }
   },
+  changeQuiz: {
+    action: "changeQuiz",
+    handler: (webSocket: WebSocket, roomCode: string, user: User, quiz: Quiz) => {
+      webSocket.send(JSON.stringify({ action: "changeQuiz", roomCode, user, quiz }));
+    }
+  },
   submitAnswer: {
     action: "submitAnswer",
     handler: (webSocket: WebSocket, roomCode: string, user: User, answer: number) => {
@@ -98,7 +105,7 @@ export const executeWebSocketCommand = (
   onError?: (error: string) => void
 ) => {
   const webSocket = getWebSocket();
-  
+
   if (!webSocket) {
     handleError("WebSocket instance is not available.", onError);
     return;

@@ -21,20 +21,19 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
     <Dialog
       open={open}
       onClose={handleClose}
-      slotProps={{
-        paper: {
-          component: 'form',
-          onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
-            event.preventDefault();
-            handleClose();
-          },
-          sx: { 
-            backgroundImage: 'none',
-            bgcolor: theme.palette.background.paper,
-          },
+      PaperProps={{
+        component: "form",
+        onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
+          event.preventDefault();
+          handleClose();
+        },
+        sx: {
+          backgroundImage: "none",
+          bgcolor: theme.palette.background.paper,
         },
       }}
     >
+
       <DialogTitle>Reset password</DialogTitle>
       <DialogContent
         sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}
@@ -56,7 +55,7 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
         />
       </DialogContent>
       <DialogActions sx={{ pb: 3, px: 3 }}>
-        <Button 
+        <Button
           onClick={handleClose}
           sx={{
             color: theme.palette.mode === 'dark' ? theme.palette.common.white : undefined,
@@ -64,8 +63,8 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
         >
           Cancel
         </Button>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           type="submit"
           sx={{
             bgcolor: theme.palette.primary.main,
