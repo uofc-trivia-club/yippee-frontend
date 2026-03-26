@@ -109,7 +109,7 @@ export default function HostGame() {
               setHostName(e.target.value);
             }
           }}
-          slotProps={{ htmlInput: { maxLength: 20 }}}
+          inputProps={{ maxLength: 20 }}
           helperText={`${hostName.length}/20 characters`}
           sx={{ marginBottom: 2 }}
         />

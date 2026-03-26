@@ -75,42 +75,39 @@ export default function CategorySelector({
           />
         )}
         // Use renderValue instead of renderTags
-        renderValue={(selected) => (
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-            {selected.map((option) => (
+        renderTags={(selected: string[], getTagProps) =>
+          selected.map((option: string, index: number) => {
+            const tagProps = getTagProps({ index });
+
+            return (
               <Chip
+                {...tagProps}
                 key={option}
                 label={option}
                 sx={{
                   backgroundColor: getColorForTag(option),
                   color: "white",
                 }}
-                onDelete={() => handleDelete(option)}
-                // Prevent click behavior
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                 }}
               />
-            ))}
-          </Box>
-        )}
+            );
+          })
+        }
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 1,
+              borderRadius: 2,
               boxShadow: 3,
-              [`& .${autocompleteClasses.option}`]: {
-                padding: 1.5,
-              },
+              p: 1,
             },
             elevation: 3,
           },
-          listbox: {
-            sx: {
-              maxHeight: 200,
-            },
-          },
+        }}
+        ListboxProps={{
+          style: { maxHeight: 200 },
         }}
       />
     </Box>

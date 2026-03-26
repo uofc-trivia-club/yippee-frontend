@@ -1,6 +1,7 @@
 import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 
+import Leaderboard from "./Leaderboard";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
@@ -12,12 +13,12 @@ export default function PlayerGameView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
-  
+
   const handleAnswerSelect = (option: string) => {
     if (game.user.submittedAnswer) return;
-    
-    setSelectedAnswers(prev => 
-      prev.includes(option) 
+
+    setSelectedAnswers(prev =>
+      prev.includes(option)
         ? prev.filter(answer => answer !== option)
         : [...prev, option]
     );
@@ -25,16 +26,16 @@ export default function PlayerGameView() {
 
   const handleSubmitAnswers = async () => {
     if (selectedAnswers.length === 0) return;
-    
+
     setIsSubmitting(true);
     setError(null);
 
     try {
       await executeWebSocketCommand(
         "submitAnswer",
-        { 
-          roomCode: game.roomCode, 
-          user: game.user, 
+        {
+          roomCode: game.roomCode,
+          user: game.user,
           answer: selectedAnswers
         },
         (errorMessage) => setError(errorMessage)
@@ -62,7 +63,7 @@ export default function PlayerGameView() {
           <Typography variant="h5" gutterBottom>
             {game.currentQuestion?.question}
           </Typography>
-          
+
           {game.user.submittedAnswer ? (
             <Typography variant="h6" color="success.main" gutterBottom>
               Answer Submitted Successfully
@@ -100,11 +101,7 @@ export default function PlayerGameView() {
           )}
         </>
       ) : (
-        <Box sx={{ textAlign: 'center', mt: 2 }}>
-          <Typography variant="h6">
-            Leaderboard
-          </Typography>
-        </Box>
+        <Leaderboard />
       )}
     </Box>
   );
