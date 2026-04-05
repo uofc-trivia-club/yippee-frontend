@@ -9,12 +9,29 @@ export type Quiz = {
   imageId?: string;            // BE uses ObjectID pointer, omitted if nil
 };
 
+export type QuestionType = {
+  name: string;
+  description: string;
+  correctAnswers?: string[];
+  incorrectAnswers?: string[];
+  options?: string[];
+  correctAnswer?: string;
+  pairs?: Record<string, string>;
+  correctPairs?: Record<string, string>;
+  items?: string[];
+  correctOrder?: string[];
+  leftItems?: string[];
+  rightItems?: string[];
+  correctMatches?: Record<string, string>;
+  imageUrl?: string;
+};
+
 export type QuizQuestion = {
   question: string;
   points: number;
   difficulty: number;
   hint: string;
-  type: string;
+  type: QuestionType;
   category: string[];
   incorrectAnswers: string[];
   correctAnswers: string[];
