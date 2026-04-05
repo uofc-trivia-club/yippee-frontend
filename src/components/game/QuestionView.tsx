@@ -25,10 +25,13 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             case 'dropdown':
                 const options = qType === 'true_false' 
                     ? ['True', 'False'] 
-                    : (game.currentQuestion?.options || []);
+                    : (game.currentQuestion?.options || game.currentQuestion?.type?.options || []);
                     
                 return options.map((option, index) => {
-                    const isCorrect = game.currentQuestion?.correctAnswers?.includes(option);
+                    const isCorrect = 
+                        game.currentQuestion?.type?.correctAnswers?.includes(option) || 
+                        game.currentQuestion?.type?.correctAnswer === option || 
+                        game.currentQuestion?.correctAnswers?.includes(option);
                     return (
                         <Typography 
                             key={index} 
@@ -47,12 +50,13 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
 
             case 'short_answer':
             case 'fill_in_blank':
+                const acceptedAnswers = game.currentQuestion?.type?.correctAnswers || game.currentQuestion?.correctAnswers || [];
                 return displayCorrectAnswers ? (
                     <Box>
                         <Typography color="success.main" fontWeight="bold">
                             Accepted Answers:
                         </Typography>
-                        {game.currentQuestion?.correctAnswers?.map((ans, i) => (
+                        {acceptedAnswers.map((ans, i) => (
                             <Typography key={i} variant="body1">- {ans}</Typography>
                         ))}
                     </Box>
@@ -63,9 +67,12 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
 
             default:
-                const defaultOptions = game.currentQuestion?.options || [];
+                const defaultOptions = game.currentQuestion?.options || game.currentQuestion?.type?.options || [];
                 return defaultOptions.map((option, index) => {
-                    const isCorrect = game.currentQuestion?.correctAnswers?.includes(option);
+                    const isCorrect = 
+                        game.currentQuestion?.type?.correctAnswers?.includes(option) || 
+                        game.currentQuestion?.type?.correctAnswer === option || 
+                        game.currentQuestion?.correctAnswers?.includes(option);
                     return (
                         <Typography 
                             key={index} 

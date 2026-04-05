@@ -53,7 +53,9 @@ export default function PlayerGameView() {
 
   const renderQuestionInput = () => {
     const qType = game.currentQuestion?.type?.name;
-    const options = game.currentQuestion?.options || [];
+    
+    // We get options either from the type object or directly from the question object per MongoDB schema
+    const options = game.currentQuestion?.options || game.currentQuestion?.type?.options || [];
 
     switch (qType) {
       case 'multiple_choice':

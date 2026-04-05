@@ -1,4 +1,5 @@
 import { Box, IconButton, Paper, Typography, useTheme } from "@mui/material";
+
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { QuizQuestion } from "../../stores/types";
@@ -22,10 +23,15 @@ export default function QuizQuestionPreview({
 }: QuizQuestionPreviewProps) {
   const theme = useTheme();
   
-  // Combine and possibly shuffle options
-  const options = question.options || 
-    [...(question.correctAnswers || []), ...(question.incorrectAnswers || [])];
+  // Try taking options from the root question.options, or question.type.options
+  const optionsArray = question.options || question.type?.options || [];
   
+  // If options array is empty, fallback to merging correct and incorrect answers depending on query type (needed for multiple choice mostly)
+  const options = optionsArray.length > 0 ? optionsArray : [
+      ...(question.correctAnswers || question.type?.correctAnswers || (question.type?.correctAnswer ? [question.type.correctAnswer] : []) || []), 
+      ...(question.incorrectAnswers || question.type?.incorrectAnswers || [])
+  ];
+
   return (
     <Paper 
       elevation={0} 
@@ -103,13 +109,13 @@ export default function QuizQuestionPreview({
                 px: 1,
                 borderRadius: 1,
                 bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                color: showCorrectAnswers && question.correctAnswers?.includes(option) 
+                color: showCorrectAnswers && (question.correctAnswers?.includes(option) || question.type?.correctAnswers?.includes(option) || question.type?.correctAnswer === option) 
                   ? theme.palette.success.main 
                   : 'inherit'
               }}
             >
               {idx + 1}. {option}
-              {showCorrectAnswers && question.correctAnswers?.includes(option) && ' ✓'}
+              {showCorrectAnswers && (question.correctAnswers?.includes(option) || question.type?.correctAnswers?.includes(option) || question.type?.correctAnswer === option) && ' ✓'}
             </Typography>
           ))}
         </Box>
