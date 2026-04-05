@@ -1,4 +1,4 @@
-import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 
 import Leaderboard from "./Leaderboard";
@@ -10,6 +10,7 @@ import { useState } from "react";
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
+  const [textAnswer, setTextAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
@@ -50,6 +51,82 @@ export default function PlayerGameView() {
     }
   };
 
+  const renderQuestionInput = () => {
+    const qType = game.currentQuestion?.type?.name;
+    const options = game.currentQuestion?.options || [];
+
+    switch (qType) {
+      case 'multiple_choice':
+      case 'dropdown':
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {options.map((option) => (
+              <Button
+                key={option}
+                onClick={() => handleAnswerSelect(option)}
+                variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
+                sx={{ m: 1, minWidth: '120px' }}
+                disabled={isSubmitting}
+              >
+                {option}
+              </Button>
+            ))}
+          </Box>
+        );
+
+      case 'true_false':
+        return (
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {['True', 'False'].map((option) => (
+               <Button
+                 key={option}
+                 onClick={() => handleAnswerSelect(option)}
+                 variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
+                 sx={{ m: 1, minWidth: '120px' }}
+                 disabled={isSubmitting}
+               >
+                 {option}
+               </Button>
+            ))}
+          </Box>
+        );
+
+      case 'short_answer':
+      case 'fill_in_blank':
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField 
+              label="Your Answer" 
+              variant="outlined" 
+              value={textAnswer}
+              onChange={(e) => {
+                setTextAnswer(e.target.value);
+                setSelectedAnswers([e.target.value]);
+              }}
+              disabled={isSubmitting}
+            />
+          </Box>
+        );
+
+      default:
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {options.map((option) => (
+              <Button
+                key={option}
+                onClick={() => handleAnswerSelect(option)}
+                variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
+                sx={{ m: 1, minWidth: '120px' }}
+                disabled={isSubmitting}
+              >
+                {option}
+              </Button>
+            ))}
+          </Box>
+        );
+    }
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       {error && (
@@ -70,20 +147,8 @@ export default function PlayerGameView() {
             </Typography>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {Array.isArray(game.currentQuestion?.options) &&
-                  game.currentQuestion?.options.map((option) => (
-                    <Button
-                      key={option}
-                      onClick={() => handleAnswerSelect(option)}
-                      variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
-                      sx={{ m: 1, minWidth: '120px' }}
-                      disabled={isSubmitting}
-                    >
-                      {option}
-                    </Button>
-                  ))}
-              </Box>
+              {renderQuestionInput()}
+              
               <Button
                 variant="contained"
                 color="primary"

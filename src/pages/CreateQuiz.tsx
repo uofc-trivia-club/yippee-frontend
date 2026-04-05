@@ -111,15 +111,19 @@ export default function CreateQuiz() {
       points: question.points,
       difficulty: question.difficulty,
       hint: question.hint,
-      type: question.type,
+      type: { 
+        name: question.type === "multiple" ? "multiple_choice" : question.type, 
+        description: `${question.type} question` 
+      },
       category: question.category,
+      options: question.options.map(opt => opt.text),
       correctAnswers: question.options
         .filter(opt => opt.isCorrect)
         .map(opt => opt.text),
       incorrectAnswers: question.options
         .filter(opt => !opt.isCorrect)
         .map(opt => opt.text),
-    } as QuizQuestion;
+    };
   };
 
  const handleSubmit = async () => {

@@ -14,55 +14,91 @@ interface QuestionViewProps {
 export default function QuestionView({ displayCorrectAnswers }: QuestionViewProps) {
     const game = useSelector((state: RootState) => state.game);
     const theme = useTheme();
+    const qType = game.currentQuestion?.type?.name;
     console.log('Current Question:', game.currentQuestion);
     console.log('Correct Answers:', game.currentQuestion?.correctAnswers);
 
-    return (
-        // display the options
-        <>
-        {!displayCorrectAnswers ? (
-            <>
-            <Typography variant="h5" gutterBottom>
-                Quiz: {game.currentQuestion?.question}
-            </Typography>
-            <Box>
-                {Array.isArray(game.currentQuestion?.options) && 
-                game.currentQuestion?.options.map((option, index) => (
-                    <Typography key={index} variant="body1">
-                    {index + 1}. {option}
-                    </Typography>
-                ))
-                }
-            </Box>
-            </>
-        ) : (
-            // display the correct answers + stats
-            <>
-            <Typography variant="h5" gutterBottom>
-                Quiz: {game.currentQuestion?.question}
-            </Typography>
-            <Typography variant="h5" gutterBottom>
-                Viewing the correct answers:
-            </Typography>
-            <Box>
-                {Array.isArray(game.currentQuestion?.options) && 
-                    game.currentQuestion?.options.map((option, index) => (
+    const renderOptionsView = () => {
+        switch(qType) {
+            case 'multiple_choice':
+            case 'true_false':
+            case 'dropdown':
+                const options = qType === 'true_false' 
+                    ? ['True', 'False'] 
+                    : (game.currentQuestion?.options || []);
+                    
+                return options.map((option, index) => {
+                    const isCorrect = game.currentQuestion?.correctAnswers?.includes(option);
+                    return (
                         <Typography 
                             key={index} 
                             variant="body1"
                             sx={{ 
-                                color: game.currentQuestion?.correctAnswers.includes(option) 
+                                color: (displayCorrectAnswers && isCorrect) 
                                     ? theme.palette.success.main 
-                                    : 'inherit'
+                                    : 'inherit',
+                                fontWeight: (displayCorrectAnswers && isCorrect) ? 'bold' : 'normal'
                             }}
                         >
-                            {index + 1}. {option}
+                            {index + 1}. {option} {(displayCorrectAnswers && isCorrect) ? ' ✓' : ''}
                         </Typography>
-                    ))
-                }
+                    );
+                });
+
+            case 'short_answer':
+            case 'fill_in_blank':
+                return displayCorrectAnswers ? (
+                    <Box>
+                        <Typography color="success.main" fontWeight="bold">
+                            Accepted Answers:
+                        </Typography>
+                        {game.currentQuestion?.correctAnswers?.map((ans, i) => (
+                            <Typography key={i} variant="body1">- {ans}</Typography>
+                        ))}
+                    </Box>
+                ) : (
+                    <Typography fontStyle="italic" color="text.secondary">
+                        Players are typing their responses...
+                    </Typography>
+                );
+
+            default:
+                const defaultOptions = game.currentQuestion?.options || [];
+                return defaultOptions.map((option, index) => {
+                    const isCorrect = game.currentQuestion?.correctAnswers?.includes(option);
+                    return (
+                        <Typography 
+                            key={index} 
+                            variant="body1"
+                            sx={{ 
+                                color: (displayCorrectAnswers && isCorrect) 
+                                    ? theme.palette.success.main 
+                                    : 'inherit',
+                                fontWeight: (displayCorrectAnswers && isCorrect) ? 'bold' : 'normal'
+                            }}
+                        >
+                            {index + 1}. {option} {(displayCorrectAnswers && isCorrect) ? ' ✓' : ''}
+                        </Typography>
+                    );
+                });
+        }
+    };
+
+    return (
+        <Box>
+            <Typography variant="h5" gutterBottom>
+                Quiz: {game.currentQuestion?.question}
+            </Typography>
+            
+            {displayCorrectAnswers && (
+                <Typography variant="h5" gutterBottom>
+                    Viewing the correct answers:
+                </Typography>
+            )}
+            
+            <Box sx={{ mt: 1 }}>
+                {renderOptionsView()}
             </Box>
-            </>
-        )}
-        </>
-    )
+        </Box>
+    );
 }
