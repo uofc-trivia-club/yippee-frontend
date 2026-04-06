@@ -13,12 +13,25 @@ import { DifficultySlider } from '../components/common/DifficultySlider';
 import styles from './CreateQuiz.module.css';
 import { useState } from "react";
 
+type AllowedQuestionType =
+  | "multiple_choice"
+  | "true_false"
+  | "short_answer"
+  | "essay"
+  | "fill_in_blank"
+  | "match_the_phrase"
+  | "dropdown"
+  | "ranking"
+  | "ordering"
+  | "matching"
+  | "image_based";
+
 type QuizQuestionForm = {
   question: string;
   points: number;
   difficulty: number;
   hint: string;
-  type: string;
+  type: AllowedQuestionType | "multiple"; // allow legacy 'multiple' for UI
   category: string[];
   options: Array<{
     text: string;
@@ -106,23 +119,103 @@ export default function CreateQuiz() {
   };
 
   const transformQuestionForSubmission = (question: QuizQuestionForm): QuizQuestion => {
+    // Map legacy UI types to allowed backend types
+    let typeName: AllowedQuestionType;
+    switch (question.type) {
+      case "multiple":
+        typeName = "multiple_choice";
+        break;
+      default:
+        typeName = question.type as AllowedQuestionType;
+    }
+
+    // Prepare answer arrays
+    const correctAnswers = question.options.filter(opt => opt.isCorrect).map(opt => opt.text);
+    const incorrectAnswers = question.options.filter(opt => !opt.isCorrect).map(opt => opt.text);
+    const options = question.options.map(opt => opt.text);
+
+    // Build the correct type object for each question type
+    let typeObj: any = { name: typeName, description: `${typeName} question` };
+    switch (typeName) {
+      case "multiple_choice":
+        typeObj = {
+          ...typeObj,
+          options,
+          correctAnswers,
+          incorrectAnswers,
+        };
+        break;
+      case "dropdown":
+        typeObj = {
+          ...typeObj,
+          options,
+          correctAnswer: correctAnswers[0] || "",
+        };
+        break;
+      case "true_false":
+        typeObj = {
+          ...typeObj,
+          correctAnswer: correctAnswers[0] || "",
+        };
+        break;
+      case "short_answer":
+      case "fill_in_blank":
+        typeObj = {
+          ...typeObj,
+          correctAnswers,
+        };
+        break;
+      case "essay":
+        // No extra fields
+        break;
+      case "match_the_phrase":
+        // Placeholder: you should collect pairs/correctPairs from UI for real use
+        typeObj = {
+          ...typeObj,
+          pairs: {},
+          correctPairs: {},
+        };
+        break;
+      case "matching":
+        // Placeholder: you should collect leftItems/rightItems/correctMatches from UI for real use
+        typeObj = {
+          ...typeObj,
+          leftItems: [],
+          rightItems: [],
+          correctMatches: {},
+        };
+        break;
+      case "ranking":
+      case "ordering":
+        // Placeholder: you should collect items/correctOrder from UI for real use
+        typeObj = {
+          ...typeObj,
+          items: [],
+          correctOrder: [],
+        };
+        break;
+      case "image_based":
+        // Placeholder: you should collect imageUrl/correctAnswers from UI for real use
+        typeObj = {
+          ...typeObj,
+          imageUrl: "",
+          correctAnswers,
+        };
+        break;
+      default:
+        break;
+    }
+
     return {
       question: question.question,
       points: question.points,
       difficulty: question.difficulty,
       hint: question.hint,
-      type: { 
-        name: question.type === "multiple" ? "multiple_choice" : question.type, 
-        description: `${question.type} question` 
-      },
+      type: typeObj,
       category: question.category,
-      options: question.options.map(opt => opt.text),
-      correctAnswers: question.options
-        .filter(opt => opt.isCorrect)
-        .map(opt => opt.text),
-      incorrectAnswers: question.options
-        .filter(opt => !opt.isCorrect)
-        .map(opt => opt.text),
+      options,
+      correctAnswers,
+      incorrectAnswers,
     };
   };
 

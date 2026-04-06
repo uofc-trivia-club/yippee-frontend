@@ -52,14 +52,12 @@ export default function PlayerGameView() {
   };
 
   const renderQuestionInput = () => {
-    const qType = game.currentQuestion?.type?.name;
-    
-    // We get options either from the type object or directly from the question object per MongoDB schema
-    const options = game.currentQuestion?.options || game.currentQuestion?.type?.options || [];
-
-    switch (qType) {
-      case 'multiple_choice':
-      case 'dropdown':
+    const q = game.currentQuestion;
+    const t = q?.type;
+    if (!q || !t) return null;
+    switch (t.name) {
+      case 'multiple_choice': {
+        const options = t.options;
         return (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {options.map((option) => (
@@ -75,31 +73,50 @@ export default function PlayerGameView() {
             ))}
           </Box>
         );
-
-      case 'true_false':
+      }
+      case 'dropdown': {
+        const options = t.options;
         return (
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {['True', 'False'].map((option) => (
-               <Button
-                 key={option}
-                 onClick={() => handleAnswerSelect(option)}
-                 variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
-                 sx={{ m: 1, minWidth: '120px' }}
-                 disabled={isSubmitting}
-               >
-                 {option}
-               </Button>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {options.map((option) => (
+              <Button
+                key={option}
+                onClick={() => handleAnswerSelect(option)}
+                variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
+                sx={{ m: 1, minWidth: '120px' }}
+                disabled={isSubmitting}
+              >
+                {option}
+              </Button>
             ))}
           </Box>
         );
-
+      }
+      case 'true_false': {
+        const options = ["True", "False"];
+        return (
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {options.map((option) => (
+              <Button
+                key={option}
+                onClick={() => handleAnswerSelect(option)}
+                variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
+                sx={{ m: 1, minWidth: '120px' }}
+                disabled={isSubmitting}
+              >
+                {option}
+              </Button>
+            ))}
+          </Box>
+        );
+      }
       case 'short_answer':
-      case 'fill_in_blank':
+      case 'fill_in_blank': {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField 
-              label="Your Answer" 
-              variant="outlined" 
+            <TextField
+              label="Your Answer"
+              variant="outlined"
               value={textAnswer}
               onChange={(e) => {
                 setTextAnswer(e.target.value);
@@ -109,23 +126,75 @@ export default function PlayerGameView() {
             />
           </Box>
         );
-
-      default:
+      }
+      case 'match_the_phrase': {
+        // For match questions, you may want to implement a custom UI for matching pairs
+        // For now, just show the pairs as static text
+        const pairs = t.correctPairs;
+        if (!pairs || Object.keys(pairs).length === 0) return <Typography>No pairs to display.</Typography>;
         return (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {options.map((option) => (
-              <Button
-                key={option}
-                onClick={() => handleAnswerSelect(option)}
-                variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
-                sx={{ m: 1, minWidth: '120px' }}
-                disabled={isSubmitting}
-              >
-                {option}
-              </Button>
+          <Box sx={{ display: 'flex', gap: 4 }}>
+            <Box>
+              <Typography variant="subtitle2">Term</Typography>
+              {Object.keys(pairs).map((term, idx) => (
+                <Typography key={idx} variant="body2">{idx + 1}. {term}</Typography>
+              ))}
+            </Box>
+            <Box>
+              <Typography variant="subtitle2">Definition</Typography>
+              {Object.values(pairs).map((def, idx) => (
+                <Typography key={idx} variant="body2">{String.fromCharCode(65 + idx)}. {def}</Typography>
+              ))}
+            </Box>
+          </Box>
+        );
+      }
+      case 'matching': {
+        const left = t.leftItems;
+        const right = t.rightItems;
+        if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
+        return (
+          <Box sx={{ display: 'flex', gap: 4 }}>
+            <Box>
+              <Typography variant="subtitle2">Left</Typography>
+              {left.map((item, idx) => (
+                <Typography key={idx} variant="body2">{idx + 1}. {item}</Typography>
+              ))}
+            </Box>
+            <Box>
+              <Typography variant="subtitle2">Right</Typography>
+              {right.map((item, idx) => (
+                <Typography key={idx} variant="body2">{String.fromCharCode(65 + idx)}. {item}</Typography>
+              ))}
+            </Box>
+          </Box>
+        );
+      }
+      case 'ranking':
+      case 'ordering': {
+        const items = (t as any).items;
+        return (
+          <Box>
+            <Typography variant="subtitle2">Items to order:</Typography>
+            {items.map((item: string, idx: number) => (
+              <Typography key={idx} variant="body2">{idx + 1}. {item}</Typography>
             ))}
           </Box>
         );
+      }
+      case 'image_based': {
+        const imgUrl = t.imageUrl;
+        return (
+          <Box>
+            {imgUrl && <img src={imgUrl} alt="Question" style={{ maxWidth: 300, marginBottom: 8 }} />}
+          </Box>
+        );
+      }
+      case 'essay': {
+        return <Typography fontStyle="italic" color="text.secondary">Essay question. Answers will be reviewed manually.</Typography>;
+      }
+      default:
+        return <Typography>No options to display.</Typography>;
     }
   };
 
