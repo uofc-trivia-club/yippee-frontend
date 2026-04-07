@@ -2,6 +2,7 @@ import { Alert, Box, Button, CircularProgress, TextField, Typography } from "@mu
 import { useDispatch, useSelector } from "react-redux";
 
 import Leaderboard from "./Leaderboard";
+import MatchingComponent from "./MatchingComponent";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
@@ -128,46 +129,39 @@ export default function PlayerGameView() {
         );
       }
       case 'match_the_phrase': {
-        // For match questions, you may want to implement a custom UI for matching pairs
-        // For now, just show the pairs as static text
-        const pairs = t.correctPairs;
-        if (!pairs || Object.keys(pairs).length === 0) return <Typography>No pairs to display.</Typography>;
+        const pairs = t.correctPairs || {};
+        if (Object.keys(pairs).length === 0) return <Typography>No pairs to display.</Typography>;
+        // Use all keys for term column, values for definition column (could be shuffled optionally)
+        const leftItems = Object.keys(pairs);
+        const rightItems = Object.values(pairs);
+        
         return (
-          <Box sx={{ display: 'flex', gap: 4 }}>
-            <Box>
-              <Typography variant="subtitle2">Term</Typography>
-              {Object.keys(pairs).map((term, idx) => (
-                <Typography key={idx} variant="body2">{idx + 1}. {term}</Typography>
-              ))}
-            </Box>
-            <Box>
-              <Typography variant="subtitle2">Definition</Typography>
-              {Object.values(pairs).map((def, idx) => (
-                <Typography key={idx} variant="body2">{String.fromCharCode(65 + idx)}. {def}</Typography>
-              ))}
-            </Box>
-          </Box>
+          <MatchingComponent
+            leftItems={leftItems}
+            rightItems={rightItems}
+            disabled={isSubmitting || game.user.submittedAnswer}
+            onMatchesChange={(matches) => {
+              // Set the selected format back for submission e.g., ["Term1:Def1", "Term2:Def2"]
+              const formattedMatches = Object.entries(matches).map(([term, def]) => `${term}:${def}`);
+              setSelectedAnswers(formattedMatches);
+            }}
+          />
         );
       }
       case 'matching': {
-        const left = t.leftItems;
-        const right = t.rightItems;
+        const left = t.leftItems || [];
+        const right = t.rightItems || [];
         if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
         return (
-          <Box sx={{ display: 'flex', gap: 4 }}>
-            <Box>
-              <Typography variant="subtitle2">Left</Typography>
-              {left.map((item, idx) => (
-                <Typography key={idx} variant="body2">{idx + 1}. {item}</Typography>
-              ))}
-            </Box>
-            <Box>
-              <Typography variant="subtitle2">Right</Typography>
-              {right.map((item, idx) => (
-                <Typography key={idx} variant="body2">{String.fromCharCode(65 + idx)}. {item}</Typography>
-              ))}
-            </Box>
-          </Box>
+          <MatchingComponent
+            leftItems={left}
+            rightItems={right}
+            disabled={isSubmitting || game.user.submittedAnswer}
+            onMatchesChange={(matches) => {
+              const formattedMatches = Object.entries(matches).map(([l, r]) => `${l}:${r}`);
+              setSelectedAnswers(formattedMatches);
+            }}
+          />
         );
       }
       case 'ranking':
