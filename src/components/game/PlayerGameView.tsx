@@ -1,12 +1,13 @@
 import { Alert, Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useState } from "react";
 
 import Leaderboard from "./Leaderboard";
 import MatchingComponent from "./MatchingComponent";
+import RankingComponent from "./RankingComponent";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
-import { useState } from "react";
 
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
@@ -15,6 +16,18 @@ export default function PlayerGameView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    const questionType = game.currentQuestion?.type;
+    setSelectedAnswers([]);
+    setTextAnswer("");
+
+    if (questionType?.name === 'ranking' || questionType?.name === 'ordering') {
+      const items = ((questionType as any).items || []) as string[];
+      setSelectedAnswers(items);
+      return;
+    }
+  }, [game.currentQuestion?.question, game.currentQuestion?.type]);
 
   const handleAnswerSelect = (option: string) => {
     if (game.user.submittedAnswer) return;
@@ -166,14 +179,13 @@ export default function PlayerGameView() {
       }
       case 'ranking':
       case 'ordering': {
-        const items = (t as any).items;
+        const items = (((t as any).items || []) as string[]);
         return (
-          <Box>
-            <Typography variant="subtitle2">Items to order:</Typography>
-            {items.map((item: string, idx: number) => (
-              <Typography key={idx} variant="body2">{idx + 1}. {item}</Typography>
-            ))}
-          </Box>
+          <RankingComponent
+            items={items}
+            disabled={isSubmitting || game.user.submittedAnswer}
+            onOrderChange={(ordered) => setSelectedAnswers(ordered)}
+          />
         );
       }
       case 'image_based': {
