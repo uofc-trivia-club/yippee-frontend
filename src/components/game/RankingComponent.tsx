@@ -1,6 +1,21 @@
 import { Box, Paper, Typography } from "@mui/material";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useEffect, useState } from "react";
 
+import { CSS } from '@dnd-kit/utilities';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 
 interface RankingComponentProps {
@@ -11,47 +26,30 @@ interface RankingComponentProps {
 
 export default function RankingComponent({ items, disabled, onOrderChange }: RankingComponentProps) {
   const [orderedItems, setOrderedItems] = useState<string[]>(items);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    })
+  );
 
   useEffect(() => {
     setOrderedItems(items);
     onOrderChange(items);
   }, [items]);
 
-  const handleDragStart = (event: React.DragEvent, index: number) => {
-    if (disabled) return;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", String(index));
-    setDragIndex(index);
-  };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  const handleDragOver = (event: React.DragEvent, index: number) => {
-    if (disabled) return;
-    event.preventDefault();
-    setDragOverIndex(index);
-  };
+    const oldIndex = orderedItems.indexOf(String(active.id));
+    const newIndex = orderedItems.indexOf(String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
 
-  const handleDrop = (index: number) => {
-    if (disabled || dragIndex === null || dragIndex === index) {
-      setDragIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-
-    // Swap positions to match expected replace behavior.
-    const next = [...orderedItems];
-    [next[dragIndex], next[index]] = [next[index], next[dragIndex]];
-
+    const next = arrayMove(orderedItems, oldIndex, newIndex);
     setOrderedItems(next);
     onOrderChange(next);
-    setDragIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDragIndex(null);
-    setDragOverIndex(null);
   };
 
   if (!orderedItems.length) {
@@ -61,49 +59,92 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       <Typography variant="subtitle2">Drag and drop to rank items:</Typography>
-      {orderedItems.map((item, idx) => (
-        <Box key={`${item}-${idx}`} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography
-            variant="body2"
-            sx={{
-              width: 24,
-              textAlign: "right",
-              color: "text.secondary",
-              fontWeight: 600,
-              flexShrink: 0,
-            }}
-          >
-            {idx + 1}.
-          </Typography>
-          <Paper
-            draggable={!disabled}
-            onDragStart={(event) => handleDragStart(event, idx)}
-            onDragOver={(event) => handleDragOver(event, idx)}
-            onDrop={() => handleDrop(idx)}
-            onDragEnd={handleDragEnd}
-            elevation={dragIndex === idx ? 6 : 1}
-            sx={{
-              px: 1.5,
-              py: 1,
-              borderRadius: 1,
-              border: "1px solid",
-              borderColor: dragOverIndex === idx ? "primary.main" : "divider",
-              bgcolor: dragIndex === idx ? "action.hover" : "background.paper",
-              cursor: disabled ? "default" : "grab",
-              opacity: dragIndex === idx ? 0.75 : 1,
-              transition: "all 0.15s ease",
-              userSelect: "none",
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <Typography variant="body2">{item}</Typography>
-            <DragIndicatorIcon fontSize="small" color="disabled" />
-          </Paper>
-        </Box>
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={orderedItems} strategy={verticalListSortingStrategy}>
+          {orderedItems.map((item, idx) => (
+            <SortableRankRow
+              key={item}
+              id={item}
+              index={idx}
+              text={item}
+              disabled={disabled}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+    </Box>
+  );
+}
+
+function SortableRankRow({
+  id,
+  index,
+  text,
+  disabled,
+}: {
+  id: string;
+  index: number;
+  text: string;
+  disabled: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || 'transform 220ms cubic-bezier(0.2, 0, 0, 1)',
+  };
+
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          width: 24,
+          textAlign: "right",
+          color: "text.secondary",
+          fontWeight: 600,
+          flexShrink: 0,
+        }}
+      >
+        {index + 1}.
+      </Typography>
+      <Paper
+        ref={setNodeRef}
+        style={style}
+        elevation={isDragging ? 8 : 1}
+        sx={{
+          px: 1.5,
+          py: 1,
+          borderRadius: 1,
+          border: "1px solid",
+          borderColor: isDragging ? "primary.main" : "divider",
+          bgcolor: isDragging ? "action.hover" : "background.paper",
+          cursor: disabled ? "default" : "grab",
+          opacity: isDragging ? 0.85 : 1,
+          transition: "box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease",
+          userSelect: "none",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+        {...attributes}
+        {...listeners}
+      >
+        <Typography variant="body2">{text}</Typography>
+        <DragIndicatorIcon fontSize="small" color="disabled" />
+      </Paper>
     </Box>
   );
 }
