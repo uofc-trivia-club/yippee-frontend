@@ -42,6 +42,11 @@ export default function PlayerGameView() {
   const handleSubmitAnswers = async () => {
     if (selectedAnswers.length === 0) return;
 
+    const currentType = game.currentQuestion?.type?.name;
+    if (currentType === 'ranking' || currentType === 'ordering') {
+      console.log('[Ranking Submit] Submitted order:', selectedAnswers);
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -133,8 +138,9 @@ export default function PlayerGameView() {
               variant="outlined"
               value={textAnswer}
               onChange={(e) => {
-                setTextAnswer(e.target.value);
-                setSelectedAnswers([e.target.value]);
+                const value = e.target.value;
+                setTextAnswer(value);
+                setSelectedAnswers(value.trim().length > 0 ? [value] : []);
               }}
               disabled={isSubmitting}
             />
@@ -191,13 +197,43 @@ export default function PlayerGameView() {
       case 'image_based': {
         const imgUrl = t.imageUrl;
         return (
-          <Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {imgUrl && <img src={imgUrl} alt="Question" style={{ maxWidth: 300, marginBottom: 8 }} />}
+            <TextField
+              label="Your Answer"
+              variant="outlined"
+              value={textAnswer}
+              onChange={(e) => {
+                const value = e.target.value;
+                setTextAnswer(value);
+                setSelectedAnswers(value.trim().length > 0 ? [value] : []);
+              }}
+              disabled={isSubmitting}
+            />
           </Box>
         );
       }
       case 'essay': {
-        return <Typography fontStyle="italic" color="text.secondary">Essay question. Answers will be reviewed manually.</Typography>;
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography fontStyle="italic" color="text.secondary">
+              Essay question. Answers will be reviewed manually.
+            </Typography>
+            <TextField
+              label="Your Response"
+              variant="outlined"
+              multiline
+              minRows={4}
+              value={textAnswer}
+              onChange={(e) => {
+                const value = e.target.value;
+                setTextAnswer(value);
+                setSelectedAnswers(value.trim().length > 0 ? [value] : []);
+              }}
+              disabled={isSubmitting}
+            />
+          </Box>
+        );
       }
       default:
         return <Typography>No options to display.</Typography>;
