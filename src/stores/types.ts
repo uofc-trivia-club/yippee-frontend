@@ -1,24 +1,123 @@
-// stores/types.ts
-
+// Quiz type (restored)
 export type Quiz = {
-  id?: string;                 // BE sends json:"id,omitempty"
+  id?: string;
   quizName: string;
   quizDescription: string;
   createdBy: string;
   quizQuestions: QuizQuestion[];
-  imageId?: string;            // BE uses ObjectID pointer, omitted if nil
+  imageId?: string;
 };
+
+// Multiple Choice
+export interface MultipleChoiceType {
+  name: "multiple_choice";
+  description: string;
+  correctAnswers: string[];
+  incorrectAnswers: string[];
+  options: string[];
+}
+
+// True/False
+export interface TrueFalseType {
+  name: "true_false";
+  description: string;
+  correctAnswer: string;
+}
+
+// Short Answer
+export interface ShortAnswerType {
+  name: "short_answer";
+  description: string;
+  correctAnswers: string[];
+}
+
+// Essay
+export interface EssayType {
+  name: "essay";
+  description: string;
+}
+
+// Fill in the Blank
+export interface FillInBlankType {
+  name: "fill_in_blank";
+  description: string;
+  correctAnswers: string[];
+}
+
+// Match the Phrase
+export interface MatchThePhraseType {
+  name: "match_the_phrase";
+  description: string;
+  pairs: Record<string, string>;
+  correctPairs: Record<string, string>;
+}
+
+// Dropdown
+export interface DropdownType {
+  name: "dropdown";
+  description: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+// Ranking
+export interface RankingType {
+  name: "ranking";
+  description: string;
+  items: string[];
+  correctOrder: string[];
+}
+
+// Ordering
+export interface OrderingType {
+  name: "ordering";
+  description: string;
+  items: string[];
+  correctOrder: string[];
+}
+
+// Matching
+export interface MatchingType {
+  name: "matching";
+  description: string;
+  leftItems: string[];
+  rightItems: string[];
+  correctMatches: Record<string, string>;
+}
+
+// Image Based
+export interface ImageBasedType {
+  name: "image_based";
+  description: string;
+  imageUrl: string;
+  correctAnswers: string[];
+}
+
+// Union type for all question types
+export type QuestionType =
+  | MultipleChoiceType
+  | TrueFalseType
+  | ShortAnswerType
+  | EssayType
+  | FillInBlankType
+  | MatchThePhraseType
+  | DropdownType
+  | RankingType
+  | OrderingType
+  | MatchingType
+  | ImageBasedType;
 
 export type QuizQuestion = {
   question: string;
   points: number;
   difficulty: number;
   hint: string;
-  type: string;
+  type: QuestionType;
   category: string[];
-  incorrectAnswers: string[];
-  correctAnswers: string[];
-  options: string[];
+  // The following fields are kept for compatibility, but you should use type-specific fields
+  incorrectAnswers?: string[];
+  correctAnswers?: string[];
+  options?: string[];
 };
 
 export type QuizMeta = {
