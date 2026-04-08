@@ -21,31 +21,21 @@ export default function QuizQuestionPreview({
   onPrevious,
   showCorrectAnswers = false
 }: QuizQuestionPreviewProps) {
-  // Debug: check if component is rendered at all
-  console.log('QuizQuestionPreview rendered');
-  // Debug: log the question prop to inspect structure
-  console.log('QuizQuestionPreview question:', question);
   const theme = useTheme();
   
   // Type-safe extraction of options and answers based on question type
   let options: string[] = [];
   let correctAnswers: string[] = [];
-  let incorrectAnswers: string[] = [];
   let matchPairs: Record<string, string> | undefined = undefined;
   let leftItems: string[] = [];
   let rightItems: string[] = [];
-  let correctMatches: Record<string, string> | undefined = undefined;
   let correctAnswer: string | undefined = undefined;
-  let items: string[] = [];
-  let correctOrder: string[] = [];
-  let imageUrl: string | undefined = undefined;
 
   switch (question.type.name) {
     case "multiple_choice": {
       const t = question.type;
       options = t.options;
       correctAnswers = t.correctAnswers;
-      incorrectAnswers = t.incorrectAnswers;
       break;
     }
     case "dropdown": {
@@ -79,19 +69,16 @@ export default function QuizQuestionPreview({
       const t = question.type;
       leftItems = t.leftItems;
       rightItems = t.rightItems;
-      correctMatches = t.correctMatches;
       break;
     }
     case "ranking":
     case "ordering": {
       const t = question.type as any;
-      items = t.items;
-      correctOrder = t.correctOrder;
+      options = t.items || [];
       break;
     }
     case "image_based": {
       const t = question.type;
-      imageUrl = t.imageUrl;
       correctAnswers = t.correctAnswers;
       break;
     }

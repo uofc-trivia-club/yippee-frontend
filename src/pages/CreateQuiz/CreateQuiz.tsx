@@ -586,20 +586,125 @@ export default function CreateQuiz() {
   };
 
   const transformQuestionForSubmission = (question: QuizQuestionForm): QuizQuestion => {
+    const typeName = question.type === "multiple" ? "multiple_choice" : question.type;
+
+    const correctAnswers = question.options
+      .filter((opt) => opt.isCorrect)
+      .map((opt) => opt.text);
+    const incorrectAnswers = question.options
+      .filter((opt) => !opt.isCorrect)
+      .map((opt) => opt.text);
+    const options = question.options.map((opt) => opt.text);
+
+    let typeObj: QuizQuestion["type"];
+
+    switch (typeName) {
+      case "multiple_choice":
+        typeObj = {
+          name: "multiple_choice",
+          description: "multiple_choice question",
+          options,
+          correctAnswers,
+          incorrectAnswers,
+        };
+        break;
+      case "dropdown":
+        typeObj = {
+          name: "dropdown",
+          description: "dropdown question",
+          options,
+          correctAnswer: correctAnswers[0] || "",
+        };
+        break;
+      case "true_false":
+        typeObj = {
+          name: "true_false",
+          description: "true_false question",
+          correctAnswer: correctAnswers[0] || "",
+        };
+        break;
+      case "short_answer":
+        typeObj = {
+          name: "short_answer",
+          description: "short_answer question",
+          correctAnswers,
+        };
+        break;
+      case "fill_in_blank":
+        typeObj = {
+          name: "fill_in_blank",
+          description: "fill_in_blank question",
+          correctAnswers,
+        };
+        break;
+      case "essay":
+        typeObj = {
+          name: "essay",
+          description: "essay question",
+        };
+        break;
+      case "match_the_phrase":
+        typeObj = {
+          name: "match_the_phrase",
+          description: "match_the_phrase question",
+          pairs: {},
+          correctPairs: {},
+        };
+        break;
+      case "matching":
+        typeObj = {
+          name: "matching",
+          description: "matching question",
+          leftItems: [],
+          rightItems: [],
+          correctMatches: {},
+        };
+        break;
+      case "ranking":
+        typeObj = {
+          name: "ranking",
+          description: "ranking question",
+          items: options,
+          correctOrder: options,
+        };
+        break;
+      case "ordering":
+        typeObj = {
+          name: "ordering",
+          description: "ordering question",
+          items: options,
+          correctOrder: options,
+        };
+        break;
+      case "image_based":
+        typeObj = {
+          name: "image_based",
+          description: "image_based question",
+          imageUrl: "",
+          correctAnswers,
+        };
+        break;
+      default:
+        typeObj = {
+          name: "multiple_choice",
+          description: "multiple_choice question",
+          options,
+          correctAnswers,
+          incorrectAnswers,
+        };
+    }
+
     return {
       question: question.question,
       points: question.points,
       difficulty: question.difficulty,
       hint: question.hint,
-      type: question.type,
+      type: typeObj,
       category: question.category,
-      correctAnswers: question.options
-        .filter(opt => opt.isCorrect)
-        .map(opt => opt.text),
-      incorrectAnswers: question.options
-        .filter(opt => !opt.isCorrect)
-        .map(opt => opt.text),
-    } as QuizQuestion;
+      options,
+      correctAnswers,
+      incorrectAnswers,
+    };
   };
 
   const validateQuiz = (): boolean => {
