@@ -1,7 +1,6 @@
 import { Box, Paper, Typography } from "@mui/material";
 import {
   DndContext,
-  DragEndEvent,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -16,6 +15,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { CSS } from '@dnd-kit/utilities';
+import type { DragEndEvent } from '@dnd-kit/core';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 
 interface RankingComponentProps {

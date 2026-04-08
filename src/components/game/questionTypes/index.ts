@@ -1,0 +1,9 @@
+export { default as MultipleChoiceQuestion } from './MultipleChoiceQuestion';
+export { default as DropdownQuestion } from './DropdownQuestion';
+export { default as TrueFalseQuestion } from './TrueFalseQuestion';
+export { default as ShortAnswerQuestion } from './ShortAnswerQuestion';
+export { default as MatchPhraseQuestion } from './MatchPhraseQuestion';
+export { default as MatchingQuestion } from './MatchingQuestion';
+export { default as RankingQuestion } from './RankingQuestion';
+export { default as ImageBasedQuestion } from './ImageBasedQuestion';
+export { default as EssayQuestion } from './EssayQuestion';
