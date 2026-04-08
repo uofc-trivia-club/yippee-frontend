@@ -498,11 +498,23 @@ export default function SelectQuiz({ onSelectQuiz, compact = false }: SelectQuiz
                             variant="body2"
                             sx={{
                               ml: 2,
-                              color: selectedQuiz.quizQuestions[
-                                questionPage
-                              ].correctAnswers.includes(ans)
-                                ? "success.main"
-                                : "text.secondary",
+                              color: (() => {
+                                const q = selectedQuiz.quizQuestions[questionPage];
+                                const t = q.type;
+                                switch (t.name) {
+                                  case 'multiple_choice':
+                                    return t.correctAnswers.includes(ans) ? "success.main" : "text.secondary";
+                                  case 'dropdown':
+                                    return t.correctAnswer === ans ? "success.main" : "text.secondary";
+                                  case 'true_false':
+                                    return t.correctAnswer === ans ? "success.main" : "text.secondary";
+                                  case 'short_answer':
+                                  case 'fill_in_blank':
+                                    return t.correctAnswers.includes(ans) ? "success.main" : "text.secondary";
+                                  default:
+                                    return "text.secondary";
+                                }
+                              })(),
                             }}
                           >
                             - {ans}
@@ -758,31 +770,59 @@ export default function SelectQuiz({ onSelectQuiz, compact = false }: SelectQuiz
                   </Typography>
 
                   <Box sx={{ ml: 2 }}>
-                    {(
-                      selectedQuiz.quizQuestions[currentQuestionIndex]?.options || [
-                        ...(selectedQuiz.quizQuestions[currentQuestionIndex]
-                          ?.correctAnswers || []),
-                        ...(selectedQuiz.quizQuestions[currentQuestionIndex]
-                          ?.incorrectAnswers || []),
-                      ]
-                    ).map((option, idx) => (
-                      <Typography
-                        key={idx}
-                        variant="body2"
-                        sx={{
-                          mb: 0.5,
-                          py: 0.5,
-                          px: 1,
-                          borderRadius: 1,
-                          bgcolor:
-                            theme.palette.mode === "dark"
-                              ? "rgba(255,255,255,0.05)"
-                              : "rgba(0,0,0,0.03)",
-                        }}
-                      >
-                        {idx + 1}. {option}
-                      </Typography>
-                    ))}
+                    {(() => {
+                      const q = selectedQuiz.quizQuestions[currentQuestionIndex];
+                      const t = q.type;
+                      let options: string[] = [];
+                      switch (t.name) {
+                        case 'multiple_choice':
+                          options = t.options;
+                          break;
+                        case 'dropdown':
+                          options = t.options;
+                          break;
+                        case 'true_false':
+                          options = ["True", "False"];
+                          break;
+                        case 'short_answer':
+                        case 'fill_in_blank':
+                          options = t.correctAnswers;
+                          break;
+                        case 'match_the_phrase':
+                          options = Object.keys(t.correctPairs);
+                          break;
+                        case 'matching':
+                          options = t.leftItems;
+                          break;
+                        case 'ranking':
+                        case 'ordering':
+                          options = (t as any).items;
+                          break;
+                        case 'image_based':
+                          options = t.correctAnswers;
+                          break;
+                        default:
+                          options = [];
+                      }
+                      return options.map((option, idx) => (
+                        <Typography
+                          key={idx}
+                          variant="body2"
+                          sx={{
+                            mb: 0.5,
+                            py: 0.5,
+                            px: 1,
+                            borderRadius: 1,
+                            bgcolor:
+                              theme.palette.mode === "dark"
+                                ? "rgba(255,255,255,0.05)"
+                                : "rgba(0,0,0,0.03)",
+                          }}
+                        >
+                          {idx + 1}. {option}
+                        </Typography>
+                      ));
+                    })()}
                   </Box>
                 </Box>
 
