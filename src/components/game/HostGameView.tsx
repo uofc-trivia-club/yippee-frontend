@@ -1,5 +1,5 @@
-import { Button, Typography } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { Box, Button, Typography } from "@mui/material";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import Leaderboard from "./Leaderboard";
 import QuestionView from "./QuestionView";
@@ -11,76 +11,92 @@ export default function HostGameView() {
   const game = useSelector((state: RootState) => state.game);
   const [leaderboardView, setLeaderboardView] = useState<'page1' | 'page2'>('page1');
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownRef = useRef<NodeJS.Timer | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const autoTriggeredRef = useRef(false);
 
-  useEffect(() => {
-    // Clear existing timers
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-
-    // Reset time remaining
-    setTimeRemaining(game.gameSettings?.questionTime || null);
-
-    // Only start timer if we have valid conditions
-    if (game.gameSettings?.questionTime && 
-        game.gameSettings.questionTime > 0 && 
-        !game.showLeaderboard && 
-        game.currentQuestion) {
-
-      // Start countdown interval
-      countdownRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev === null || prev <= 0) return 0;
-          return prev - 1;
-        });
-      }, 1000);
-
-      // Set main timer for auto-showing leaderboard
-      timerRef.current = setTimeout(() => {
-        if (countdownRef.current) clearInterval(countdownRef.current);
-        handleViewLeaderboard();
-      }, game.gameSettings.questionTime * 1000);
-    }
-
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, [game.currentQuestion, game.gameSettings?.questionTime, game.showLeaderboard]);
-
-
-  const handleViewLeaderboard = () => {
-    console.log("Viewing the leaderboard")
+  const handleViewLeaderboard = useCallback(() => {
+    console.log("Viewing the leaderboard");
     executeWebSocketCommand(
       "showLeaderboard",
-      { roomCode: game.roomCode, user: game.user},
+      { roomCode: game.roomCode, user: game.user },
       (errorMessage) => console.log(errorMessage)
     );
-    setLeaderboardView('page1')
-  }
+    setLeaderboardView('page1');
+  }, [game.roomCode, game.user]);
+
+  useEffect(() => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    autoTriggeredRef.current = false;
+    setTimeRemaining(game.gameSettings?.questionTime || null);
+
+    // Cleanup when question changes or component unmounts
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [game.currentQuestion, game.gameSettings?.questionTime]);
+
+  useEffect(() => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    const shouldRunTimer = Boolean(
+      game.gameSettings?.questionTime &&
+      game.gameSettings.questionTime > 0 &&
+      !game.showLeaderboard &&
+      game.currentQuestion &&
+      timeRemaining !== null &&
+      timeRemaining > 0
+    );
+
+    if (!shouldRunTimer) return;
+
+    countdownRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null) return null;
+        return Math.max(0, prev - 1);
+      });
+    }, 1000);
+
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [game.currentQuestion, game.gameSettings?.questionTime, game.showLeaderboard, timeRemaining]);
+
+  useEffect(() => {
+    if (!game.showLeaderboard && timeRemaining === 0 && !autoTriggeredRef.current) {
+      autoTriggeredRef.current = true;
+      handleViewLeaderboard();
+    }
+  }, [game.showLeaderboard, handleViewLeaderboard, timeRemaining]);
+
+  const adjustTime = (deltaSeconds: number) => {
+    if (game.showLeaderboard || !game.currentQuestion || !game.gameSettings?.questionTime) return;
+    setTimeRemaining((prev) => {
+      if (prev === null) return null;
+      return Math.max(0, prev + deltaSeconds);
+    });
+  };
 
   const handleViewLeaderboard2 = () => {
-    setLeaderboardView('page2')
-  }
+    setLeaderboardView('page2');
+  };
 
   const handleNextQuestion = () => {
-    console.log("Moving onto the next question")
-    if(game.finalQuestionLeaderboard) {
+    console.log("Moving onto the next question");
+    if (game.finalQuestionLeaderboard) {
       executeWebSocketCommand(
         "endGame",
-        { roomCode: game.roomCode, user: game.user},
+        { roomCode: game.roomCode, user: game.user },
         (errorMessage) => console.log(errorMessage)
       );
     } else {
       executeWebSocketCommand(
         "nextQuestion",
-        { roomCode: game.roomCode, user: game.user},
+        { roomCode: game.roomCode, user: game.user },
         (errorMessage) => console.log(errorMessage)
       );
     }
-  }
+  };
 
   return (
     <>
@@ -92,23 +108,57 @@ export default function HostGameView() {
       {!game.showLeaderboard ? (
         <>
           <QuestionView displayCorrectAnswers={false} />
-          {game.gameSettings?.questionTime && game.gameSettings.questionTime > 0 && (
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: timeRemaining && timeRemaining <= 10 ? 'error.main' : 'text.primary',
-                animation: timeRemaining && timeRemaining <= 10 ? 'pulse 1s infinite' : 'none',
-                '@keyframes pulse': {
-                  '0%': { opacity: 1 },
-                  '50%': { opacity: 0.5 },
-                  '100%': { opacity: 1 },
-                },
-                marginY: 2,
-                textAlign: 'center'
+
+          {game.currentQuestion?.hint && (
+            <Box
+              sx={{
+                mt: 1,
+                mb: 2,
+                p: 1.5,
+                borderRadius: 1,
+                bgcolor: 'warning.light',
+                color: 'warning.contrastText',
               }}
             >
-              Time Remaining: {timeRemaining ?? game.gameSettings.questionTime} seconds
-            </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Hint: {game.currentQuestion.hint}
+              </Typography>
+            </Box>
+          )}
+
+          {game.gameSettings?.questionTime && game.gameSettings.questionTime > 0 && (
+            <Box sx={{ my: 2 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: timeRemaining !== null && timeRemaining <= 10 ? 'error.main' : 'text.primary',
+                  animation: timeRemaining !== null && timeRemaining <= 10 ? 'pulse 1s infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%': { opacity: 1 },
+                    '50%': { opacity: 0.5 },
+                    '100%': { opacity: 1 },
+                  },
+                  textAlign: 'center',
+                }}
+              >
+                Time Remaining: {timeRemaining ?? game.gameSettings.questionTime} seconds
+              </Typography>
+
+              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 1 }}>
+                <Button variant="outlined" onClick={() => adjustTime(-5)} disabled={timeRemaining === null || timeRemaining <= 0}>
+                  -5s
+                </Button>
+                <Button variant="outlined" onClick={() => adjustTime(5)} disabled={timeRemaining === null}>
+                  +5s
+                </Button>
+                <Button variant="outlined" onClick={() => adjustTime(-10)} disabled={timeRemaining === null || timeRemaining <= 0}>
+                  -10s
+                </Button>
+                <Button variant="outlined" onClick={() => adjustTime(10)} disabled={timeRemaining === null}>
+                  +10s
+                </Button>
+              </Box>
+            </Box>
           )}
           <Button onClick={handleViewLeaderboard}>
             Next
