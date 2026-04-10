@@ -1,4 +1,4 @@
-import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography } from "@mui/material";
 import {
   DropdownQuestion,
   EssayQuestion,
@@ -25,6 +25,7 @@ export default function PlayerGameView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
+  const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
 
   useEffect(() => {
     const questionType = game.currentQuestion?.type;
@@ -260,9 +261,40 @@ export default function PlayerGameView() {
 
       {!game.showLeaderboard ? (
         <>
-          <Typography variant="h5" gutterBottom>
-            {game.currentQuestion?.question}
-          </Typography>
+          <Card
+            elevation={0}
+            sx={{
+              mb: 2,
+              borderRadius: 3,
+              border: (theme) => `1px solid ${theme.palette.divider}`,
+              background: (theme) => theme.palette.mode === 'dark'
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
+              boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+              <Stack spacing={1.5}>
+                <Chip
+                  label={`Question ${questionNumber}`}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ width: 'fit-content', fontWeight: 700 }}
+                />
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 800,
+                    lineHeight: 1.15,
+                    letterSpacing: '-0.02em',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {game.currentQuestion?.question}
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
 
           {game.user.submittedAnswer ? (
             <Typography variant="h6" color="success.main" gutterBottom>

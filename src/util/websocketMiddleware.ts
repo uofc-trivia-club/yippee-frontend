@@ -29,6 +29,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             if (data.lobby?.roomCode) {
                                 store.dispatch(gameActions.setRoomCode(data.lobby.roomCode));
                                 store.dispatch(gameActions.setGameStatus("Waiting"));
+                                if (typeof data.lobby.currentQuestionIndex === "number") {
+                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
+                                }
                                 if (data.clientsInLobby) {
                                     store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                                 }
@@ -39,6 +42,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             if (data.lobby?.roomCode) {
                                 store.dispatch(gameActions.setRoomCode(data.lobby.roomCode));
                                 store.dispatch(gameActions.setGameStatus(data.lobby.status || "Waiting"));
+                                if (typeof data.lobby.currentQuestionIndex === "number") {
+                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
+                                }
                                 // store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                                 if (data.clientsInLobby) {
                                     store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
@@ -58,6 +64,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 if (data.lobby.currentQuestion) {
                                     store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
                                 }
+                                if (typeof data.lobby.currentQuestionIndex === "number") {
+                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
+                                }
                             }
                             if (data.clientsInLobby) {
                                 store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
@@ -73,6 +82,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 store.dispatch(gameActions.setGameStatus(data.lobby.status));
                                 if (data.lobby.currentQuestion) {
                                     store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
+                                }
+                                if (typeof data.lobby.currentQuestionIndex === "number") {
+                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
                                 }
                             }
                             break;
@@ -96,6 +108,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                         case "Next question":
                             if (data.lobby?.currentQuestion) {
                                 store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
+                            }
+                            if (typeof data.lobby?.currentQuestionIndex === "number") {
+                                store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
                             }
                             // reset the submittedAnswer back to false for user
                             store.dispatch(gameActions.setSubmittedAnswer(false))

@@ -9,6 +9,7 @@ interface GameState {
     // quiz: Quiz | undefined; 
     gameSettings: GameSettings | undefined;
     currentQuestion: QuizQuestion | undefined;  
+    currentQuestionIndex: number;
     gameStatus: string;
     showLeaderboard: boolean;
     finalQuestionLeaderboard: boolean; // leaderboard display is different if it is the final question
@@ -27,6 +28,7 @@ const initialState = {
     clientsInLobby: [], 
     gameSettings: undefined,
     currentQuestion: undefined, 
+    currentQuestionIndex: 0,
     gameStatus: "",
     showLeaderboard: false,
     finalQuestionLeaderboard: false,
@@ -78,6 +80,9 @@ const gameSlice = createSlice({
         setCurrentQuestion: (state, action: PayloadAction<QuizQuestion>) => {
             // console.log('setCurrentQuestion:', { before: state.currentQuestion, after: action.payload });
             state.currentQuestion = action.payload;
+        },
+        setCurrentQuestionIndex: (state, action: PayloadAction<number>) => {
+            state.currentQuestionIndex = action.payload;
         },
         setGameStatus: (state, action: PayloadAction<string>) => {
             // console.log('setGameStatus:', { before: state.gameStatus, after: action.payload });

@@ -2,7 +2,7 @@
 // displays all options 
 // after question time is over, displays all the correct answers + stats on who chose each answer
 
-import { Box, Typography, useTheme } from "@mui/material";
+import { Box, Chip, Paper, Stack, Typography, useTheme } from "@mui/material";
 
 import { RootState } from "../../stores/store";
 import { useSelector } from "react-redux";
@@ -17,6 +17,17 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const qType = game.currentQuestion?.type?.name;
     const q = game.currentQuestion;
     const t = q?.type;
+        const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+
+        const sectionCardSx = {
+            p: 2.5,
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+            background: theme.palette.mode === 'dark'
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
+            boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+        } as const;
 
     const renderOptionsView = () => {
         if (!q || !t) return null;
@@ -178,20 +189,52 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     };
 
     return (
-        <Box>
-            <Typography variant="h5" gutterBottom>
-                Quiz: {game.currentQuestion?.question}
-            </Typography>
-            
-            {displayCorrectAnswers && (
-                <Typography variant="h5" gutterBottom>
-                    Viewing the correct answers:
-                </Typography>
-            )}
-            
-            <Box sx={{ mt: 1 }}>
-                {renderOptionsView()}
-            </Box>
-        </Box>
+        <Paper elevation={0} sx={sectionCardSx}>
+            <Stack spacing={2}>
+                <Box>
+                    <Chip
+                        label={`Question ${questionNumber}`}
+                        color="primary"
+                        variant="outlined"
+                        sx={{ mb: 1, fontWeight: 700 }}
+                    />
+                    <Typography
+                        variant="h4"
+                        sx={{
+                            fontWeight: 800,
+                            lineHeight: 1.15,
+                            letterSpacing: '-0.02em',
+                            wordBreak: 'break-word',
+                        }}
+                    >
+                        {q?.question || 'No question available'}
+                    </Typography>
+                    {q?.hint && !displayCorrectAnswers && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Hint available from the host.
+                        </Typography>
+                    )}
+                </Box>
+
+                {displayCorrectAnswers && (
+                    <Box
+                        sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: theme.palette.mode === 'dark'
+                              ? 'rgba(76, 175, 80, 0.16)'
+                              : 'rgba(76, 175, 80, 0.10)',
+                            border: `1px solid ${theme.palette.success.main}`,
+                        }}
+                    >
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                            Viewing the correct answers
+                        </Typography>
+                    </Box>
+                )}
+
+                <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
+            </Stack>
+        </Paper>
     );
 }
