@@ -11,8 +11,10 @@ export default function HostGameView() {
   const game = useSelector((state: RootState) => state.game);
   const [leaderboardView, setLeaderboardView] = useState<'page1' | 'page2'>('page1');
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [hintRevealed, setHintRevealed] = useState(false);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const autoTriggeredRef = useRef(false);
+  const timerInitializingRef = useRef(false);
 
   const handleViewLeaderboard = useCallback(() => {
     console.log("Viewing the leaderboard");
@@ -28,6 +30,8 @@ export default function HostGameView() {
     if (countdownRef.current) clearInterval(countdownRef.current);
 
     autoTriggeredRef.current = false;
+    timerInitializingRef.current = true;
+    setHintRevealed(false);
     setTimeRemaining(game.gameSettings?.questionTime || null);
 
     // Cleanup when question changes or component unmounts
@@ -50,6 +54,7 @@ export default function HostGameView() {
 
     if (!shouldRunTimer) return;
 
+    timerInitializingRef.current = false;
     countdownRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev === null) return null;
@@ -63,6 +68,8 @@ export default function HostGameView() {
   }, [game.currentQuestion, game.gameSettings?.questionTime, game.showLeaderboard, timeRemaining]);
 
   useEffect(() => {
+    if (timerInitializingRef.current) return;
+
     if (!game.showLeaderboard && timeRemaining === 0 && !autoTriggeredRef.current) {
       autoTriggeredRef.current = true;
       handleViewLeaderboard();
@@ -120,9 +127,19 @@ export default function HostGameView() {
                 color: 'warning.contrastText',
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Hint: {game.currentQuestion.hint}
-              </Typography>
+              {hintRevealed ? (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Hint: {game.currentQuestion.hint}
+                </Typography>
+              ) : (
+                <Button
+                  variant="text"
+                  onClick={() => setHintRevealed(true)}
+                  sx={{ fontWeight: 700, p: 0, minWidth: 'auto', color: 'inherit' }}
+                >
+                  Reveal Hint
+                </Button>
+              )}
             </Box>
           )}
 
