@@ -328,6 +328,112 @@ function SortableQuestionCard({
         {/* Expanded Content */}
         <Collapse in={expanded}>
           <Box sx={{ mt: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, mt: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <TextField
+                label="Question Type"
+                select
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.type}
+                onChange={(e) => onChange("type", e.target.value as QuizQuestionForm['type'])}
+              >
+                {QUESTION_TYPE_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Points"
+                type="number"
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.points === 0 ? '' : question.points}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const numValue = value === '' ? 0 : parseInt(value, 10);
+                  onChange("points", Math.max(0, numValue || 0));
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '' || question.points === 0) {
+                    onChange("points", 1);
+                  }
+                }}
+                placeholder="1"
+                inputProps={{
+                  min: 1,
+                  step: 1,
+                }}
+                helperText="Point value for this question"
+              />
+              <TextField
+                label="Hint (Optional)"
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.hint}
+                onChange={(e) => onChange("hint", e.target.value)}
+                placeholder="Add a helpful hint..."
+              />
+            </Box>
+
+            <Box
+              sx={{
+                mt: 1.5,
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: '0.9fr 1.1fr' },
+                gap: 2,
+                alignItems: 'start',
+              }}
+            >
+              <Box sx={{ maxWidth: { xs: '100%', md: 360 } }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                  Difficulty
+                </Typography>
+                <Box sx={{ transform: 'scale(0.92)', transformOrigin: 'top left', width: '108%' }}>
+                  <DifficultySlider
+                    difficulty={question.difficulty}
+                    onChange={(newVal) => onChange("difficulty", newVal)}
+                  />
+                </Box>
+              </Box>
+
+              <Box sx={{ maxWidth: { xs: '100%', md: 520 } }}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={PREDEFINED_CATEGORIES}
+                  value={question.category}
+                  onChange={(_, newValue) => {
+                    onChange("category", newValue);
+                  }}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        label={option}
+                        {...getTagProps({ index })}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      size="small"
+                      variant="outlined"
+                      label="Categories"
+                      placeholder="Select or type categories..."
+                      helperText="Choose existing categories or create new ones"
+                    />
+                  )}
+                />
+              </Box>
+            </Box>
+
             <TextField
               label="Question Text"
               variant="outlined"
@@ -428,97 +534,6 @@ function SortableQuestionCard({
                 )}
               </Box>
             )}
-
-            <Box sx={{ display: 'flex', gap: 2, mt: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <TextField
-                label="Question Type"
-                select
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={question.type}
-                onChange={(e) => onChange("type", e.target.value as QuizQuestionForm['type'])}
-              >
-                {QUESTION_TYPE_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Points"
-                type="number"
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={question.points === 0 ? '' : question.points}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const numValue = value === '' ? 0 : parseInt(value, 10);
-                  onChange("points", Math.max(0, numValue || 0));
-                }}
-                onBlur={(e) => {
-                  if (e.target.value === '' || question.points === 0) {
-                    onChange("points", 1);
-                  }
-                }}
-                placeholder="1"
-                inputProps={{
-                  min: 1,
-                  step: 1,
-                }}
-                helperText="Point value for this question"
-              />
-              <TextField
-                label="Hint (Optional)"
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={question.hint}
-                onChange={(e) => onChange("hint", e.target.value)}
-                placeholder="Add a helpful hint..."
-              />
-            </Box>
-
-            <Box sx={{ mt: 2 }}>
-              <DifficultySlider
-                difficulty={question.difficulty}
-                onChange={(newVal) => onChange("difficulty", newVal)}
-              />
-            </Box>
-
-            <Box sx={{ mt: 2 }}>
-              <Autocomplete
-                multiple
-                freeSolo
-                options={PREDEFINED_CATEGORIES}
-                value={question.category}
-                onChange={(_, newValue) => {
-                  onChange("category", newValue);
-                }}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      label={option}
-                      {...getTagProps({ index })}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
-                  ))
-                }
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    variant="outlined"
-                    label="Categories"
-                    placeholder="Select or type categories..."
-                    helperText="Choose existing categories or create new ones"
-                  />
-                )}
-                sx={{ mt: 1 }}
-              />
-            </Box>
 
             <Divider sx={{ my: 3 }} />
 
