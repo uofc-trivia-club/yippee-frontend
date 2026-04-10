@@ -4,8 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import ManageGameSettings from "../quiz/ManageGameSettings";
-import SelectQuiz from "../quiz/SelectQuiz";
 import { RootState } from "../../stores/store";
+import SelectQuiz from "../quiz/SelectQuiz";
 import SendIcon from '@mui/icons-material/Send';
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
@@ -127,10 +127,24 @@ export default function LobbyRoomView() {
         fullWidth
         value={lobbyMessage}
         onChange={(e) => setLobbyMessage(e.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            handleSendMessage();
+          }
+        }}
         InputProps={{
           endAdornment: (
             <InputAdornment position="end">
-              ...
+              <IconButton
+                aria-label="send message"
+                onClick={handleSendMessage}
+                edge="end"
+                disabled={!lobbyMessage.trim()}
+                color="primary"
+              >
+                <SendIcon />
+              </IconButton>
             </InputAdornment>
           ),
         }}
