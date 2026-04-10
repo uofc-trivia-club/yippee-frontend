@@ -73,7 +73,10 @@ const createInitialQuestion = (): QuizQuestionForm => ({
   acceptedAnswerInput: "",
   category: [],
   matchingPairs: createMatchingPairs(),
-  options: Array(2).fill(null).map(() => ({ text: "", isCorrect: false })),
+  options: [
+    { text: "", isCorrect: true },
+    { text: "", isCorrect: false },
+  ],
 });
 
 const QUESTIONS_PER_PAGE = 5;
@@ -794,7 +797,7 @@ export default function CreateQuiz() {
         }
       } else if (updatedQuestions[globalIndex].options.length < 2) {
         updatedQuestions[globalIndex].options = [
-          { text: '', isCorrect: false },
+          { text: '', isCorrect: true },
           { text: '', isCorrect: false },
         ];
         updatedQuestions[globalIndex].acceptedAnswers = [];
@@ -826,6 +829,13 @@ export default function CreateQuiz() {
       }));
       setQuestions(updatedQuestions);
       return;
+    }
+
+    if (field === 'isCorrect' && value === false) {
+      const currentCorrectCount = updatedOptions.filter((opt) => opt.isCorrect).length;
+      if (updatedOptions[optionIndex].isCorrect && currentCorrectCount === 1) {
+        return;
+      }
     }
 
     updatedOptions[optionIndex] = {
@@ -927,6 +937,9 @@ export default function CreateQuiz() {
     }
     const updatedQuestions = [...questions];
     updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.filter((_, index) => index !== optionIndex);
+    if (!updatedQuestions[globalIndex].options.some((opt) => opt.isCorrect) && updatedQuestions[globalIndex].options.length > 0) {
+      updatedQuestions[globalIndex].options[0].isCorrect = true;
+    }
     setQuestions(updatedQuestions);
   };
 

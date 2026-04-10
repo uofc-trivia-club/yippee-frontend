@@ -54,7 +54,10 @@ export default function CreateQuiz() {
     hint: "",
     type: "multiple_choice",
     category: [],
-    options: Array(2).fill({ text: "", isCorrect: false }),
+    options: [
+      { text: "", isCorrect: true },
+      { text: "", isCorrect: false },
+    ],
   }]);
   const [openDialog, setOpenDialog] = useState(false);
 
@@ -74,11 +77,17 @@ export default function CreateQuiz() {
     currentQuestion.type = nextType;
 
     const isSingleChoiceType = nextType === "multiple" || nextType === "multiple_choice";
+    const isOptionBasedType = !["essay", "short_answer", "fill_in_blank", "match_the_phrase", "matching"].includes(nextType);
+
+    if (isOptionBasedType && !currentQuestion.options.some((opt) => opt.isCorrect) && currentQuestion.options.length > 0) {
+      currentQuestion.options[0].isCorrect = true;
+    }
+
     if (isSingleChoiceType) {
       const firstCorrectIndex = currentQuestion.options.findIndex((opt) => opt.isCorrect);
       currentQuestion.options = currentQuestion.options.map((opt, index) => ({
         ...opt,
-        isCorrect: firstCorrectIndex >= 0 ? index === firstCorrectIndex : false,
+        isCorrect: firstCorrectIndex >= 0 ? index === firstCorrectIndex : index === 0,
       }));
     }
 
@@ -88,11 +97,13 @@ export default function CreateQuiz() {
   const handleOptionChange = (questionIndex: number, optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => {
     const updatedQuestions = [...questions];
     const updatedOptions = [...updatedQuestions[questionIndex].options];
+    const questionType = updatedQuestions[questionIndex].type;
+    const isSingleChoiceType = questionType === "multiple" || questionType === "multiple_choice" || questionType === "dropdown" || questionType === "true_false";
 
     if (
       field === "isCorrect" &&
       value === true &&
-      (updatedQuestions[questionIndex].type === "multiple" || updatedQuestions[questionIndex].type === "multiple_choice")
+      isSingleChoiceType
     ) {
       updatedQuestions[questionIndex].options = updatedOptions.map((option, index) => ({
         ...option,
@@ -100,6 +111,13 @@ export default function CreateQuiz() {
       }));
       setQuestions(updatedQuestions);
       return;
+    }
+
+    if (field === "isCorrect" && value === false) {
+      const currentCorrectCount = updatedOptions.filter((opt) => opt.isCorrect).length;
+      if (updatedOptions[optionIndex].isCorrect && currentCorrectCount === 1) {
+        return;
+      }
     }
 
     updatedOptions[optionIndex] = {
@@ -120,7 +138,10 @@ export default function CreateQuiz() {
         hint: "",
         type: "multiple_choice",
         category: [],
-        options: Array(2).fill({ text: "", isCorrect: false }),
+        options: [
+          { text: "", isCorrect: true },
+          { text: "", isCorrect: false },
+        ],
       },
     ]);
   };
@@ -147,6 +168,9 @@ export default function CreateQuiz() {
     }
     const updatedQuestions = [...questions];
     updatedQuestions[questionIndex].options = updatedQuestions[questionIndex].options.filter((_, index) => index !== optionIndex);
+    if (!updatedQuestions[questionIndex].options.some((opt) => opt.isCorrect) && updatedQuestions[questionIndex].options.length > 0) {
+      updatedQuestions[questionIndex].options[0].isCorrect = true;
+    }
     setQuestions(updatedQuestions);
   };
 
@@ -260,6 +284,16 @@ export default function CreateQuiz() {
   };
 
  const handleSubmit = async () => {
+  const hasMissingCorrectAnswer = questions.some((q) => {
+    const isOptionBasedType = !["essay", "short_answer", "fill_in_blank", "match_the_phrase", "matching"].includes(q.type);
+    return isOptionBasedType && !q.options.some((option) => option.isCorrect);
+  });
+
+  if (hasMissingCorrectAnswer) {
+    alert("Each option-based question must have at least one correct answer.");
+    return;
+  }
+
   const transformedQuestions = questions.map(transformQuestionForSubmission);
 
   const quiz: Quiz = {
