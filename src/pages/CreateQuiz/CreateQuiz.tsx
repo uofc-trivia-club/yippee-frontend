@@ -16,7 +16,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 import AddIcon from '@mui/icons-material/Add';
 import { CSS } from '@dnd-kit/utilities';
@@ -163,19 +163,54 @@ function SortableQuestionCard({
   };
 
   const correctAnswersCount = question.options.filter(opt => opt.isCorrect).length;
-  const isFreeTextType = question.type === 'short_answer' || question.type === 'fill_in_blank';
+  const isFreeTextType = question.type === 'short_answer';
+  const isFillInBlankType = question.type === 'fill_in_blank';
+  const isDropdownType = question.type === 'dropdown';
   const isPairType = question.type === 'matching' || question.type === 'match_the_phrase';
   const allowsNoCorrect = question.type === 'multi_select';
+  const blankSegments = question.question.split('____');
+  const hasBlankTokens = blankSegments.length > 1;
+  const blankAnswersValid =
+    hasBlankTokens &&
+    blankSegments.slice(0, -1).every((_, blankIndex) =>
+      (question.acceptedAnswers[blankIndex] || '')
+        .split('|')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .length > 0
+    );
   const isValid = isFreeTextType
     ? question.question.trim() && question.acceptedAnswers.length > 0
+    : isFillInBlankType
+      ? question.question.trim() && blankAnswersValid
     : isPairType
       ? question.question.trim() && question.matchingPairs.length >= 2 && question.matchingPairs.every(pair => pair.left.trim() && pair.right.trim())
       : question.question.trim() && (allowsNoCorrect || correctAnswersCount > 0) && question.options.every(opt => opt.text.trim());
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
-  const isFillInBlankType = question.type === 'fill_in_blank';
+  const usesOptionsEditor = !isFreeTextType && !isFillInBlankType;
   const showCorrectSelector = !isEssayType && !isOrderType;
+  const currentDropdownCorrectIndex = question.options.findIndex((opt) => opt.isCorrect);
+  const dropdownBlankValue = currentDropdownCorrectIndex >= 0 ? question.options[currentDropdownCorrectIndex].text : '';
+
+  const handleFillBlankAnswerChange = (blankIndex: number, value: string) => {
+    const nextAnswers = [...question.acceptedAnswers];
+    nextAnswers[blankIndex] = value;
+    onChange('acceptedAnswers', nextAnswers);
+  };
+
+  const handleDropdownBlankAnswerChange = (value: string) => {
+    const targetIndex = currentDropdownCorrectIndex >= 0 ? currentDropdownCorrectIndex : 0;
+    onOptionChange(targetIndex, 'isCorrect', true);
+    onOptionChange(targetIndex, 'text', value);
+  };
+
+  const getBlankAlternatives = (blankIndex: number) =>
+    (question.acceptedAnswers[blankIndex] || "")
+      .split('|')
+      .map((value) => value.trim())
+      .filter(Boolean);
 
   return (
     <Card
@@ -311,6 +346,82 @@ function SortableQuestionCard({
                 >
                   Insert Blank (____)
                 </Button>
+              </Box>
+            )}
+
+            {(isFillInBlankType || isDropdownType) && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  {isFillInBlankType
+                    ? 'Type answers directly in the blanks below. For multiple acceptable answers in one blank, separate with | (example: color|colour).'
+                    : 'Type the dropdown correct answer directly in the first blank below.'}
+                </Typography>
+
+                {hasBlankTokens ? (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                    {blankSegments.map((segment, index) => (
+                      <Fragment key={`blank-segment-${index}`}>
+                        {segment && (
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {segment}
+                          </Typography>
+                        )}
+                        {index < blankSegments.length - 1 && (
+                          <Box sx={{ minWidth: 180 }}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              value={
+                                isFillInBlankType
+                                  ? (question.acceptedAnswers[index] || '')
+                                  : index === 0
+                                    ? dropdownBlankValue
+                                    : ''
+                              }
+                              onChange={(e) => {
+                                if (isFillInBlankType) {
+                                  handleFillBlankAnswerChange(index, e.target.value);
+                                  return;
+                                }
+
+                                if (index === 0) {
+                                  handleDropdownBlankAnswerChange(e.target.value);
+                                }
+                              }}
+                              disabled={isDropdownType && index > 0}
+                              placeholder={isDropdownType && index > 0 ? 'Use first blank only' : `Blank ${index + 1}`}
+                              sx={{ bgcolor: theme.palette.background.paper, borderRadius: 1 }}
+                            />
+                            {isFillInBlankType && (
+                              <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {getBlankAlternatives(index).length > 0 ? (
+                                  getBlankAlternatives(index).map((alt, altIdx) => (
+                                    <Chip
+                                      key={`blank-${index}-alt-${altIdx}`}
+                                      label={alt}
+                                      size="small"
+                                      color="success"
+                                      variant="outlined"
+                                      sx={{ height: 22 }}
+                                    />
+                                  ))
+                                ) : (
+                                  <Typography variant="caption" color="text.secondary">
+                                    Add alternatives with | (example: color|colour)
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+                          </Box>
+                        )}
+                      </Fragment>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Example: "The capital of France is ____." or "The largest planet is [_____]."
+                  </Typography>
+                )}
               </Box>
             )}
 
@@ -456,8 +567,12 @@ function SortableQuestionCard({
               </Box>
             )}
 
+            {isFillInBlankType && (
+              <Box sx={{ mb: 0.5 }} />
+            )}
+
             {/* Answer Options - Multi-Select with Checkboxes */}
-            {!isFreeTextType && <Box sx={{ mb: 2 }}>
+            {usesOptionsEditor && <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
                 {isOrderType ? 'Items (drag order in game)' : isPairType ? 'Matching Pairs' : 'Answer Options'}
               </Typography>
@@ -471,6 +586,8 @@ function SortableQuestionCard({
                     ? 'Enter each correct pair. The left and right values will be matched together in the game.'
                     : isOrderType
                     ? 'Add and arrange items. The displayed order will be treated as the correct order.'
+                    : isDropdownType
+                      ? 'Pick one correct option. The correct option text is synced with the first blank editor.'
                     : isSingleCorrectType
                       ? 'Select one correct answer.'
                       : 'Check all correct answers (multiple selections allowed).'}
@@ -770,6 +887,11 @@ export default function CreateQuiz() {
     if (field === 'type') {
       const selectedType = value as string;
       const isPairedType = selectedType === 'matching' || selectedType === 'match_the_phrase';
+      const currentQuestionText = updatedQuestions[globalIndex].question || '';
+
+      if ((selectedType === 'fill_in_blank' || selectedType === 'dropdown') && !currentQuestionText.includes('____')) {
+        updatedQuestions[globalIndex].question = `${currentQuestionText}${currentQuestionText ? ' ' : ''}____`;
+      }
 
       if (selectedType === 'true_false') {
         updatedQuestions[globalIndex].options = [
@@ -804,6 +926,14 @@ export default function CreateQuiz() {
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
+      }
+
+      if (selectedType === 'dropdown') {
+        const firstCorrectIndex = updatedQuestions[globalIndex].options.findIndex((opt) => opt.isCorrect);
+        updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.map((opt, idx) => ({
+          ...opt,
+          isCorrect: firstCorrectIndex >= 0 ? idx === firstCorrectIndex : idx === 0,
+        }));
       }
 
       if (selectedType === 'multiple') {
@@ -962,6 +1092,7 @@ export default function CreateQuiz() {
   const transformQuestionForSubmission = (question: QuizQuestionForm): QuizQuestion => {
     const typeName = question.type === "multiple" ? "multiple_choice" : question.type;
     const acceptedTextAnswers = question.acceptedAnswers
+      .flatMap((ans) => ans.split('|'))
       .map((ans) => ans.trim())
       .filter(Boolean);
     const matchingPairs = question.matchingPairs
@@ -1125,13 +1256,43 @@ export default function CreateQuiz() {
         continue;
       }
 
-      if (q.type === 'short_answer' || q.type === 'fill_in_blank') {
+      if (q.type === 'short_answer') {
         if (q.acceptedAnswers.length < 1) {
           showSnackbar(`Question ${i + 1} needs at least one accepted answer`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
         }
+        continue;
+      }
+
+      if (q.type === 'fill_in_blank') {
+        const blankParts = q.question.split('____');
+        const blankCount = Math.max(0, blankParts.length - 1);
+
+        if (blankCount < 1) {
+          showSnackbar(`Question ${i + 1} must include at least one blank (____)`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        const allBlankAnswersFilled = Array.from({ length: blankCount }).every((_, blankIndex) => {
+          const rawValue = q.acceptedAnswers[blankIndex] || '';
+          return rawValue
+            .split('|')
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .length > 0;
+        });
+
+        if (!allBlankAnswersFilled) {
+          showSnackbar(`Question ${i + 1} must have at least one answer for each blank`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
         continue;
       }
 
