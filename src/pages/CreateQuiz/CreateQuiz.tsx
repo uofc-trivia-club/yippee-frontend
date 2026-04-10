@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, FormControlLabel, IconButton, Pagination, Radio, RadioGroup, Snackbar, TextField, Typography, useTheme } from "@mui/material";
+import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, FormControlLabel, IconButton, MenuItem, Pagination, Radio, RadioGroup, Snackbar, TextField, Typography, useTheme } from "@mui/material";
 import {
   DndContext,
   DragEndEvent,
@@ -44,12 +44,23 @@ type QuizQuestionForm = {
   difficulty: number;
   hint: string;
   type: string;
+  acceptedAnswers: string[];
+  acceptedAnswerInput: string;
   category: string[];
+  matchingPairs: Array<{
+    left: string;
+    right: string;
+  }>;
   options: Array<{
     text: string;
     isCorrect: boolean;
   }>;
 };
+
+const createMatchingPairs = () => ([
+  { left: "", right: "" },
+  { left: "", right: "" },
+]);
 
 const createInitialQuestion = (): QuizQuestionForm => ({
   id: `question-${Date.now()}-${Math.random()}`,
@@ -58,7 +69,10 @@ const createInitialQuestion = (): QuizQuestionForm => ({
   difficulty: 1,
   hint: "",
   type: "multiple",
+  acceptedAnswers: [],
+  acceptedAnswerInput: "",
   category: [],
+  matchingPairs: createMatchingPairs(),
   options: Array(2).fill(null).map(() => ({ text: "", isCorrect: false })),
 });
 
@@ -78,6 +92,20 @@ const PREDEFINED_CATEGORIES = [
   'General Knowledge',
 ];
 
+const QUESTION_TYPE_OPTIONS = [
+  { value: 'multiple', label: 'Multiple Choice' },
+  { value: 'dropdown', label: 'Dropdown' },
+  { value: 'true_false', label: 'True / False' },
+  { value: 'short_answer', label: 'Short Answer' },
+  { value: 'fill_in_blank', label: 'Fill in the Blank' },
+  { value: 'essay', label: 'Essay' },
+  { value: 'ranking', label: 'Ranking' },
+  { value: 'ordering', label: 'Ordering' },
+  { value: 'match_the_phrase', label: 'Match the Phrase' },
+  { value: 'matching', label: 'Matching' },
+  { value: 'image_based', label: 'Image Based' },
+] as const;
+
 // Sortable Question Card Component
 function SortableQuestionCard({
   question,
@@ -90,6 +118,11 @@ function SortableQuestionCard({
   onOptionChange,
   onAddOption,
   onDeleteOption,
+  onAddAcceptedAnswer,
+  onRemoveAcceptedAnswer,
+  onAddMatchingPair,
+  onRemoveMatchingPair,
+  onUpdateMatchingPair,
   totalQuestions,
 }: {
   question: QuizQuestionForm;
@@ -102,6 +135,11 @@ function SortableQuestionCard({
   onOptionChange: (optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => void;
   onAddOption: () => void;
   onDeleteOption: (optionIndex: number) => void;
+  onAddAcceptedAnswer: () => void;
+  onRemoveAcceptedAnswer: (answerIndex: number) => void;
+  onAddMatchingPair: () => void;
+  onRemoveMatchingPair: (pairIndex: number) => void;
+  onUpdateMatchingPair: (pairIndex: number, field: 'left' | 'right', value: string) => void;
   totalQuestions: number;
 }) {
   const theme = useTheme();
@@ -121,7 +159,18 @@ function SortableQuestionCard({
   };
 
   const correctAnswersCount = question.options.filter(opt => opt.isCorrect).length;
-  const isValid = question.question.trim() && correctAnswersCount > 0 && question.options.every(opt => opt.text.trim());
+  const isFreeTextType = question.type === 'short_answer' || question.type === 'fill_in_blank';
+  const isPairType = question.type === 'matching' || question.type === 'match_the_phrase';
+  const isValid = isFreeTextType
+    ? question.question.trim() && question.acceptedAnswers.length > 0
+    : isPairType
+      ? question.question.trim() && question.matchingPairs.length >= 2 && question.matchingPairs.every(pair => pair.left.trim() && pair.right.trim())
+      : question.question.trim() && correctAnswersCount > 0 && question.options.every(opt => opt.text.trim());
+  const isEssayType = question.type === 'essay';
+  const isOrderType = question.type === 'ranking' || question.type === 'ordering';
+  const isSingleCorrectType = question.type === 'dropdown' || question.type === 'true_false';
+  const isFillInBlankType = question.type === 'fill_in_blank';
+  const showCorrectSelector = !isEssayType && !isOrderType;
 
   return (
     <Card
@@ -196,11 +245,25 @@ function SortableQuestionCard({
           />
 
           {/* Options Count */}
-          <Chip
-            label={`${question.options.length} options`}
-            size="small"
-            variant="outlined"
-          />
+          {isFreeTextType ? (
+            <Chip
+              label="Text answer"
+              size="small"
+              variant="outlined"
+            />
+          ) : isPairType ? (
+            <Chip
+              label={`${question.matchingPairs.length} pairs`}
+              size="small"
+              variant="outlined"
+            />
+          ) : (
+            <Chip
+              label={`${question.options.length} options`}
+              size="small"
+              variant="outlined"
+            />
+          )}
 
           {/* Expand/Collapse */}
           <IconButton size="small" onClick={onToggle}>
@@ -234,7 +297,34 @@ function SortableQuestionCard({
               placeholder="Enter your question here..."
             />
 
+            {isFillInBlankType && (
+              <Box sx={{ mt: 1 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onChange('question', `${question.question}${question.question ? ' ' : ''}____`)}
+                >
+                  Insert Blank (____)
+                </Button>
+              </Box>
+            )}
+
             <Box sx={{ display: 'flex', gap: 2, mt: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <TextField
+                label="Question Type"
+                select
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.type}
+                onChange={(e) => onChange("type", e.target.value as QuizQuestionForm['type'])}
+              >
+                {QUESTION_TYPE_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
                 label="Points"
                 type="number"
@@ -312,16 +402,144 @@ function SortableQuestionCard({
 
             <Divider sx={{ my: 3 }} />
 
-            {/* Answer Options - Multi-Select with Checkboxes */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
-                Answer Options
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-                Check all correct answers (multiple selections allowed)
-              </Typography>
+            {isFreeTextType && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
+                  Accepted Answers
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                  Add one or more accepted answers. Players can submit any of these.
+                </Typography>
 
-              <Card
+                <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    value={question.acceptedAnswerInput}
+                    onChange={(e) => onChange('acceptedAnswerInput', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onAddAcceptedAnswer();
+                      }
+                    }}
+                    placeholder={question.type === 'fill_in_blank' ? 'e.g. 3' : 'e.g. Pacific Ocean'}
+                  />
+                  <Button variant="contained" onClick={onAddAcceptedAnswer} sx={{ minWidth: 120 }}>
+                    Add Answer
+                  </Button>
+                </Box>
+
+                {question.acceptedAnswers.length > 0 ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {question.acceptedAnswers.map((ans, idx) => (
+                      <Chip
+                        key={`${ans}-${idx}`}
+                        label={ans}
+                        color="success"
+                        variant="outlined"
+                        onDelete={() => onRemoveAcceptedAnswer(idx)}
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    No accepted answers yet.
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* Answer Options - Multi-Select with Checkboxes */}
+            {!isFreeTextType && <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
+                {isOrderType ? 'Items (drag order in game)' : isPairType ? 'Matching Pairs' : 'Answer Options'}
+              </Typography>
+              {isEssayType ? (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Essay questions do not require predefined answer options.
+                </Alert>
+              ) : (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                  {isPairType
+                    ? 'Enter each correct pair. The left and right values will be matched together in the game.'
+                    : isOrderType
+                    ? 'Add and arrange items. The displayed order will be treated as the correct order.'
+                    : isSingleCorrectType
+                      ? 'Select one correct answer.'
+                      : 'Check all correct answers (multiple selections allowed).'}
+                </Typography>
+              )}
+
+              {!isEssayType && (isPairType ? (
+                <Card
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.02)'
+                      : 'rgba(0, 0, 0, 0.01)',
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    {question.type === 'match_the_phrase'
+                      ? 'Use the left column for terms and the right column for definitions.'
+                      : 'Use the left column for items on the left side and the right column for their matches.'}
+                  </Typography>
+
+                  {question.matchingPairs.map((pair, pairIndex) => (
+                    <Box
+                      key={pairIndex}
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr auto' },
+                        gap: 1,
+                        alignItems: 'center',
+                        mb: 1.5,
+                      }}
+                    >
+                      <TextField
+                        label={question.type === 'match_the_phrase' ? `Term ${pairIndex + 1}` : `Left item ${pairIndex + 1}`}
+                        variant="outlined"
+                        fullWidth
+                        size="small"
+                        value={pair.left}
+                        onChange={(e) => onUpdateMatchingPair(pairIndex, 'left', e.target.value)}
+                      />
+                      <TextField
+                        label={question.type === 'match_the_phrase' ? `Definition ${pairIndex + 1}` : `Right item ${pairIndex + 1}`}
+                        variant="outlined"
+                        fullWidth
+                        size="small"
+                        value={pair.right}
+                        onChange={(e) => onUpdateMatchingPair(pairIndex, 'right', e.target.value)}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => onRemoveMatchingPair(pairIndex)}
+                        sx={{ color: theme.palette.error.main, justifySelf: 'start' }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={onAddMatchingPair}
+                    sx={{
+                      mt: 1,
+                      borderColor: theme.palette.mode === 'dark' ? theme.palette.primary.light : undefined,
+                      color: theme.palette.mode === 'dark' ? theme.palette.primary.light : undefined,
+                    }}
+                    startIcon={<AddIcon />}
+                  >
+                    Add Pair
+                  </Button>
+                </Card>
+              ) : <Card
                 variant="outlined"
                 sx={{
                   p: 2,
@@ -358,19 +576,36 @@ function SortableQuestionCard({
                       },
                     }}
                   >
-                    {/* Checkbox for Correct Answer */}
-                    <Checkbox
-                      checked={option.isCorrect}
-                      onChange={(e) => onOptionChange(optionIndex, 'isCorrect', e.target.checked)}
-                      size="small"
-                      sx={{
-                        color: theme.palette.text.secondary,
-                        '&.Mui-checked': {
-                          color: theme.palette.success.main,
-                        },
-                        p: 0.5,
-                      }}
-                    />
+                    {/* Correct Answer Selector */}
+                    {showCorrectSelector && (
+                      isSingleCorrectType ? (
+                        <Radio
+                          checked={option.isCorrect}
+                          onChange={(e) => onOptionChange(optionIndex, 'isCorrect', e.target.checked)}
+                          size="small"
+                          sx={{
+                            color: theme.palette.text.secondary,
+                            '&.Mui-checked': {
+                              color: theme.palette.success.main,
+                            },
+                            p: 0.5,
+                          }}
+                        />
+                      ) : (
+                        <Checkbox
+                          checked={option.isCorrect}
+                          onChange={(e) => onOptionChange(optionIndex, 'isCorrect', e.target.checked)}
+                          size="small"
+                          sx={{
+                            color: theme.palette.text.secondary,
+                            '&.Mui-checked': {
+                              color: theme.palette.success.main,
+                            },
+                            p: 0.5,
+                          }}
+                        />
+                      )
+                    )}
 
                     {/* Option Letter/Number */}
                     <Box
@@ -394,7 +629,7 @@ function SortableQuestionCard({
                         flexShrink: 0,
                       }}
                     >
-                      {String.fromCharCode(65 + optionIndex)}
+                      {isOrderType ? optionIndex + 1 : String.fromCharCode(65 + optionIndex)}
                     </Box>
 
                     {/* Answer Text Input */}
@@ -403,7 +638,10 @@ function SortableQuestionCard({
                       fullWidth
                       value={option.text}
                       onChange={(e) => onOptionChange(optionIndex, 'text', e.target.value)}
-                      placeholder={`Enter answer option ${String.fromCharCode(65 + optionIndex)}`}
+                      placeholder={isOrderType
+                        ? `Enter item ${optionIndex + 1}`
+                        : `Enter answer option ${String.fromCharCode(65 + optionIndex)}`}
+                      disabled={question.type === 'true_false'}
                       InputProps={{
                         disableUnderline: false,
                         sx: {
@@ -427,7 +665,7 @@ function SortableQuestionCard({
                     <IconButton
                       size="small"
                       onClick={() => onDeleteOption(optionIndex)}
-                      disabled={question.options.length <= 2}
+                      disabled={question.options.length <= 2 || question.type === 'true_false'}
                       sx={{
                         color: theme.palette.error.main,
                         flexShrink: 0,
@@ -448,11 +686,12 @@ function SortableQuestionCard({
                   sx={{ mt: 1 }}
                   startIcon={<AddIcon />}
                   fullWidth
+                  disabled={question.type === 'true_false'}
                 >
-                  Add Answer Option
+                  {isOrderType ? 'Add Item' : 'Add Answer Option'}
                 </Button>
-              </Card>
-            </Box>
+              </Card>)}
+            </Box>}
           </Box>
         </Collapse>
       </CardContent>
@@ -522,14 +761,64 @@ export default function CreateQuiz() {
   ) => {
     const updatedQuestions = [...questions];
     updatedQuestions[globalIndex][field] = value;
+
+    if (field === 'type') {
+      const selectedType = value as string;
+      const isPairedType = selectedType === 'matching' || selectedType === 'match_the_phrase';
+
+      if (selectedType === 'true_false') {
+        updatedQuestions[globalIndex].options = [
+          { text: 'True', isCorrect: true },
+          { text: 'False', isCorrect: false },
+        ];
+        updatedQuestions[globalIndex].acceptedAnswers = [];
+        updatedQuestions[globalIndex].acceptedAnswerInput = '';
+        updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
+      } else if (selectedType === 'essay') {
+        updatedQuestions[globalIndex].options = [{ text: '', isCorrect: false }];
+        updatedQuestions[globalIndex].acceptedAnswers = [];
+        updatedQuestions[globalIndex].acceptedAnswerInput = '';
+        updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
+      } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank') {
+        updatedQuestions[globalIndex].options = [];
+        updatedQuestions[globalIndex].acceptedAnswers = [];
+        updatedQuestions[globalIndex].acceptedAnswerInput = '';
+        updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
+      } else if (isPairedType) {
+        updatedQuestions[globalIndex].options = [];
+        updatedQuestions[globalIndex].acceptedAnswers = [];
+        updatedQuestions[globalIndex].acceptedAnswerInput = '';
+        if (updatedQuestions[globalIndex].matchingPairs.length < 2) {
+          updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
+        }
+      } else if (updatedQuestions[globalIndex].options.length < 2) {
+        updatedQuestions[globalIndex].options = [
+          { text: '', isCorrect: false },
+          { text: '', isCorrect: false },
+        ];
+        updatedQuestions[globalIndex].acceptedAnswers = [];
+        updatedQuestions[globalIndex].acceptedAnswerInput = '';
+        updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
+      }
+    }
+
     setQuestions(updatedQuestions);
   };
 
   const handleOptionChange = (globalIndex: number, optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => {
     const updatedQuestions = [...questions];
     const updatedOptions = [...updatedQuestions[globalIndex].options];
+    const qType = updatedQuestions[globalIndex].type;
     
-    // Allow multiple correct answers (checkbox behavior)
+    if (field === 'isCorrect' && value === true && (qType === 'dropdown' || qType === 'true_false')) {
+      updatedQuestions[globalIndex].options = updatedOptions.map((opt, idx) => ({
+        ...opt,
+        isCorrect: idx === optionIndex,
+      }));
+      setQuestions(updatedQuestions);
+      return;
+    }
+
     updatedOptions[optionIndex] = {
       ...updatedOptions[optionIndex],
       [field]: value
@@ -552,6 +841,53 @@ export default function CreateQuiz() {
   const addOption = (globalIndex: number) => {
     const updatedQuestions = [...questions];
     updatedQuestions[globalIndex].options.push({ text: "", isCorrect: false });
+    setQuestions(updatedQuestions);
+  };
+
+  const addMatchingPair = (globalIndex: number) => {
+    const updatedQuestions = [...questions];
+    updatedQuestions[globalIndex].matchingPairs.push({ left: '', right: '' });
+    setQuestions(updatedQuestions);
+  };
+
+  const removeMatchingPair = (globalIndex: number, pairIndex: number) => {
+    if (questions[globalIndex].matchingPairs.length <= 2) {
+      showSnackbar("Matching questions need at least two pairs", "error");
+      return;
+    }
+
+    const updatedQuestions = [...questions];
+    updatedQuestions[globalIndex].matchingPairs = updatedQuestions[globalIndex].matchingPairs.filter((_, index) => index !== pairIndex);
+    setQuestions(updatedQuestions);
+  };
+
+  const updateMatchingPair = (globalIndex: number, pairIndex: number, field: 'left' | 'right', value: string) => {
+    const updatedQuestions = [...questions];
+    updatedQuestions[globalIndex].matchingPairs[pairIndex] = {
+      ...updatedQuestions[globalIndex].matchingPairs[pairIndex],
+      [field]: value,
+    };
+    setQuestions(updatedQuestions);
+  };
+
+  const addAcceptedAnswer = (globalIndex: number) => {
+    const updatedQuestions = [...questions];
+    const question = updatedQuestions[globalIndex];
+    const value = question.acceptedAnswerInput.trim();
+
+    if (!value) return;
+
+    if (!question.acceptedAnswers.some((existing) => existing.toLowerCase() === value.toLowerCase())) {
+      question.acceptedAnswers = [...question.acceptedAnswers, value];
+    }
+
+    question.acceptedAnswerInput = '';
+    setQuestions(updatedQuestions);
+  };
+
+  const removeAcceptedAnswer = (globalIndex: number, answerIndex: number) => {
+    const updatedQuestions = [...questions];
+    updatedQuestions[globalIndex].acceptedAnswers = updatedQuestions[globalIndex].acceptedAnswers.filter((_, idx) => idx !== answerIndex);
     setQuestions(updatedQuestions);
   };
 
@@ -587,6 +923,15 @@ export default function CreateQuiz() {
 
   const transformQuestionForSubmission = (question: QuizQuestionForm): QuizQuestion => {
     const typeName = question.type === "multiple" ? "multiple_choice" : question.type;
+    const acceptedTextAnswers = question.acceptedAnswers
+      .map((ans) => ans.trim())
+      .filter(Boolean);
+    const matchingPairs = question.matchingPairs
+      .map((pair) => ({
+        left: pair.left.trim(),
+        right: pair.right.trim(),
+      }))
+      .filter((pair) => pair.left && pair.right);
 
     const correctAnswers = question.options
       .filter((opt) => opt.isCorrect)
@@ -595,6 +940,7 @@ export default function CreateQuiz() {
       .filter((opt) => !opt.isCorrect)
       .map((opt) => opt.text);
     const options = question.options.map((opt) => opt.text);
+    const matchingAnswerStrings = matchingPairs.map((pair) => `${pair.left}:${pair.right}`);
 
     let typeObj: QuizQuestion["type"];
 
@@ -627,14 +973,14 @@ export default function CreateQuiz() {
         typeObj = {
           name: "short_answer",
           description: "short_answer question",
-          correctAnswers,
+          correctAnswers: acceptedTextAnswers,
         };
         break;
       case "fill_in_blank":
         typeObj = {
           name: "fill_in_blank",
           description: "fill_in_blank question",
-          correctAnswers,
+          correctAnswers: acceptedTextAnswers,
         };
         break;
       case "essay":
@@ -647,17 +993,17 @@ export default function CreateQuiz() {
         typeObj = {
           name: "match_the_phrase",
           description: "match_the_phrase question",
-          pairs: {},
-          correctPairs: {},
+          pairs: Object.fromEntries(matchingPairs.map((pair) => [pair.left, pair.right])),
+          correctPairs: Object.fromEntries(matchingPairs.map((pair) => [pair.left, pair.right])),
         };
         break;
       case "matching":
         typeObj = {
           name: "matching",
           description: "matching question",
-          leftItems: [],
-          rightItems: [],
-          correctMatches: {},
+          leftItems: matchingPairs.map((pair) => pair.left),
+          rightItems: matchingPairs.map((pair) => pair.right),
+          correctMatches: Object.fromEntries(matchingPairs.map((pair) => [pair.left, pair.right])),
         };
         break;
       case "ranking":
@@ -701,8 +1047,14 @@ export default function CreateQuiz() {
       hint: question.hint,
       type: typeObj,
       category: question.category,
-      options,
-      correctAnswers,
+      options: typeName === 'matching' || typeName === 'match_the_phrase'
+        ? []
+        : options,
+      correctAnswers: typeName === 'short_answer' || typeName === 'fill_in_blank'
+        ? acceptedTextAnswers
+        : typeName === 'matching' || typeName === 'match_the_phrase'
+          ? matchingAnswerStrings
+          : correctAnswers,
       incorrectAnswers,
     };
   };
@@ -722,9 +1074,55 @@ export default function CreateQuiz() {
         return false;
       }
 
-      const hasCorrectAnswer = q.options.some(opt => opt.isCorrect);
-      if (!hasCorrectAnswer) {
-        showSnackbar(`Question ${i + 1} must have at least one correct answer`, "error");
+      if (q.type === 'essay') {
+        continue;
+      }
+
+      if (q.type === 'short_answer' || q.type === 'fill_in_blank') {
+        if (q.acceptedAnswers.length < 1) {
+          showSnackbar(`Question ${i + 1} needs at least one accepted answer`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+        continue;
+      }
+
+      if (q.type === 'matching' || q.type === 'match_the_phrase') {
+        const pairs = q.matchingPairs.map((pair) => ({
+          left: pair.left.trim(),
+          right: pair.right.trim(),
+        }));
+
+        if (pairs.length < 2) {
+          showSnackbar(`Question ${i + 1} needs at least two matching pairs`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        if (pairs.some((pair) => !pair.left || !pair.right)) {
+          showSnackbar(`All matching pairs for Question ${i + 1} must be filled`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        const leftValues = pairs.map((pair) => pair.left.toLowerCase());
+        const rightValues = pairs.map((pair) => pair.right.toLowerCase());
+        if (new Set(leftValues).size !== leftValues.length || new Set(rightValues).size !== rightValues.length) {
+          showSnackbar(`Question ${i + 1} cannot repeat matching items`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        continue;
+      }
+
+      const options = q.options.filter(opt => opt.text.trim());
+      if (options.length < 1) {
+        showSnackbar(`Question ${i + 1} needs at least one option/item`, "error");
         const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
         setCurrentPage(page);
         return false;
@@ -733,6 +1131,31 @@ export default function CreateQuiz() {
       const allOptionsFilled = q.options.every(opt => opt.text.trim());
       if (!allOptionsFilled) {
         showSnackbar(`All options for Question ${i + 1} must be filled`, "error");
+        const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+        setCurrentPage(page);
+        return false;
+      }
+
+      if (q.type === 'ranking' || q.type === 'ordering') {
+        if (q.options.length < 2) {
+          showSnackbar(`Question ${i + 1} must have at least two items`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+        continue;
+      }
+
+      const correctCount = q.options.filter(opt => opt.isCorrect).length;
+      if (q.type === 'dropdown' || q.type === 'true_false') {
+        if (correctCount !== 1) {
+          showSnackbar(`Question ${i + 1} must have exactly one correct answer`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+      } else if (correctCount < 1) {
+        showSnackbar(`Question ${i + 1} must have at least one correct answer`, "error");
         const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
         setCurrentPage(page);
         return false;
@@ -921,6 +1344,13 @@ export default function CreateQuiz() {
                   }
                   onAddOption={() => addOption(q.globalIndex)}
                   onDeleteOption={(optionIndex) => deleteOption(q.globalIndex, optionIndex)}
+                  onAddAcceptedAnswer={() => addAcceptedAnswer(q.globalIndex)}
+                  onRemoveAcceptedAnswer={(answerIndex) => removeAcceptedAnswer(q.globalIndex, answerIndex)}
+                  onAddMatchingPair={() => addMatchingPair(q.globalIndex)}
+                  onRemoveMatchingPair={(pairIndex) => removeMatchingPair(q.globalIndex, pairIndex)}
+                  onUpdateMatchingPair={(pairIndex, field, value) =>
+                    updateMatchingPair(q.globalIndex, pairIndex, field, value)
+                  }
                   totalQuestions={questions.length}
                 />
               ))}
@@ -1077,41 +1507,57 @@ export default function CreateQuiz() {
                 )}
 
                 <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1 }}>
-                  Answer Options:
+                  {q.type === 'short_answer' || q.type === 'fill_in_blank' ? 'Accepted Answers:' : 'Answer Options:'}
                 </Typography>
 
-                {q.options.map((option, oIndex) => (
-                  <Box 
-                    key={oIndex}
-                    sx={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      p: 1.5,
-                      mb: 1,
-                      borderRadius: 1,
-                      border: `2px solid ${option.isCorrect ? theme.palette.success.main : theme.palette.divider}`,
-                      backgroundColor: option.isCorrect 
-                        ? theme.palette.mode === 'dark'
-                          ? 'rgba(76, 175, 80, 0.1)'
-                          : 'rgba(76, 175, 80, 0.05)'
-                        : 'transparent',
-                    }}
-                  >
-                    {option.isCorrect ? (
-                      <CheckCircleIcon sx={{ color: theme.palette.success.main, mr: 1 }} />
-                    ) : (
-                      <RadioButtonUncheckedIcon sx={{ color: theme.palette.text.disabled, mr: 1 }} />
+                {(q.type === 'short_answer' || q.type === 'fill_in_blank') ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {q.acceptedAnswers.length > 0 ? q.acceptedAnswers.map((ans, ansIdx) => (
+                      <Chip
+                        key={`${ans}-${ansIdx}`}
+                        icon={<CheckCircleIcon />}
+                        label={ans}
+                        color="success"
+                        variant="outlined"
+                      />
+                    )) : (
+                      <Typography variant="body2" color="text.secondary">(No answer set)</Typography>
                     )}
-                    <Typography 
-                      variant="body1"
+                  </Box>
+                ) : (
+                  q.options.map((option, oIndex) => (
+                    <Box 
+                      key={oIndex}
                       sx={{ 
-                        fontWeight: option.isCorrect ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        p: 1.5,
+                        mb: 1,
+                        borderRadius: 1,
+                        border: `2px solid ${option.isCorrect ? theme.palette.success.main : theme.palette.divider}`,
+                        backgroundColor: option.isCorrect 
+                          ? theme.palette.mode === 'dark'
+                            ? 'rgba(76, 175, 80, 0.1)'
+                            : 'rgba(76, 175, 80, 0.05)'
+                          : 'transparent',
                       }}
                     >
-                      {option.text}
-                    </Typography>
-                  </Box>
-                ))}
+                      {option.isCorrect ? (
+                        <CheckCircleIcon sx={{ color: theme.palette.success.main, mr: 1 }} />
+                      ) : (
+                        <RadioButtonUncheckedIcon sx={{ color: theme.palette.text.disabled, mr: 1 }} />
+                      )}
+                      <Typography 
+                        variant="body1"
+                        sx={{ 
+                          fontWeight: option.isCorrect ? 600 : 400,
+                        }}
+                      >
+                        {option.text}
+                      </Typography>
+                    </Box>
+                  ))
+                )}
               </CardContent>
             </Card>
           ))}
