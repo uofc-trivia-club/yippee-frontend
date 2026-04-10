@@ -78,8 +78,9 @@ export default function CreateQuiz() {
 
     const isSingleChoiceType = nextType === "multiple" || nextType === "multiple_choice";
     const isOptionBasedType = !["essay", "short_answer", "fill_in_blank", "match_the_phrase", "matching"].includes(nextType);
+    const allowsNoCorrect = nextType === "multi_select";
 
-    if (isOptionBasedType && !currentQuestion.options.some((opt) => opt.isCorrect) && currentQuestion.options.length > 0) {
+    if (!allowsNoCorrect && isOptionBasedType && !currentQuestion.options.some((opt) => opt.isCorrect) && currentQuestion.options.length > 0) {
       currentQuestion.options[0].isCorrect = true;
     }
 
@@ -114,6 +115,16 @@ export default function CreateQuiz() {
     }
 
     if (field === "isCorrect" && value === false) {
+      if (questionType === "multi_select") {
+        updatedOptions[optionIndex] = {
+          ...updatedOptions[optionIndex],
+          [field]: value
+        };
+        updatedQuestions[questionIndex].options = updatedOptions;
+        setQuestions(updatedQuestions);
+        return;
+      }
+
       const currentCorrectCount = updatedOptions.filter((opt) => opt.isCorrect).length;
       if (updatedOptions[optionIndex].isCorrect && currentCorrectCount === 1) {
         return;
@@ -168,7 +179,11 @@ export default function CreateQuiz() {
     }
     const updatedQuestions = [...questions];
     updatedQuestions[questionIndex].options = updatedQuestions[questionIndex].options.filter((_, index) => index !== optionIndex);
-    if (!updatedQuestions[questionIndex].options.some((opt) => opt.isCorrect) && updatedQuestions[questionIndex].options.length > 0) {
+    if (
+      updatedQuestions[questionIndex].type !== "multi_select" &&
+      !updatedQuestions[questionIndex].options.some((opt) => opt.isCorrect) &&
+      updatedQuestions[questionIndex].options.length > 0
+    ) {
       updatedQuestions[questionIndex].options[0].isCorrect = true;
     }
     setQuestions(updatedQuestions);
@@ -285,7 +300,7 @@ export default function CreateQuiz() {
 
  const handleSubmit = async () => {
   const hasMissingCorrectAnswer = questions.some((q) => {
-    const isOptionBasedType = !["essay", "short_answer", "fill_in_blank", "match_the_phrase", "matching"].includes(q.type);
+    const isOptionBasedType = !["essay", "short_answer", "fill_in_blank", "match_the_phrase", "matching", "multi_select"].includes(q.type);
     return isOptionBasedType && !q.options.some((option) => option.isCorrect);
   });
 

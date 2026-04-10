@@ -56,9 +56,11 @@ export default function PlayerGameView() {
   };
 
   const handleSubmitAnswers = async () => {
-    if (selectedAnswers.length === 0) return;
-
     const currentType = game.currentQuestion?.type?.name;
+    const allowsEmptySubmission = currentType === 'multi_select';
+
+    if (!allowsEmptySubmission && selectedAnswers.length === 0) return;
+
     if (currentType === 'ranking' || currentType === 'ordering') {
       console.log('[Ranking Submit] Submitted order:', selectedAnswers);
     }
@@ -329,7 +331,7 @@ export default function PlayerGameView() {
                 variant="contained"
                 color="primary"
                 onClick={handleSubmitAnswers}
-                disabled={selectedAnswers.length === 0 || isSubmitting}
+                disabled={((game.currentQuestion?.type?.name !== 'multi_select') && selectedAnswers.length === 0) || isSubmitting}
                 sx={{ mt: 2 }}
               >
                 {isSubmitting ? (

@@ -165,11 +165,12 @@ function SortableQuestionCard({
   const correctAnswersCount = question.options.filter(opt => opt.isCorrect).length;
   const isFreeTextType = question.type === 'short_answer' || question.type === 'fill_in_blank';
   const isPairType = question.type === 'matching' || question.type === 'match_the_phrase';
+  const allowsNoCorrect = question.type === 'multi_select';
   const isValid = isFreeTextType
     ? question.question.trim() && question.acceptedAnswers.length > 0
     : isPairType
       ? question.question.trim() && question.matchingPairs.length >= 2 && question.matchingPairs.every(pair => pair.left.trim() && pair.right.trim())
-      : question.question.trim() && correctAnswersCount > 0 && question.options.every(opt => opt.text.trim());
+      : question.question.trim() && (allowsNoCorrect || correctAnswersCount > 0) && question.options.every(opt => opt.text.trim());
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
@@ -809,7 +810,7 @@ export default function CreateQuiz() {
         const firstCorrectIndex = updatedQuestions[globalIndex].options.findIndex((opt) => opt.isCorrect);
         updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.map((opt, idx) => ({
           ...opt,
-          isCorrect: firstCorrectIndex >= 0 ? idx === firstCorrectIndex : false,
+          isCorrect: firstCorrectIndex >= 0 ? idx === firstCorrectIndex : idx === 0,
         }));
       }
     }
@@ -832,6 +833,17 @@ export default function CreateQuiz() {
     }
 
     if (field === 'isCorrect' && value === false) {
+      if (qType === 'multi_select') {
+        updatedOptions[optionIndex] = {
+          ...updatedOptions[optionIndex],
+          [field]: value
+        };
+
+        updatedQuestions[globalIndex].options = updatedOptions;
+        setQuestions(updatedQuestions);
+        return;
+      }
+
       const currentCorrectCount = updatedOptions.filter((opt) => opt.isCorrect).length;
       if (updatedOptions[optionIndex].isCorrect && currentCorrectCount === 1) {
         return;
@@ -937,7 +949,11 @@ export default function CreateQuiz() {
     }
     const updatedQuestions = [...questions];
     updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.filter((_, index) => index !== optionIndex);
-    if (!updatedQuestions[globalIndex].options.some((opt) => opt.isCorrect) && updatedQuestions[globalIndex].options.length > 0) {
+    if (
+      updatedQuestions[globalIndex].type !== 'multi_select' &&
+      !updatedQuestions[globalIndex].options.some((opt) => opt.isCorrect) &&
+      updatedQuestions[globalIndex].options.length > 0
+    ) {
       updatedQuestions[globalIndex].options[0].isCorrect = true;
     }
     setQuestions(updatedQuestions);
@@ -1185,7 +1201,7 @@ export default function CreateQuiz() {
           setCurrentPage(page);
           return false;
         }
-      } else if (correctCount < 1) {
+      } else if (q.type !== 'multi_select' && correctCount < 1) {
         showSnackbar(`Question ${i + 1} must have at least one correct answer`, "error");
         const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
         setCurrentPage(page);
