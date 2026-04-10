@@ -1,4 +1,4 @@
-import { Avatar, Box, Button, Card, CardContent, Chip, Divider, IconButton, InputAdornment, List, ListItem, Stack, TextField, Typography, useTheme } from "@mui/material";
+import { Avatar, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, InputAdornment, List, ListItem, Stack, TextField, Typography, useTheme } from "@mui/material";
 import { GameSettings, Quiz, User } from "../../stores/types";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
@@ -17,6 +17,7 @@ import WhatshotIcon from '@mui/icons-material/Whatshot';
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
 import styles from './LobbyRoomView.module.css';
+import { useNavigate } from "react-router-dom";
 
 type ChatMessage = {
   id: string;
@@ -39,6 +40,28 @@ export default function LobbyRoomView() {
     shuffleQuestions: false,
   });
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  // Handler for host leaving the lobby (ending the room)
+  const handleBackToMainClick = () => {
+    setConfirmLeaveOpen(true);
+  };
+
+  const handleConfirmLeave = () => {
+    // End the game/room for everyone
+    executeWebSocketCommand(
+      "endGame",
+      { roomCode: game.roomCode, user: userDetails },
+      (errorMessage) => setError(errorMessage)
+    );
+    setConfirmLeaveOpen(false);
+    navigate("/");
+  };
+
+  const handleCancelLeave = () => {
+    setConfirmLeaveOpen(false);
+  };
+
 
   const playerIcons = [
     SportsEsportsIcon,
@@ -50,36 +73,12 @@ export default function LobbyRoomView() {
     StarIcon,
   ];
 
+  // Utility to get a player icon based on the user's name
   const getPlayerIcon = (name: string) => {
     const hash = Array.from(name).reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return playerIcons[hash % playerIcons.length];
   };
 
-  const host = game.clientsInLobby.find((user) => user.userRole === "host");
-  const players = game.clientsInLobby.filter((user) => user.userRole === "player");
-
-  useEffect(() => {
-    const snapshotMessages = game.clientsInLobby
-      .filter((user) => user.userMessage?.trim())
-      .map((user) => ({
-        id: `${user.userRole}-${user.userName}-${user.userMessage}`,
-        userName: user.userName,
-        userRole: user.userRole,
-        message: user.userMessage,
-      }));
-
-    setChatMessages((previousMessages) => {
-      const merged = [...previousMessages];
-      snapshotMessages.forEach((message) => {
-        if (!merged.some((existing) => existing.id === message.id)) {
-          merged.push(message);
-        }
-      });
-      return merged.slice(-25);
-    });
-  }, [game.clientsInLobby]);
-
-  // Set CSS variables for the module styles with improved dark mode
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--gradient-primary',
@@ -150,8 +149,46 @@ export default function LobbyRoomView() {
     );
   };
 
+  // Host and player lists
+  const host = game.clientsInLobby.find((user) => user.userRole === "host");
+  const players = game.clientsInLobby.filter((user) => user.userRole === "player");
+
+  // Move Back to Main Page button and dialog to the top
   return (
     <Box sx={{ p: { xs: 2, md: 4 } }}>
+      {userDetails.userRole === "host" && (
+        <Box sx={{ maxWidth: 980, mx: "auto", mb: 2, display: "flex", justifyContent: "flex-end" }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            sx={{ fontWeight: 600 }}
+            onClick={handleBackToMainClick}
+          >
+            Back to Main Page
+          </Button>
+          <Dialog
+            open={confirmLeaveOpen}
+            onClose={handleCancelLeave}
+            aria-labelledby="confirm-leave-dialog-title"
+          >
+            <DialogTitle id="confirm-leave-dialog-title">Leave Lobby and End Room?</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                Are you sure you want to leave and close this room? <br />
+                <b>All players will be disconnected and the room will be deleted.</b>
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCancelLeave} color="primary">
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmLeave} color="secondary" variant="contained" autoFocus>
+                Yes, Leave and Close Room
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
+      )}
       <Card
         elevation={0}
         sx={{
