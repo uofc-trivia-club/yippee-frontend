@@ -1,4 +1,4 @@
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import Leaderboard from "./Leaderboard";
@@ -105,13 +105,29 @@ export default function HostGameView() {
     }
   };
 
+  const timerSeconds = timeRemaining ?? game.gameSettings?.questionTime ?? 0;
+  const isTimerCritical = timerSeconds <= 10;
+
+  const adjustButtonSx = {
+    minWidth: 72,
+    borderRadius: 2,
+    fontWeight: 700,
+    letterSpacing: '0.01em',
+  } as const;
+
+  const primaryActionSx = {
+    mt: 1,
+    px: 2.5,
+    py: 1,
+    borderRadius: 2,
+    fontWeight: 800,
+    letterSpacing: '0.02em',
+    textTransform: 'uppercase',
+    boxShadow: '0 10px 20px rgba(0,0,0,0.12)',
+  } as const;
+
   return (
     <>
-      <Typography variant="body1">
-        You are the host and the game has started
-      </Typography>
-
-
       {!game.showLeaderboard ? (
         <>
           <QuestionView displayCorrectAnswers={false} />
@@ -125,6 +141,8 @@ export default function HostGameView() {
                 borderRadius: 1,
                 bgcolor: 'warning.light',
                 color: 'warning.contrastText',
+                border: '1px solid',
+                borderColor: 'warning.main',
               }}
             >
               {hintRevealed ? (
@@ -135,7 +153,7 @@ export default function HostGameView() {
                 <Button
                   variant="text"
                   onClick={() => setHintRevealed(true)}
-                  sx={{ fontWeight: 700, p: 0, minWidth: 'auto', color: 'inherit' }}
+                  sx={{ fontWeight: 800, p: 0, minWidth: 'auto', color: 'inherit', letterSpacing: '0.02em', textTransform: 'uppercase' }}
                 >
                   Reveal Hint
                 </Button>
@@ -144,40 +162,68 @@ export default function HostGameView() {
           )}
 
           {game.gameSettings?.questionTime && game.gameSettings.questionTime > 0 && (
-            <Box sx={{ my: 2 }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: timeRemaining !== null && timeRemaining <= 10 ? 'error.main' : 'text.primary',
-                  animation: timeRemaining !== null && timeRemaining <= 10 ? 'pulse 1s infinite' : 'none',
-                  '@keyframes pulse': {
-                    '0%': { opacity: 1 },
-                    '50%': { opacity: 0.5 },
-                    '100%': { opacity: 1 },
-                  },
-                  textAlign: 'center',
-                }}
-              >
-                Time Remaining: {timeRemaining ?? game.gameSettings.questionTime} seconds
-              </Typography>
+            <Paper
+              elevation={0}
+              sx={{
+                my: 2,
+                p: 2,
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: isTimerCritical ? 'error.main' : 'divider',
+                bgcolor: isTimerCritical
+                  ? 'rgba(244, 67, 54, 0.08)'
+                  : 'rgba(33, 150, 243, 0.05)',
+              }}
+            >
+              <Stack spacing={1.5} alignItems="center">
+                <Chip
+                  label={isTimerCritical ? 'Hurry up' : 'Question timer'}
+                  color={isTimerCritical ? 'error' : 'primary'}
+                  size="small"
+                  variant="outlined"
+                />
 
-              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 1 }}>
-                <Button variant="outlined" onClick={() => adjustTime(-5)} disabled={timeRemaining === null || timeRemaining <= 0}>
-                  -5s
-                </Button>
-                <Button variant="outlined" onClick={() => adjustTime(5)} disabled={timeRemaining === null}>
-                  +5s
-                </Button>
-                <Button variant="outlined" onClick={() => adjustTime(-10)} disabled={timeRemaining === null || timeRemaining <= 0}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    color: isTimerCritical ? 'error.main' : 'text.primary',
+                    animation: isTimerCritical ? 'pulse 1s infinite' : 'none',
+                    '@keyframes pulse': {
+                      '0%': { opacity: 1 },
+                      '50%': { opacity: 0.45 },
+                      '100%': { opacity: 1 },
+                    },
+                    fontWeight: 900,
+                    letterSpacing: '-0.02em',
+                    textAlign: 'center',
+                  }}
+                >
+                  {timerSeconds}s
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5 }}>
+                  Time Remaining
+                </Typography>
+
+                <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
+                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(-10)} disabled={timeRemaining === null || timeRemaining <= 0}>
                   -10s
                 </Button>
-                <Button variant="outlined" onClick={() => adjustTime(10)} disabled={timeRemaining === null}>
+                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(-5)} disabled={timeRemaining === null || timeRemaining <= 0}>
+                  -5s
+                </Button>
+                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(5)} disabled={timeRemaining === null}>
+                  +5s
+                </Button>
+                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(10)} disabled={timeRemaining === null}>
                   +10s
                 </Button>
-              </Box>
-            </Box>
+                </Stack>
+              </Stack>
+            </Paper>
           )}
-          <Button onClick={handleViewLeaderboard}>
+
+          <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard}>
             Next
           </Button>
         </>
@@ -187,14 +233,14 @@ export default function HostGameView() {
           {leaderboardView === 'page1' ? (
             <>
               <QuestionView displayCorrectAnswers={true} />
-              <Button onClick={handleViewLeaderboard2}>
+              <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard2}>
                 View Final Results
               </Button>
             </>
           ) : (
             <>
               <Leaderboard />
-              <Button onClick={handleNextQuestion}>
+              <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleNextQuestion}>
                 Next Question
               </Button>
             </>
