@@ -65,7 +65,7 @@ const createMatchingPairs = () => ([
 const createInitialQuestion = (): QuizQuestionForm => ({
   id: `question-${Date.now()}-${Math.random()}`,
   question: "",
-  points: 0,
+  points: 1,
   difficulty: 1,
   hint: "",
   type: "multiple",
@@ -1464,7 +1464,6 @@ export default function CreateQuiz() {
 
   const resetForm = () => {
     const newQuestion = createInitialQuestion();
-    newQuestion.points = 1; // Default to 1 point
     setQuizName("");
     setQuizDescription("");
     setQuestions([newQuestion]);
