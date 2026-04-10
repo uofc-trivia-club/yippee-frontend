@@ -1,19 +1,19 @@
 import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
+import {
+  DropdownQuestion,
+  EssayQuestion,
+  ImageBasedQuestion,
+  MatchPhraseQuestion,
+  MatchingQuestion,
+  MultipleChoiceQuestion,
+  RankingQuestion,
+  ShortAnswerQuestion,
+  TrueFalseQuestion,
+} from "./questionTypes";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import Leaderboard from "./Leaderboard";
-import {
-  MultipleChoiceQuestion,
-  DropdownQuestion,
-  TrueFalseQuestion,
-  ShortAnswerQuestion,
-  MatchPhraseQuestion,
-  MatchingQuestion,
-  RankingQuestion,
-  ImageBasedQuestion,
-  EssayQuestion,
-} from "./questionTypes";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
@@ -70,6 +70,7 @@ export default function PlayerGameView() {
         (errorMessage) => setError(errorMessage)
       );
 
+      dispatch(gameActions.setLastSubmittedAnswers(selectedAnswers));
       setSelectedAnswers([]);
       dispatch(gameActions.setSubmittedAnswer(true));
     } catch (err) {
@@ -192,6 +193,63 @@ export default function PlayerGameView() {
     }
   };
 
+  const normalizeText = (value: string) => value.trim().toLowerCase();
+
+  const sortNormalized = (values: string[]) => [...values].map(normalizeText).sort();
+
+  const compareAsSets = (left: string[], right: string[]) => {
+    if (left.length !== right.length) return false;
+    const normalizedLeft = sortNormalized(left);
+    const normalizedRight = sortNormalized(right);
+    return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+  };
+
+  const isAnswerCorrect = () => {
+    const question = game.currentQuestion;
+    const type = question?.type;
+    const submitted = game.lastSubmittedAnswers;
+
+    if (!question || !type || submitted.length === 0) return false;
+
+    switch (type.name) {
+      case 'multiple_choice':
+      case 'image_based': {
+        const accepted = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
+        return compareAsSets(submitted, accepted);
+      }
+
+      case 'dropdown':
+      case 'true_false':
+        return submitted[0]
+          ? normalizeText(submitted[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
+          : false;
+
+      case 'short_answer':
+      case 'fill_in_blank': {
+        const accepted = (question.correctAnswers || (type as any).correctAnswers || []).map(normalizeText);
+        return accepted.includes(normalizeText(submitted[0] || ''));
+      }
+
+      case 'essay':
+        return false;
+
+      case 'match_the_phrase':
+      case 'matching': {
+        const correct = question.correctAnswers || [];
+        return sortNormalized(submitted).join('|') === sortNormalized(correct).join('|');
+      }
+
+      case 'ranking':
+      case 'ordering': {
+        const correctOrder = ((type as any).correctOrder || question.correctAnswers || []) as string[];
+        return submitted.length === correctOrder.length && submitted.every((value, index) => normalizeText(value) === normalizeText(correctOrder[index] || ''));
+      }
+
+      default:
+        return false;
+    }
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       {error && (
@@ -230,6 +288,27 @@ export default function PlayerGameView() {
             </Box>
           )}
         </>
+      ) : !game.finalQuestionLeaderboard ? (
+        <Box
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: isAnswerCorrect() ? 'success.main' : 'error.main',
+            bgcolor: isAnswerCorrect() ? 'success.light' : 'error.light',
+            color: isAnswerCorrect() ? 'success.contrastText' : 'error.contrastText',
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+            {isAnswerCorrect() ? 'You got the answer right' : 'You got the answer incorrect'}
+          </Typography>
+          <Typography variant="body1">
+            {isAnswerCorrect()
+              ? 'Nice work. Wait for the next question or the final results.'
+              : 'You can review the correct answer on the host screen.'}
+          </Typography>
+        </Box>
       ) : (
         <Leaderboard />
       )}

@@ -12,6 +12,7 @@ interface GameState {
     gameStatus: string;
     showLeaderboard: boolean;
     finalQuestionLeaderboard: boolean; // leaderboard display is different if it is the final question
+    lastSubmittedAnswers: string[];
 }
 
 const initialState = {
@@ -29,6 +30,7 @@ const initialState = {
     gameStatus: "",
     showLeaderboard: false,
     finalQuestionLeaderboard: false,
+    lastSubmittedAnswers: [],
 } satisfies GameState as GameState
 
 const gameSlice = createSlice({
@@ -54,6 +56,9 @@ const gameSlice = createSlice({
         setSubmittedAnswer: (state, action: PayloadAction<boolean>) => {
             // console.log('setSubmittedAnswer:', { before: { ...state.user }, after: { ...state.user, userMessage: action.payload } });
             state.user.submittedAnswer = action.payload;
+        },
+        setLastSubmittedAnswers: (state, action: PayloadAction<string[]>) => {
+            state.lastSubmittedAnswers = action.payload;
         },
         setShowLeaderboard: (state, action: PayloadAction<boolean>) => {
             // console.log('setShowLeaderboard:', { before: state.showLeaderboard , after: action.payload });

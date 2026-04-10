@@ -63,6 +63,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                             }
                             store.dispatch(gameActions.setSubmittedAnswer(false));
+                            store.dispatch(gameActions.setLastSubmittedAnswers([]));
                             store.dispatch(gameActions.setShowLeaderboard(false));
                             store.dispatch(gameActions.setFinalQuestionLeaderboard(false));
                             break;
@@ -98,6 +99,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             }
                             // reset the submittedAnswer back to false for user
                             store.dispatch(gameActions.setSubmittedAnswer(false))
+                            store.dispatch(gameActions.setLastSubmittedAnswers([]))
                             store.dispatch(gameActions.setShowLeaderboard(false))
                             break;
 
