@@ -53,6 +53,13 @@ export interface FillInBlankType {
   correctAnswers: string[];
 }
 
+// Numerical
+export interface NumericalType {
+  name: "numerical";
+  description: string;
+  correctAnswer: number;
+}
+
 // Match the Phrase
 export interface MatchThePhraseType {
   name: "match_the_phrase";
@@ -110,6 +117,7 @@ export type QuestionType =
   | ShortAnswerType
   | EssayType
   | FillInBlankType
+  | NumericalType
   | MatchThePhraseType
   | DropdownType
   | RankingType

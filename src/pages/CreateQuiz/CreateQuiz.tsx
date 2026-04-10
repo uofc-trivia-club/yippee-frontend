@@ -102,6 +102,7 @@ const QUESTION_TYPE_OPTIONS = [
   { value: 'true_false', label: 'True / False' },
   { value: 'short_answer', label: 'Short Answer' },
   { value: 'fill_in_blank', label: 'Fill in the Blank' },
+  { value: 'numerical', label: 'Numerical' },
   { value: 'essay', label: 'Essay' },
   { value: 'ranking', label: 'Ranking' },
   { value: 'ordering', label: 'Ordering' },
@@ -165,6 +166,7 @@ function SortableQuestionCard({
   const correctAnswersCount = question.options.filter(opt => opt.isCorrect).length;
   const isFreeTextType = question.type === 'short_answer';
   const isFillInBlankType = question.type === 'fill_in_blank';
+  const isNumericalType = question.type === 'numerical';
   const isDropdownType = question.type === 'dropdown';
   const isPairType = question.type === 'matching' || question.type === 'match_the_phrase';
   const allowsNoCorrect = question.type === 'multi_select';
@@ -181,6 +183,8 @@ function SortableQuestionCard({
     );
   const isValid = isFreeTextType
     ? question.question.trim() && question.acceptedAnswers.length > 0
+    : isNumericalType
+      ? question.question.trim() && Number.isFinite(Number((question.acceptedAnswers[0] || '').trim()))
     : isFillInBlankType
       ? question.question.trim() && blankAnswersValid
     : isPairType
@@ -189,7 +193,7 @@ function SortableQuestionCard({
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
-  const usesOptionsEditor = !isFreeTextType && !isFillInBlankType;
+  const usesOptionsEditor = !isFreeTextType && !isFillInBlankType && !isNumericalType;
   const showCorrectSelector = !isEssayType && !isOrderType;
   const currentDropdownCorrectIndex = question.options.findIndex((opt) => opt.isCorrect);
   const dropdownBlankValue = currentDropdownCorrectIndex >= 0 ? question.options[currentDropdownCorrectIndex].text : '';
@@ -567,6 +571,25 @@ function SortableQuestionCard({
               </Box>
             )}
 
+            {isNumericalType && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
+                  Correct Numerical Answer
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  Enter the exact number players must submit.
+                </Typography>
+                <TextField
+                  type="number"
+                  fullWidth
+                  size="small"
+                  value={question.acceptedAnswers[0] || ''}
+                  onChange={(e) => onChange('acceptedAnswers', [e.target.value])}
+                  placeholder="e.g. 3.14"
+                />
+              </Box>
+            )}
+
             {isFillInBlankType && (
               <Box sx={{ mb: 0.5 }} />
             )}
@@ -906,7 +929,7 @@ export default function CreateQuiz() {
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
-      } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank') {
+      } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank' || selectedType === 'numerical') {
         updatedQuestions[globalIndex].options = [];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
@@ -1161,6 +1184,15 @@ export default function CreateQuiz() {
           correctAnswers: acceptedTextAnswers,
         };
         break;
+      case "numerical": {
+        const parsed = Number((question.acceptedAnswers[0] || '').trim());
+        typeObj = {
+          name: "numerical",
+          description: "numerical question",
+          correctAnswer: Number.isFinite(parsed) ? parsed : 0,
+        };
+        break;
+      }
       case "essay":
         typeObj = {
           name: "essay",
@@ -1259,6 +1291,17 @@ export default function CreateQuiz() {
       if (q.type === 'short_answer') {
         if (q.acceptedAnswers.length < 1) {
           showSnackbar(`Question ${i + 1} needs at least one accepted answer`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+        continue;
+      }
+
+      if (q.type === 'numerical') {
+        const value = (q.acceptedAnswers[0] || '').trim();
+        if (!value || !Number.isFinite(Number(value))) {
+          showSnackbar(`Question ${i + 1} needs a valid numerical answer`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
@@ -1715,7 +1758,11 @@ export default function CreateQuiz() {
                 )}
 
                 <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1 }}>
-                  {q.type === 'short_answer' || q.type === 'fill_in_blank' ? 'Accepted Answers:' : 'Answer Options:'}
+                  {q.type === 'short_answer' || q.type === 'fill_in_blank'
+                    ? 'Accepted Answers:'
+                    : q.type === 'numerical'
+                      ? 'Correct Number:'
+                      : 'Answer Options:'}
                 </Typography>
 
                 {(q.type === 'short_answer' || q.type === 'fill_in_blank') ? (
@@ -1730,6 +1777,19 @@ export default function CreateQuiz() {
                       />
                     )) : (
                       <Typography variant="body2" color="text.secondary">(No answer set)</Typography>
+                    )}
+                  </Box>
+                ) : q.type === 'numerical' ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {(q.acceptedAnswers[0] || '').trim() ? (
+                      <Chip
+                        icon={<CheckCircleIcon />}
+                        label={q.acceptedAnswers[0]}
+                        color="success"
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">(No number set)</Typography>
                     )}
                   </Box>
                 ) : (

@@ -188,6 +188,20 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     </Typography>
                 );
             }
+            case 'numerical': {
+                return displayCorrectAnswers ? (
+                    <Stack spacing={1}>
+                        <Typography color="success.main" fontWeight="bold">
+                            Correct Numerical Answer
+                        </Typography>
+                        <Chip label={`${t.correctAnswer}`} color="success" variant="outlined" sx={{ width: 'fit-content' }} />
+                    </Stack>
+                ) : (
+                    <Typography fontStyle="italic" color="text.secondary">
+                        Players are entering a number...
+                    </Typography>
+                );
+            }
             case 'match_the_phrase': {
                 const pairs = t.correctPairs;
                 if (!pairs || Object.keys(pairs).length === 0) return <Typography>No pairs to display.</Typography>;

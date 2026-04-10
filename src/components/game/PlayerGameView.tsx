@@ -151,6 +151,16 @@ export default function PlayerGameView() {
           />
         );
       }
+      case 'numerical': {
+        return (
+          <ShortAnswerQuestion
+            textAnswer={textAnswer}
+            onAnswerChange={handleTextChange}
+            disabled={isSubmitting}
+            label="Your Numerical Answer"
+          />
+        );
+      }
       case 'match_the_phrase': {
         const pairs = t.correctPairs || {};
         return (
@@ -252,6 +262,12 @@ export default function PlayerGameView() {
       case 'fill_in_blank': {
         const accepted = (question.correctAnswers || (type as any).correctAnswers || []).map(normalizeText);
         return accepted.includes(normalizeText(submitted[0] || ''));
+      }
+
+      case 'numerical': {
+        const expected = Number((type as any).correctAnswer);
+        const actual = Number(submitted[0]);
+        return Number.isFinite(expected) && Number.isFinite(actual) && actual === expected;
       }
 
       case 'essay':

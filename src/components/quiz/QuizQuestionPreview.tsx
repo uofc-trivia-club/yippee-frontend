@@ -66,6 +66,11 @@ export default function QuizQuestionPreview({
       correctAnswers = t.correctAnswers;
       break;
     }
+    case "numerical": {
+      const t = question.type;
+      correctAnswer = String(t.correctAnswer);
+      break;
+    }
     case "match_the_phrase": {
       const t = question.type;
       matchPairs = t.correctPairs;
