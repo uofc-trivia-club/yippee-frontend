@@ -35,6 +35,12 @@ export default function QuizQuestionPreview({
     case "multiple_choice": {
       const t = question.type;
       options = t.options;
+      correctAnswer = t.correctAnswer;
+      break;
+    }
+    case "multi_select": {
+      const t = question.type;
+      options = t.options;
       correctAnswers = t.correctAnswers;
       break;
     }

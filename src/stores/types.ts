@@ -12,6 +12,15 @@ export type Quiz = {
 export interface MultipleChoiceType {
   name: "multiple_choice";
   description: string;
+  correctAnswer: string;
+  incorrectAnswers: string[];
+  options: string[];
+}
+
+// Multi Select
+export interface MultiSelectType {
+  name: "multi_select";
+  description: string;
   correctAnswers: string[];
   incorrectAnswers: string[];
   options: string[];
@@ -96,6 +105,7 @@ export interface ImageBasedType {
 // Union type for all question types
 export type QuestionType =
   | MultipleChoiceType
+  | MultiSelectType
   | TrueFalseType
   | ShortAnswerType
   | EssayType

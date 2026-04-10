@@ -1,4 +1,4 @@
-import { Box, Button, Checkbox, FormControlLabel, IconButton, TextField, Typography, useTheme } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, IconButton, MenuItem, TextField, Typography, useTheme } from "@mui/material";
 import { Quiz, QuizQuestion } from "../stores/types";
 
 import AddIcon from '@mui/icons-material/Add';
@@ -15,6 +15,7 @@ import { useState } from "react";
 
 type AllowedQuestionType =
   | "multiple_choice"
+  | "multi_select"
   | "true_false"
   | "short_answer"
   | "essay"
@@ -51,7 +52,7 @@ export default function CreateQuiz() {
     points: 0,
     difficulty: 1,
     hint: "",
-    type: "multiple",
+    type: "multiple_choice",
     category: [],
     options: Array(2).fill({ text: "", isCorrect: false }),
   }]);
@@ -67,9 +68,40 @@ export default function CreateQuiz() {
     setQuestions(updatedQuestions);
   };
 
+  const handleQuestionTypeChange = (questionIndex: number, nextType: QuizQuestionForm["type"]) => {
+    const updatedQuestions = [...questions];
+    const currentQuestion = updatedQuestions[questionIndex];
+    currentQuestion.type = nextType;
+
+    const isSingleChoiceType = nextType === "multiple" || nextType === "multiple_choice";
+    if (isSingleChoiceType) {
+      const firstCorrectIndex = currentQuestion.options.findIndex((opt) => opt.isCorrect);
+      currentQuestion.options = currentQuestion.options.map((opt, index) => ({
+        ...opt,
+        isCorrect: firstCorrectIndex >= 0 ? index === firstCorrectIndex : false,
+      }));
+    }
+
+    setQuestions(updatedQuestions);
+  };
+
   const handleOptionChange = (questionIndex: number, optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => {
     const updatedQuestions = [...questions];
     const updatedOptions = [...updatedQuestions[questionIndex].options];
+
+    if (
+      field === "isCorrect" &&
+      value === true &&
+      (updatedQuestions[questionIndex].type === "multiple" || updatedQuestions[questionIndex].type === "multiple_choice")
+    ) {
+      updatedQuestions[questionIndex].options = updatedOptions.map((option, index) => ({
+        ...option,
+        isCorrect: index === optionIndex,
+      }));
+      setQuestions(updatedQuestions);
+      return;
+    }
+
     updatedOptions[optionIndex] = {
       ...updatedOptions[optionIndex],
       [field]: value
@@ -86,7 +118,7 @@ export default function CreateQuiz() {
         points: 0,
         difficulty: 1,
         hint: "",
-        type: "multiple",
+        type: "multiple_choice",
         category: [],
         options: Array(2).fill({ text: "", isCorrect: false }),
       },
@@ -138,6 +170,14 @@ export default function CreateQuiz() {
     let typeObj: any = { name: typeName, description: `${typeName} question` };
     switch (typeName) {
       case "multiple_choice":
+        typeObj = {
+          ...typeObj,
+          options,
+          correctAnswer: correctAnswers[0] || "",
+          incorrectAnswers,
+        };
+        break;
+      case "multi_select":
         typeObj = {
           ...typeObj,
           options,
@@ -423,6 +463,17 @@ const handleDialogConfirm = async () => {
                   style: { color: theme.palette.mode === 'dark' ? theme.palette.text.primary : undefined }
                 }}
               />
+              <TextField
+                label="Question Type"
+                select
+                fullWidth
+                margin="normal"
+                value={q.type}
+                onChange={(e) => handleQuestionTypeChange(questionIndex, e.target.value as QuizQuestionForm["type"])}
+              >
+                <MenuItem value="multiple_choice">Multiple Choice (Single Answer)</MenuItem>
+                <MenuItem value="multi_select">Multi-Select (Multiple Answers)</MenuItem>
+              </TextField>
               <CategorySelector
                 value={q.category}
                 onChange={(newCategories) => handleQuestionChange(questionIndex, "category", newCategories)}
@@ -459,7 +510,7 @@ const handleDialogConfirm = async () => {
                         }}
                       />
                     }
-                    label="Correct"
+                    label={q.type === "multiple_choice" || q.type === "multiple" ? "Correct (single)" : "Correct"}
                     sx={{ color: theme.palette.text.primary }}
                   />
                   <IconButton

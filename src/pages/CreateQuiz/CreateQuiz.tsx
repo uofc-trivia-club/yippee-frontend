@@ -93,7 +93,8 @@ const PREDEFINED_CATEGORIES = [
 ];
 
 const QUESTION_TYPE_OPTIONS = [
-  { value: 'multiple', label: 'Multiple Choice' },
+  { value: 'multiple', label: 'Multiple Choice (Single Answer)' },
+  { value: 'multi_select', label: 'Multi-Select (Multiple Answers)' },
   { value: 'dropdown', label: 'Dropdown' },
   { value: 'true_false', label: 'True / False' },
   { value: 'short_answer', label: 'Short Answer' },
@@ -168,7 +169,7 @@ function SortableQuestionCard({
       : question.question.trim() && correctAnswersCount > 0 && question.options.every(opt => opt.text.trim());
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
-  const isSingleCorrectType = question.type === 'dropdown' || question.type === 'true_false';
+  const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
   const isFillInBlankType = question.type === 'fill_in_blank';
   const showCorrectSelector = !isEssayType && !isOrderType;
 
@@ -800,6 +801,14 @@ export default function CreateQuiz() {
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
       }
+
+      if (selectedType === 'multiple') {
+        const firstCorrectIndex = updatedQuestions[globalIndex].options.findIndex((opt) => opt.isCorrect);
+        updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.map((opt, idx) => ({
+          ...opt,
+          isCorrect: firstCorrectIndex >= 0 ? idx === firstCorrectIndex : false,
+        }));
+      }
     }
 
     setQuestions(updatedQuestions);
@@ -810,7 +819,7 @@ export default function CreateQuiz() {
     const updatedOptions = [...updatedQuestions[globalIndex].options];
     const qType = updatedQuestions[globalIndex].type;
     
-    if (field === 'isCorrect' && value === true && (qType === 'dropdown' || qType === 'true_false')) {
+    if (field === 'isCorrect' && value === true && (qType === 'multiple' || qType === 'dropdown' || qType === 'true_false')) {
       updatedQuestions[globalIndex].options = updatedOptions.map((opt, idx) => ({
         ...opt,
         isCorrect: idx === optionIndex,
@@ -950,6 +959,15 @@ export default function CreateQuiz() {
           name: "multiple_choice",
           description: "multiple_choice question",
           options,
+          correctAnswer: correctAnswers[0] || "",
+          incorrectAnswers,
+        };
+        break;
+      case "multi_select":
+        typeObj = {
+          name: "multi_select",
+          description: "multi_select question",
+          options,
           correctAnswers,
           incorrectAnswers,
         };
@@ -1035,7 +1053,7 @@ export default function CreateQuiz() {
           name: "multiple_choice",
           description: "multiple_choice question",
           options,
-          correctAnswers,
+          correctAnswer: correctAnswers[0] || "",
           incorrectAnswers,
         };
     }

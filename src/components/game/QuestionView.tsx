@@ -71,6 +71,31 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             case 'multiple_choice': {
                 const options = t.options || [];
                 return options.map((option, index) => {
+                    const isCorrect = t.correctAnswer === option;
+                    return (
+                        <Box key={index} sx={optionTileSx(isCorrect)}>
+                            <Stack direction="row" spacing={1.25} alignItems="center">
+                                <Chip
+                                    label={index + 1}
+                                    size="small"
+                                    color={displayCorrectAnswers && isCorrect ? 'success' : 'default'}
+                                    variant={displayCorrectAnswers && isCorrect ? 'filled' : 'outlined'}
+                                    sx={{ minWidth: 34, fontWeight: 700 }}
+                                />
+                                <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
+                                    {option}
+                                </Typography>
+                                {displayCorrectAnswers && isCorrect && (
+                                    <Chip label="Correct" size="small" color="success" />
+                                )}
+                            </Stack>
+                        </Box>
+                    );
+                });
+            }
+            case 'multi_select': {
+                const options = t.options || [];
+                return options.map((option, index) => {
                     const isCorrect = t.correctAnswers.includes(option);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>

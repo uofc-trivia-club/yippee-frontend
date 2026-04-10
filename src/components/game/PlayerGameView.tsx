@@ -42,6 +42,12 @@ export default function PlayerGameView() {
   const handleAnswerSelect = (option: string) => {
     if (game.user.submittedAnswer) return;
 
+    const typeName = game.currentQuestion?.type?.name;
+    if (typeName === 'multiple_choice') {
+      setSelectedAnswers([option]);
+      return;
+    }
+
     setSelectedAnswers(prev =>
       prev.includes(option)
         ? prev.filter(answer => answer !== option)
@@ -94,6 +100,16 @@ export default function PlayerGameView() {
 
     switch (t.name) {
       case 'multiple_choice': {
+        return (
+          <MultipleChoiceQuestion
+            options={t.options}
+            selectedAnswers={selectedAnswers}
+            onAnswerSelect={handleAnswerSelect}
+            disabled={isSubmitting}
+          />
+        );
+      }
+      case 'multi_select': {
         return (
           <MultipleChoiceQuestion
             options={t.options}
@@ -214,6 +230,11 @@ export default function PlayerGameView() {
 
     switch (type.name) {
       case 'multiple_choice':
+        return selectedAnswers[0]
+          ? normalizeText(selectedAnswers[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
+          : false;
+
+      case 'multi_select':
       case 'image_based': {
         const accepted = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
         return compareAsSets(submitted, accepted);
