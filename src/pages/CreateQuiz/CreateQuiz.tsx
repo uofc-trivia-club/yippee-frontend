@@ -8,6 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { Fragment, useMemo, useState } from "react";
 import { Quiz, QuizQuestion } from "../../stores/types";
 import {
   SortableContext,
@@ -16,7 +17,6 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Fragment, useMemo, useState } from "react";
 
 import AddIcon from '@mui/icons-material/Add';
 import { CSS } from '@dnd-kit/utilities';
@@ -200,6 +200,7 @@ function SortableQuestionCard({
   const showCorrectSelector = !isEssayType && !isOrderType;
   const currentDropdownCorrectIndex = question.options.findIndex((opt) => opt.isCorrect);
   const dropdownBlankValue = currentDropdownCorrectIndex >= 0 ? question.options[currentDropdownCorrectIndex].text : '';
+  const phraseBlankCount = Math.max(0, blankSegments.length - 1);
 
   const handleFillBlankAnswerChange = (blankIndex: number, value: string) => {
     const nextAnswers = [...question.acceptedAnswers];
@@ -218,9 +219,41 @@ function SortableQuestionCard({
     nextAnswers[blankIndex] = value;
     onChange('acceptedAnswers', nextAnswers);
 
-    if (value && !question.options.some((option) => option.text.toLowerCase() === value.toLowerCase())) {
-      onChange('options', [...question.options, { text: value, isCorrect: false }]);
-    }
+    const syncedWordBank = nextAnswers.slice(0, phraseBlankCount).map((answer, index) => ({
+      text: answer.trim() || question.options[index]?.text || '',
+      isCorrect: false,
+    }));
+    const remainingWords = question.options.slice(phraseBlankCount);
+    onChange('options', [...syncedWordBank, ...remainingWords]);
+  };
+
+  const syncPhraseStructure = (nextQuestionText: string) => {
+    const nextBlankCount = Math.max(0, nextQuestionText.split(/_{3,}/).length - 1);
+    const nextAnswers = Array.from({ length: nextBlankCount }, (_, index) => question.acceptedAnswers[index] || '');
+    onChange('acceptedAnswers', nextAnswers);
+
+    const syncedWordBank = nextAnswers.map((answer, index) => ({
+      text: answer.trim() || question.options[index]?.text || '',
+      isCorrect: false,
+    }));
+    const remainingWords = question.options.slice(nextBlankCount);
+    onChange('options', [...syncedWordBank, ...remainingWords]);
+  };
+
+  const addPhraseBlank = () => {
+    const separator = question.question.trim().length > 0 && !question.question.endsWith(' ') ? ' ' : '';
+    const nextQuestionText = `${question.question}${separator}____`;
+    onChange('question', nextQuestionText);
+    syncPhraseStructure(nextQuestionText);
+  };
+
+  const removePhraseBlank = () => {
+    const blankMatches = question.question.match(/_{3,}/g) || [];
+    if (blankMatches.length <= 1) return;
+
+    const nextQuestionText = question.question.replace(/\s*_{3,}(?!.*_{3,})/, '').trimEnd();
+    onChange('question', nextQuestionText);
+    syncPhraseStructure(nextQuestionText);
   };
 
   const getBlankAlternatives = (blankIndex: number) =>
@@ -453,7 +486,23 @@ function SortableQuestionCard({
               fullWidth
               margin="dense"
               value={question.question}
-              onChange={(e) => onChange("question", e.target.value)}
+              onChange={(e) => {
+                const nextQuestionText = e.target.value;
+                onChange("question", nextQuestionText);
+
+                if (isPhraseMatchType) {
+                  const nextBlankCount = Math.max(0, nextQuestionText.split(/_{3,}/).length - 1);
+                  const nextAnswers = Array.from({ length: nextBlankCount }, (_, index) => question.acceptedAnswers[index] || '');
+                  onChange('acceptedAnswers', nextAnswers);
+
+                  const syncedWordBank = nextAnswers.map((answer, index) => ({
+                    text: answer.trim() || question.options[index]?.text || '',
+                    isCorrect: false,
+                  }));
+                  const remainingWords = question.options.slice(nextBlankCount);
+                  onChange('options', [...syncedWordBank, ...remainingWords]);
+                }
+              }}
               required
               multiline
               rows={2}
@@ -469,6 +518,15 @@ function SortableQuestionCard({
                   Write the sentence using blanks, then add the correct word for each blank and a word bank for dragging.
                 </Typography>
 
+                <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+                  <Button size="small" variant="outlined" onClick={addPhraseBlank} startIcon={<AddIcon />}>
+                    Add Blank
+                  </Button>
+                  <Button size="small" variant="outlined" onClick={removePhraseBlank} disabled={phraseBlankCount <= 1}>
+                    Remove Blank
+                  </Button>
+                </Box>
+
                 {hasBlankTokens ? (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
                     {blankSegments.map((segment, index) => (
@@ -479,13 +537,45 @@ function SortableQuestionCard({
                           </Typography>
                         )}
                         {index < blankSegments.length - 1 && (
-                          <TextField
-                            size="small"
-                            value={question.acceptedAnswers[index] || ''}
-                            onChange={(e) => handlePhraseAnswerChange(index, e.target.value)}
-                            placeholder={`Blank ${index + 1} answer`}
-                            sx={{ minWidth: 160, bgcolor: theme.palette.background.paper, borderRadius: 1 }}
-                          />
+                          <Box sx={{ minWidth: 200, flex: '1 1 200px' }}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              value={question.acceptedAnswers[index] || ''}
+                              onChange={(e) => handlePhraseAnswerChange(index, e.target.value)}
+                              placeholder={`Answer for blank ${index + 1}`}
+                              InputProps={{
+                                startAdornment: (
+                                  <Box
+                                    sx={{
+                                      width: 24,
+                                      height: 24,
+                                      borderRadius: '50%',
+                                      border: `1px solid ${theme.palette.primary.main}`,
+                                      color: theme.palette.primary.main,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700,
+                                      mr: 1,
+                                      flexShrink: 0,
+                                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(33, 150, 243, 0.12)' : 'rgba(33, 150, 243, 0.08)',
+                                    }}
+                                  >
+                                    {index + 1}
+                                  </Box>
+                                ),
+                              }}
+                              sx={{
+                                bgcolor: theme.palette.background.paper,
+                                borderRadius: 2,
+                                '& .MuiInputBase-input': {
+                                  py: 1.1,
+                                },
+                              }}
+                            />
+                          </Box>
                         )}
                       </Fragment>
                     ))}
@@ -511,9 +601,35 @@ function SortableQuestionCard({
                         fullWidth
                         value={option.text}
                         onChange={(e) => onOptionChange(optionIndex, 'text', e.target.value)}
-                        placeholder={`Word ${optionIndex + 1}`}
+                        placeholder={optionIndex < phraseBlankCount ? `Correct word ${optionIndex + 1}` : `Word ${optionIndex + 1}`}
+                        disabled={optionIndex < phraseBlankCount}
+                        InputProps={{
+                          startAdornment: (
+                            <Box
+                              sx={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: '50%',
+                                border: `1px solid ${optionIndex < phraseBlankCount ? theme.palette.success.main : theme.palette.divider}`,
+                                color: optionIndex < phraseBlankCount ? theme.palette.success.main : theme.palette.text.secondary,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                mr: 1,
+                                flexShrink: 0,
+                                bgcolor: optionIndex < phraseBlankCount
+                                  ? (theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.12)' : 'rgba(76, 175, 80, 0.08)')
+                                  : (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                              }}
+                            >
+                              {optionIndex < phraseBlankCount ? optionIndex + 1 : optionIndex + 1}
+                            </Box>
+                          ),
+                        }}
                       />
-                      <IconButton size="small" onClick={() => onDeleteOption(optionIndex)} disabled={question.options.length <= 1} sx={{ color: theme.palette.error.main }}>
+                      <IconButton size="small" onClick={() => onDeleteOption(optionIndex)} disabled={question.options.length <= 1 || optionIndex < phraseBlankCount} sx={{ color: theme.palette.error.main }}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
@@ -526,23 +642,115 @@ function SortableQuestionCard({
             )}
 
             {isFillInBlankType && (
-              <Box sx={{ mt: 1 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => onChange('question', `${question.question}${question.question ? ' ' : ''}____`)}
-                >
-                  Insert Blank (____)
-                </Button>
+              <Box
+                sx={{
+                  mt: 1,
+                  p: 2,
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: 2,
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255,255,255,0.03)'
+                    : 'rgba(0,0,0,0.015)',
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight="600">
+                      Fill-in-the-Blank Editor
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Add blanks in the sentence, then fill in the correct answer for each one.
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => onChange('question', `${question.question}${question.question ? ' ' : ''}____`)}
+                  >
+                    Insert Blank
+                  </Button>
+                </Box>
+
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.25, mt: 1.5 }}>
+                  {blankSegments.map((segment, index) => (
+                    <Fragment key={`fill-blank-segment-${index}`}>
+                      {segment && (
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {segment}
+                        </Typography>
+                      )}
+
+                      {index < blankSegments.length - 1 && (
+                        <Box sx={{ minWidth: 220, flex: '1 1 220px' }}>
+                          <TextField
+                            size="small"
+                            fullWidth
+                            value={question.acceptedAnswers[index] || ''}
+                            onChange={(e) => handleFillBlankAnswerChange(index, e.target.value)}
+                            placeholder={`Answer for blank ${index + 1}`}
+                            InputProps={{
+                              startAdornment: (
+                                <Box
+                                  sx={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: '50%',
+                                    border: `1px solid ${theme.palette.primary.main}`,
+                                    color: theme.palette.primary.main,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    mr: 1,
+                                    flexShrink: 0,
+                                    bgcolor: theme.palette.mode === 'dark'
+                                      ? 'rgba(33, 150, 243, 0.12)'
+                                      : 'rgba(33, 150, 243, 0.08)',
+                                  }}
+                                >
+                                  {index + 1}
+                                </Box>
+                              ),
+                            }}
+                            sx={{
+                              bgcolor: theme.palette.background.paper,
+                              borderRadius: 2,
+                              '& .MuiInputBase-input': {
+                                py: 1.1,
+                              },
+                            }}
+                          />
+                          <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {getBlankAlternatives(index).length > 0 ? (
+                              getBlankAlternatives(index).map((alt, altIdx) => (
+                                <Chip
+                                  key={`blank-${index}-alt-${altIdx}`}
+                                  label={alt}
+                                  size="small"
+                                  color="success"
+                                  variant="outlined"
+                                  sx={{ height: 22 }}
+                                />
+                              ))
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">
+                                Add alternatives with | (example: color|colour)
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      )}
+                    </Fragment>
+                  ))}
+                </Box>
               </Box>
             )}
 
-            {(isFillInBlankType || isDropdownType) && (
+            {isDropdownType && (
               <Box sx={{ mt: 1 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  {isFillInBlankType
-                    ? 'Type answers directly in the blanks below. For multiple acceptable answers in one blank, separate with | (example: color|colour).'
-                    : 'Type the dropdown correct answer directly in the first blank below.'}
+                  Type the dropdown correct answer directly in the first blank below.
                 </Typography>
 
                 {hasBlankTokens ? (
@@ -580,26 +788,6 @@ function SortableQuestionCard({
                               placeholder={isDropdownType && index > 0 ? 'Use first blank only' : `Blank ${index + 1}`}
                               sx={{ bgcolor: theme.palette.background.paper, borderRadius: 1 }}
                             />
-                            {isFillInBlankType && (
-                              <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {getBlankAlternatives(index).length > 0 ? (
-                                  getBlankAlternatives(index).map((alt, altIdx) => (
-                                    <Chip
-                                      key={`blank-${index}-alt-${altIdx}`}
-                                      label={alt}
-                                      size="small"
-                                      color="success"
-                                      variant="outlined"
-                                      sx={{ height: 22 }}
-                                    />
-                                  ))
-                                ) : (
-                                  <Typography variant="caption" color="text.secondary">
-                                    Add alternatives with | (example: color|colour)
-                                  </Typography>
-                                )}
-                              </Box>
-                            )}
                           </Box>
                         )}
                       </Fragment>
