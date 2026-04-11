@@ -168,9 +168,10 @@ function SortableQuestionCard({
   const isFillInBlankType = question.type === 'fill_in_blank';
   const isNumericalType = question.type === 'numerical';
   const isDropdownType = question.type === 'dropdown';
-  const isPairType = question.type === 'matching' || question.type === 'match_the_phrase';
+  const isPairType = question.type === 'matching';
+  const isPhraseMatchType = question.type === 'match_the_phrase';
   const allowsNoCorrect = question.type === 'multi_select';
-  const blankSegments = question.question.split('____');
+  const blankSegments = question.question.split(/_{3,}/);
   const hasBlankTokens = blankSegments.length > 1;
   const blankAnswersValid =
     hasBlankTokens &&
@@ -187,13 +188,15 @@ function SortableQuestionCard({
       ? question.question.trim() && Number.isFinite(Number((question.acceptedAnswers[0] || '').trim()))
     : isFillInBlankType
       ? question.question.trim() && blankAnswersValid
+    : isPhraseMatchType
+      ? question.question.trim() && blankAnswersValid && question.options.every((opt) => opt.text.trim())
     : isPairType
       ? question.question.trim() && question.matchingPairs.length >= 2 && question.matchingPairs.every(pair => pair.left.trim() && pair.right.trim())
       : question.question.trim() && (allowsNoCorrect || correctAnswersCount > 0) && question.options.every(opt => opt.text.trim());
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
-  const usesOptionsEditor = !isFreeTextType && !isFillInBlankType && !isNumericalType;
+  const usesOptionsEditor = !isFreeTextType && !isFillInBlankType && !isNumericalType && !isPhraseMatchType;
   const showCorrectSelector = !isEssayType && !isOrderType;
   const currentDropdownCorrectIndex = question.options.findIndex((opt) => opt.isCorrect);
   const dropdownBlankValue = currentDropdownCorrectIndex >= 0 ? question.options[currentDropdownCorrectIndex].text : '';
@@ -208,6 +211,16 @@ function SortableQuestionCard({
     const targetIndex = currentDropdownCorrectIndex >= 0 ? currentDropdownCorrectIndex : 0;
     onOptionChange(targetIndex, 'isCorrect', true);
     onOptionChange(targetIndex, 'text', value);
+  };
+
+  const handlePhraseAnswerChange = (blankIndex: number, value: string) => {
+    const nextAnswers = [...question.acceptedAnswers];
+    nextAnswers[blankIndex] = value;
+    onChange('acceptedAnswers', nextAnswers);
+
+    if (value && !question.options.some((option) => option.text.toLowerCase() === value.toLowerCase())) {
+      onChange('options', [...question.options, { text: value, isCorrect: false }]);
+    }
   };
 
   const getBlankAlternatives = (blankIndex: number) =>
@@ -447,6 +460,71 @@ function SortableQuestionCard({
               placeholder="Enter your question here..."
             />
 
+            {isPhraseMatchType && (
+              <Box sx={{ mt: 1.25, p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)' }}>
+                <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 0.5 }}>
+                  Drag-to-Match Phrase Editor
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  Write the sentence using blanks, then add the correct word for each blank and a word bank for dragging.
+                </Typography>
+
+                {hasBlankTokens ? (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                    {blankSegments.map((segment, index) => (
+                      <Fragment key={`phrase-segment-${index}`}>
+                        {segment && (
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {segment}
+                          </Typography>
+                        )}
+                        {index < blankSegments.length - 1 && (
+                          <TextField
+                            size="small"
+                            value={question.acceptedAnswers[index] || ''}
+                            onChange={(e) => handlePhraseAnswerChange(index, e.target.value)}
+                            placeholder={`Blank ${index + 1} answer`}
+                            sx={{ minWidth: 160, bgcolor: theme.palette.background.paper, borderRadius: 1 }}
+                          />
+                        )}
+                      </Fragment>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Insert blanks using ___ in the sentence. Example: The ___ jumps over the ___ dog.
+                  </Typography>
+                )}
+
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 0.5 }}>
+                    Word Bank
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    Add words that players can drag into the blanks.
+                  </Typography>
+                  {question.options.map((option, optionIndex) => (
+                    <Box key={`phrase-option-${optionIndex}`} sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
+                      <TextField
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        value={option.text}
+                        onChange={(e) => onOptionChange(optionIndex, 'text', e.target.value)}
+                        placeholder={`Word ${optionIndex + 1}`}
+                      />
+                      <IconButton size="small" onClick={() => onDeleteOption(optionIndex)} disabled={question.options.length <= 1} sx={{ color: theme.palette.error.main }}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  <Button variant="outlined" size="small" onClick={onAddOption} startIcon={<AddIcon />}>
+                    Add Word
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
             {isFillInBlankType && (
               <Box sx={{ mt: 1 }}>
                 <Button
@@ -643,9 +721,7 @@ function SortableQuestionCard({
                   }}
                 >
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {question.type === 'match_the_phrase'
-                      ? 'Use the left column for terms and the right column for definitions.'
-                      : 'Use the left column for items on the left side and the right column for their matches.'}
+                    Use the left column for items on the left side and the right column for their matches.
                   </Typography>
 
                   {question.matchingPairs.map((pair, pairIndex) => (
@@ -660,7 +736,7 @@ function SortableQuestionCard({
                       }}
                     >
                       <TextField
-                        label={question.type === 'match_the_phrase' ? `Term ${pairIndex + 1}` : `Left item ${pairIndex + 1}`}
+                        label={`Left item ${pairIndex + 1}`}
                         variant="outlined"
                         fullWidth
                         size="small"
@@ -668,7 +744,7 @@ function SortableQuestionCard({
                         onChange={(e) => onUpdateMatchingPair(pairIndex, 'left', e.target.value)}
                       />
                       <TextField
-                        label={question.type === 'match_the_phrase' ? `Definition ${pairIndex + 1}` : `Right item ${pairIndex + 1}`}
+                        label={`Right item ${pairIndex + 1}`}
                         variant="outlined"
                         fullWidth
                         size="small"
@@ -924,11 +1000,14 @@ export default function CreateQuiz() {
 
     if (field === 'type') {
       const selectedType = value as string;
-      const isPairedType = selectedType === 'matching' || selectedType === 'match_the_phrase';
+      const isPairedType = selectedType === 'matching';
+      const isPhraseType = selectedType === 'match_the_phrase';
       const currentQuestionText = updatedQuestions[globalIndex].question || '';
 
-      if ((selectedType === 'fill_in_blank' || selectedType === 'dropdown') && !currentQuestionText.includes('____')) {
-        updatedQuestions[globalIndex].question = `${currentQuestionText}${currentQuestionText ? ' ' : ''}____`;
+      if ((selectedType === 'fill_in_blank' || selectedType === 'dropdown' || selectedType === 'match_the_phrase') && !currentQuestionText.match(/_{3,}/)) {
+        updatedQuestions[globalIndex].question = selectedType === 'match_the_phrase'
+          ? 'The ___ jumps over the ___ dog'
+          : `${currentQuestionText}${currentQuestionText ? ' ' : ''}____`;
       }
 
       if (selectedType === 'true_false') {
@@ -947,6 +1026,16 @@ export default function CreateQuiz() {
       } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank' || selectedType === 'numerical') {
         updatedQuestions[globalIndex].options = [];
         updatedQuestions[globalIndex].acceptedAnswers = [];
+        updatedQuestions[globalIndex].acceptedAnswerInput = '';
+        updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
+      } else if (isPhraseType) {
+        updatedQuestions[globalIndex].options = [
+          { text: 'quick', isCorrect: false },
+          { text: 'lazy', isCorrect: false },
+          { text: 'brown', isCorrect: false },
+          { text: 'fox', isCorrect: false },
+        ];
+        updatedQuestions[globalIndex].acceptedAnswers = ['fox', 'lazy'];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
       } else if (isPairedType) {
@@ -1217,9 +1306,16 @@ export default function CreateQuiz() {
       case "match_the_phrase":
         typeObj = {
           name: "match_the_phrase",
-          description: "match_the_phrase question",
-          pairs: Object.fromEntries(matchingPairs.map((pair) => [pair.left, pair.right])),
-          correctPairs: Object.fromEntries(matchingPairs.map((pair) => [pair.left, pair.right])),
+          description: "drag-to-match phrase question",
+          phrase: question.question,
+          slots: Array.from({ length: Math.max(0, question.question.split(/_{3,}/).length - 1) }, (_, index) => `blank${index + 1}`),
+          options,
+          correctAssign: Object.fromEntries(
+            Array.from({ length: Math.max(0, question.question.split(/_{3,}/).length - 1) }, (_, index) => [
+              `blank${index + 1}`,
+              (question.acceptedAnswers[index] || '').trim(),
+            ])
+          ),
         };
         break;
       case "matching":
@@ -1272,12 +1368,12 @@ export default function CreateQuiz() {
       hint: question.hint,
       type: typeObj,
       category: question.category,
-      options: typeName === 'matching' || typeName === 'match_the_phrase'
+      options: typeName === 'matching'
         ? []
         : options,
-      correctAnswers: typeName === 'short_answer' || typeName === 'fill_in_blank'
+      correctAnswers: typeName === 'short_answer' || typeName === 'fill_in_blank' || typeName === 'match_the_phrase'
         ? acceptedTextAnswers
-        : typeName === 'matching' || typeName === 'match_the_phrase'
+        : typeName === 'matching'
           ? matchingAnswerStrings
           : correctAnswers,
       incorrectAnswers,
@@ -1354,7 +1450,42 @@ export default function CreateQuiz() {
         continue;
       }
 
-      if (q.type === 'matching' || q.type === 'match_the_phrase') {
+      if (q.type === 'match_the_phrase') {
+        const blankParts = q.question.split(/_{3,}/);
+        const blankCount = Math.max(0, blankParts.length - 1);
+
+        if (blankCount < 1) {
+          showSnackbar(`Question ${i + 1} needs at least one blank (___)`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        if (q.acceptedAnswers.length < blankCount || q.acceptedAnswers.slice(0, blankCount).some((ans) => !ans.trim())) {
+          showSnackbar(`Question ${i + 1} needs an answer for each blank`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        if (q.options.length < blankCount) {
+          showSnackbar(`Question ${i + 1} needs a word bank for the blanks`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        if (q.options.some((opt) => !opt.text.trim())) {
+          showSnackbar(`All words in the word bank for Question ${i + 1} must be filled`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+
+        continue;
+      }
+
+      if (q.type === 'matching') {
         const pairs = q.matchingPairs.map((pair) => ({
           left: pair.left.trim(),
           right: pair.right.trim(),
@@ -1776,6 +1907,8 @@ export default function CreateQuiz() {
                     ? 'Accepted Answers:'
                     : q.type === 'numerical'
                       ? 'Correct Number:'
+                      : q.type === 'match_the_phrase'
+                        ? 'Phrase Match:'
                       : 'Answer Options:'}
                 </Typography>
 
@@ -1793,6 +1926,32 @@ export default function CreateQuiz() {
                       <Typography variant="body2" color="text.secondary">(No answer set)</Typography>
                     )}
                   </Box>
+                  ) : q.type === 'match_the_phrase' ? (
+                    <Box sx={{ display: 'grid', gap: 1.5 }}>
+                      <Box sx={{ p: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)' }}>
+                        <Typography variant="body2" sx={{ lineHeight: 2 }}>
+                          {q.question.split(/_{3,}/).map((segment, segmentIndex, segmentArray) => (
+                            <span key={`preview-segment-${segmentIndex}`}>
+                              {segment}
+                              {segmentIndex < segmentArray.length - 1 && (
+                                <Chip
+                                  label={q.acceptedAnswers[segmentIndex] || `blank ${segmentIndex + 1}`}
+                                  color="primary"
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ mx: 0.5, height: 24 }}
+                                />
+                              )}
+                            </span>
+                          ))}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                        {q.options.map((option, idx) => (
+                          <Chip key={`bank-${idx}`} label={option.text} variant="outlined" />
+                        ))}
+                      </Box>
+                    </Box>
                 ) : q.type === 'numerical' ? (
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {(q.acceptedAnswers[0] || '').trim() ? (

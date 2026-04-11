@@ -162,14 +162,16 @@ export default function PlayerGameView() {
         );
       }
       case 'match_the_phrase': {
-        const pairs = t.correctPairs || {};
+        const phrase = (t as any).phrase || q.question || '';
+        const slots = ((t as any).slots || []) as string[];
+        const options = ((t as any).options || []) as string[];
         return (
           <MatchPhraseQuestion
-            pairs={pairs}
+            phrase={phrase}
+            slots={slots}
+            options={options}
             disabled={isDisabled}
-            onMatchesChange={(formattedMatches) =>
-              setSelectedAnswers(formattedMatches)
-            }
+            onMatchesChange={(formattedMatches: string[]) => setSelectedAnswers(formattedMatches)}
           />
         );
       }
@@ -274,6 +276,12 @@ export default function PlayerGameView() {
         return false;
 
       case 'match_the_phrase':
+      {
+        const correctMap = (type as any).correctAssign || {};
+        const accepted = Object.entries(correctMap).map(([slotId, value]) => `${slotId}:${value}`);
+        return compareAsSets(submitted, accepted);
+      }
+
       case 'matching': {
         const correct = question.correctAnswers || [];
         return sortNormalized(submitted).join('|') === sortNormalized(correct).join('|');

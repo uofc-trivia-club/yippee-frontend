@@ -14,6 +14,7 @@ import {
 
 import { RootState } from "../../stores/store";
 import { useSelector } from "react-redux";
+import MatchPhraseQuestion from "./questionTypes/MatchPhraseQuestion";
 
 interface QuestionViewProps {
   displayCorrectAnswers: boolean;
@@ -203,31 +204,16 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'match_the_phrase': {
-                const pairs = t.correctPairs;
-                if (!pairs || Object.keys(pairs).length === 0) return <Typography>No pairs to display.</Typography>;
                 return (
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-                        <Box>
-                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Term</Typography>
-                            <Stack spacing={1}>
-                                {Object.keys(pairs).map((term, idx) => (
-                                    <Box key={idx} sx={optionTileSx(false)}>
-                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{idx + 1}. {term}</Typography>
-                                    </Box>
-                                ))}
-                            </Stack>
-                        </Box>
-                        <Box>
-                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Definition</Typography>
-                            <Stack spacing={1}>
-                                {Object.values(pairs).map((def, idx) => (
-                                    <Box key={idx} sx={optionTileSx(false)}>
-                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{String.fromCharCode(65 + idx)}. {def}</Typography>
-                                    </Box>
-                                ))}
-                            </Stack>
-                        </Box>
-                    </Box>
+                    <MatchPhraseQuestion
+                        phrase={(t as any).phrase || q?.question || ''}
+                        slots={((t as any).slots || []) as string[]}
+                        options={((t as any).options || []) as string[]}
+                        disabled={true}
+                        showCorrectAnswers={displayCorrectAnswers}
+                        correctAssign={(t as any).correctAssign || {}}
+                        onMatchesChange={() => undefined}
+                    />
                 );
             }
             case 'matching': {

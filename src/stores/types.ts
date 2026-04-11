@@ -64,8 +64,10 @@ export interface NumericalType {
 export interface MatchThePhraseType {
   name: "match_the_phrase";
   description: string;
-  pairs: Record<string, string>;
-  correctPairs: Record<string, string>;
+  phrase: string;
+  slots: string[];
+  options: string[];
+  correctAssign: Record<string, string>;
 }
 
 // Dropdown
