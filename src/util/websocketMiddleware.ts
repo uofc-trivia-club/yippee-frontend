@@ -29,12 +29,14 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             if (data.lobby?.roomCode) {
                                 store.dispatch(gameActions.setRoomCode(data.lobby.roomCode));
                                 store.dispatch(gameActions.setGameStatus("Waiting"));
+                                // Reset question index to 0 for a new game
+                                store.dispatch(gameActions.setCurrentQuestionIndex(0));
                                 if (typeof data.lobby.quizMeta?.questionCount === "number") {
                                     store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
                                 }
-                                if (typeof data.lobby.currentQuestionIndex === "number") {
-                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
-                                }
+                                // Reset leaderboard flags
+                                store.dispatch(gameActions.setShowLeaderboard(false));
+                                store.dispatch(gameActions.setFinalQuestionLeaderboard(false));
                                 if (data.clientsInLobby) {
                                     store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                                 }
@@ -92,11 +94,12 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 if (typeof data.lobby.quizMeta?.questionCount === "number") {
                                     store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
                                 }
+                                // Reset to first question when game starts
+                                store.dispatch(gameActions.setCurrentQuestionIndex(0));
+                                store.dispatch(gameActions.setShowLeaderboard(false));
+                                store.dispatch(gameActions.setFinalQuestionLeaderboard(false));
                                 if (data.lobby.currentQuestion) {
                                     store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
-                                }
-                                if (typeof data.lobby.currentQuestionIndex === "number") {
-                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
                                 }
                             }
                             break;

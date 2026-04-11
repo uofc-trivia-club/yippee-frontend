@@ -2,6 +2,8 @@ import { Box, Typography, useTheme, Button } from "@mui/material";
 import { HostGameView, Leaderboard, LobbyRoomView, PlayerGameView, QuestionView } from "../components/game";
 import { useNavigate } from "react-router-dom";
 import { ManageGameSettings, SelectQuiz } from "../components/quiz";
+import { useDispatch } from "react-redux";
+import { gameActions } from "../stores/gameSlice";
 
 import { RootState } from "../stores/store";
 import styles from './Game.module.css';
@@ -18,6 +20,14 @@ export default function LobbyRoom() {
   const lobbyStatus = useSelector((state: RootState) => state.game.gameStatus);
   const theme = useTheme();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const handleBackToHome = () => {
+    // Clear game state before navigating back to home
+    dispatch(gameActions.setRoomCode(""));
+    dispatch(gameActions.setGameStatus(""));
+    navigate("/", { replace: true });
+  };
 
   return (
     <div className={styles.container}>
@@ -49,7 +59,7 @@ export default function LobbyRoom() {
               variant="contained"
               color="primary"
               sx={{ mt: 2 }}
-              onClick={() => navigate("/")}
+              onClick={handleBackToHome}
             >
               Back to Home
             </Button>

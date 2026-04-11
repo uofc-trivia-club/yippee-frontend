@@ -26,8 +26,9 @@ export default function HostGame() {
   useCheckConnection();
 
   useEffect(() => {
+    // When roomCode is set in Redux (after successful lobby creation), navigate to the lobby
     if (roomCode && gameStatus === "Waiting") {
-      navigate(`/${roomCode}`);
+      navigate(`/${roomCode}`, { replace: true });
     }
   }, [roomCode, gameStatus, navigate]);
 
