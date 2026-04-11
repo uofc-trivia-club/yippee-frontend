@@ -11,6 +11,7 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
+import { useMemo } from "react";
 
 import { RootState } from "../../stores/store";
 import { useSelector } from "react-redux";
@@ -27,6 +28,15 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const q = game.currentQuestion;
     const t = q?.type;
         const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+        const shuffledMatchingRightItems = useMemo(() => {
+            const rightItems = (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
+            const nextItems = [...rightItems];
+            for (let i = nextItems.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [nextItems[i], nextItems[j]] = [nextItems[j], nextItems[i]];
+            }
+            return nextItems;
+        }, [game.currentQuestionIndex, game.currentQuestion?.question]);
 
 
         const questionCardSx = {
@@ -218,7 +228,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'matching': {
                 const left = t.leftItems;
-                const right = t.rightItems;
+                const right = shuffledMatchingRightItems;
                 if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
                 return (
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>

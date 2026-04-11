@@ -14,7 +14,10 @@ interface MatchingComponentProps {
 export default function MatchingComponent({ leftItems, rightItems, disabled, onMatchesChange }: MatchingComponentProps) {
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, string>>({});
+  const [shuffledRightItems, setShuffledRightItems] = useState<string[]>(rightItems);
   const matchEntries = Object.entries(matches) as Array<[string, string]>;
+  const leftSignature = leftItems.join('\u0001');
+  const rightSignature = rightItems.join('\u0001');
 
   const connectionColors = [
     '#ef5350',
@@ -39,6 +42,18 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
   useEffect(() => {
     onMatchesChange(matches);
   }, [matches, onMatchesChange]);
+
+  useEffect(() => {
+    // Reset selection/matches and shuffle right-side options once per question payload.
+    setSelectedLeft(null);
+    setMatches({});
+    const nextItems = [...rightItems];
+    for (let i = nextItems.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nextItems[i], nextItems[j]] = [nextItems[j], nextItems[i]];
+    }
+    setShuffledRightItems(nextItems);
+  }, [leftSignature, rightSignature]);
 
   const handleLeftClick = (item: string) => {
     if (disabled) return;
@@ -126,7 +141,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
         {/* Right Column */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, position: 'relative' }}>
           <Typography variant="subtitle2" sx={{ mb: 1, textAlign: 'center' }}>Definitions</Typography>
-          {rightItems.map((item, idx) => {
+          {shuffledRightItems.map((item, idx) => {
             const matchedLeftIdx = leftItems.findIndex((leftItem) => matches[leftItem] === item);
             const isMatched = matchedLeftIdx >= 0;
             const connectionColor = isMatched ? getConnectionColor(matchedLeftIdx) : undefined;
@@ -164,7 +179,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
       {/* Drawing wires */}
       {matchEntries.map(([leftItem, rightItem]) => {
         const leftIdx = leftItems.indexOf(leftItem);
-        const rightIdx = rightItems.indexOf(rightItem);
+        const rightIdx = shuffledRightItems.indexOf(rightItem);
         if (leftIdx === -1 || rightIdx === -1) return null;
         
         return (
