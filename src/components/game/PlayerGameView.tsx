@@ -298,6 +298,31 @@ export default function PlayerGameView() {
     }
   };
 
+  // Get player's current rank and stats
+  const getPlayerStats = () => {
+    const sortedPlayers = Object.values(game.clientsInLobby)
+      .filter((user): user is any => 
+        user !== null && 
+        typeof user === 'object' && 
+        'userRole' in user && 
+        user.userRole === 'player'
+      )
+      .sort((a, b) => b.points - a.points);
+
+    const currentPlayerIndex = sortedPlayers.findIndex(p => p.userName === game.user.userName);
+    const currentPlayer = sortedPlayers[currentPlayerIndex];
+    const leaderPlayer = sortedPlayers[0];
+    const pointsBehind = leaderPlayer && currentPlayer ? leaderPlayer.points - currentPlayer.points : 0;
+
+    return {
+      rank: currentPlayerIndex + 1,
+      points: currentPlayer?.points || 0,
+      pointsBehind,
+      leaderName: leaderPlayer?.userName,
+      totalPlayers: sortedPlayers.length,
+    };
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       {error && (
@@ -368,26 +393,61 @@ export default function PlayerGameView() {
           )}
         </>
       ) : !game.finalQuestionLeaderboard ? (
-        <Box
-          sx={{
-            p: 3,
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: isAnswerCorrect() ? 'success.main' : 'error.main',
-            bgcolor: isAnswerCorrect() ? 'success.light' : 'error.light',
-            color: isAnswerCorrect() ? 'success.contrastText' : 'error.contrastText',
-            textAlign: 'center',
-          }}
-        >
-          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-            {isAnswerCorrect() ? 'You got the answer right' : 'You got the answer incorrect'}
-          </Typography>
-          <Typography variant="body1">
-            {isAnswerCorrect()
-              ? 'Nice work. Wait for the next question or the final results.'
-              : 'You can review the correct answer on the host screen.'}
-          </Typography>
-        </Box>
+        <>
+          {(() => {
+            const stats = getPlayerStats();
+            const getRankOrdinal = (n: number) => {
+              const s = ['th', 'st', 'nd', 'rd'];
+              const v = n % 100;
+              return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            };
+
+            return (
+              <Box
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: isAnswerCorrect() ? 'success.main' : 'error.main',
+                  bgcolor: isAnswerCorrect() ? 'success.light' : 'error.light',
+                  color: isAnswerCorrect() ? 'success.contrastText' : 'error.contrastText',
+                  textAlign: 'center',
+                }}
+              >
+                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+                  {isAnswerCorrect() ? '✅ You got it right!' : '❌ Incorrect'}
+                </Typography>
+                
+                {/* Points Display */}
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 2 }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5 }}>Current Points</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                    {stats.points}
+                  </Typography>
+                </Box>
+
+                {/* Rank Message */}
+                <Box sx={{ mb: 1 }}>
+                  {stats.pointsBehind === 0 ? (
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      🏆 You're in {getRankOrdinal(stats.rank)} place!
+                    </Typography>
+                  ) : (
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      You are {stats.pointsBehind} {stats.pointsBehind === 1 ? 'point' : 'points'} behind {stats.leaderName}!
+                    </Typography>
+                  )}
+                </Box>
+
+                <Typography variant="body2" sx={{ opacity: 0.9, mt: 2 }}>
+                  {isAnswerCorrect()
+                    ? 'Great job! Keep this up.'
+                    : 'Review the correct answer on the host screen.'}
+                </Typography>
+              </Box>
+            );
+          })()}
+        </>
       ) : (
         <Leaderboard />
       )}

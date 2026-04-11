@@ -239,15 +239,9 @@ export default function HostGameView() {
           {leaderboardView === 'page1' ? (
             <>
               <QuestionView displayCorrectAnswers={true} />
-              {game.finalQuestionLeaderboard ? (
-                <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard2}>
-                  View Final Results
-                </Button>
-              ) : (
-                <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleNextQuestion}>
-                  Next Question
-                </Button>
-              )}
+              <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard2}>
+                View Leaderboard
+              </Button>
             </>
           ) : (
             <>
