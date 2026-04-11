@@ -17,10 +17,7 @@ export default function JoinGame() {
   const theme = useTheme();
 
   // get necessary states from Redux
-  const currentUser = useSelector((state: RootState) => state.game.user);
   const roomCode = useSelector((state: RootState) => state.game.roomCode);
-  const gameStatus = useSelector((state: RootState) => state.game.gameStatus);
-  const isConnected = useSelector((state: RootState) => state.websocket.isConnected);
   
   useCheckConnection();
 

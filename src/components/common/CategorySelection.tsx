@@ -3,7 +3,6 @@ import {
   Box,
   Chip,
   TextField,
-  autocompleteClasses,
   useTheme,
 } from "@mui/material";
 
@@ -53,10 +52,6 @@ export default function CategorySelector({
     };
     return colors[tag] || theme.palette.primary.main;
   }
-
-  const handleDelete = (categoryToDelete: string) => {
-    onChange(value.filter((cat) => cat !== categoryToDelete));
-  };
 
   return (
     <Box sx={{ my: 2, maxWidth: 400 }}>

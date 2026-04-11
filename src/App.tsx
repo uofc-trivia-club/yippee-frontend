@@ -1,5 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { Button, ThemeProvider, createTheme } from "@mui/material";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { ThemeProvider, createTheme } from "@mui/material";
 import type { Dispatch, SetStateAction } from 'react';
 import { SignIn, SignUp } from "./components/user";
 

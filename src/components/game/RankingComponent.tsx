@@ -37,7 +37,7 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
   useEffect(() => {
     setOrderedItems(items);
     onOrderChange(items);
-  }, [items]);
+  }, [items, onOrderChange]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

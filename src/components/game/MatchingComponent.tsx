@@ -53,7 +53,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
       [nextItems[i], nextItems[j]] = [nextItems[j], nextItems[i]];
     }
     setShuffledRightItems(nextItems);
-  }, [leftSignature, rightSignature]);
+  }, [leftSignature, rightSignature, rightItems]);
 
   const handleLeftClick = (item: string) => {
     if (disabled) return;

@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, FormControlLabel, IconButton, MenuItem, Pagination, Radio, RadioGroup, Snackbar, TextField, Typography, useTheme } from "@mui/material";
+import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, IconButton, MenuItem, Pagination, Radio, Snackbar, TextField, Typography, useTheme } from "@mui/material";
 import {
   DndContext,
   DragEndEvent,
@@ -20,7 +20,6 @@ import {
 
 import AddIcon from '@mui/icons-material/Add';
 import { CSS } from '@dnd-kit/utilities';
-import CategorySelector from "../../components/common/CategorySelection";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Dialog from '@mui/material/Dialog';

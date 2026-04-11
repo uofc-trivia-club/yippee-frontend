@@ -5,7 +5,6 @@
 import {
     Box,
     Chip,
-    Divider,
     Paper,
     Stack,
     Typography,
@@ -24,10 +23,9 @@ interface QuestionViewProps {
 export default function QuestionView({ displayCorrectAnswers }: QuestionViewProps) {
     const game = useSelector((state: RootState) => state.game);
     const theme = useTheme();
-    const qType = game.currentQuestion?.type?.name;
     const q = game.currentQuestion;
     const t = q?.type;
-        const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+    const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
         const shuffledMatchingRightItems = useMemo(() => {
             const rightItems = (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
             const nextItems = [...rightItems];
@@ -36,19 +34,18 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 [nextItems[i], nextItems[j]] = [nextItems[j], nextItems[i]];
             }
             return nextItems;
-        }, [game.currentQuestionIndex, game.currentQuestion?.question]);
-
+        }, [game.currentQuestion?.type]);
 
         const questionCardSx = {
-                p: { xs: 2.5, md: 3.5 },
-                borderRadius: 4,
-                border: `1px solid ${theme.palette.divider}`,
-                background: theme.palette.mode === 'dark'
-                        ? 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025))'
-                        : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,249,252,0.96))',
-                boxShadow: '0 16px 40px rgba(0,0,0,0.08)',
-                overflow: 'hidden',
-                position: 'relative',
+            p: { xs: 2.5, md: 3.5 },
+            borderRadius: 4,
+            border: `1px solid ${theme.palette.divider}`,
+            background: theme.palette.mode === 'dark'
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025))'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,249,252,0.96))',
+            boxShadow: '0 16px 40px rgba(0,0,0,0.08)',
+            overflow: 'hidden',
+            position: 'relative',
             } as const;
 
         const optionTileSx = (isCorrect: boolean) => ({
@@ -65,16 +62,6 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     boxShadow: '0 10px 18px rgba(0,0,0,0.06)',
                 },
             }) as const;
-
-        const sectionCardSx = {
-            p: 2.5,
-            borderRadius: 3,
-            border: `1px solid ${theme.palette.divider}`,
-            background: theme.palette.mode === 'dark'
-                ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
-                : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
-            boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
-        } as const;
 
     const renderOptionsView = () => {
         if (!q || !t) return null;

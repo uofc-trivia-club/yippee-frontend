@@ -1,7 +1,6 @@
 import { Box, Typography, useTheme, Button } from "@mui/material";
-import { HostGameView, Leaderboard, LobbyRoomView, PlayerGameView, QuestionView } from "../components/game";
+import { HostGameView, LobbyRoomView, PlayerGameView } from "../components/game";
 import { useNavigate } from "react-router-dom";
-import { ManageGameSettings, SelectQuiz } from "../components/quiz";
 import { useDispatch } from "react-redux";
 import { gameActions } from "../stores/gameSlice";
 

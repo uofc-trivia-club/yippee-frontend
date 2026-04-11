@@ -7,7 +7,6 @@ import MenuItem from '@mui/material/MenuItem';
 import { RootState } from '../../stores/store';
 import { Select } from '@mui/material';
 import { useSelector } from 'react-redux';
-import { useTheme } from '@mui/material/styles';
 
 const pages = [
   { title: 'Sign Up', path: '/sign-up' },
@@ -27,7 +26,6 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
   const location = useLocation();
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const game = useSelector((state: RootState) => state.game);
-  const muiTheme = useTheme();
   
   const handleOpenNavMenu = (event: MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);

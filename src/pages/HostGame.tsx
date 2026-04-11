@@ -1,12 +1,11 @@
-import { Box, Button, IconButton, TextField, Typography, useTheme } from "@mui/material";
+import { Box, Button, TextField, Typography, useTheme } from "@mui/material";
 import { executeWebSocketCommand, useCheckConnection } from "../util/websocketUtil";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import { Quiz } from "../stores/types";
 import { RootState } from "../stores/store";
-import { ManageGameSettings, SelectQuiz } from "../components/quiz";
-import SettingsIcon from '@mui/icons-material/Settings';
+import { SelectQuiz } from "../components/quiz";
 import { gameActions } from "../stores/gameSlice";
 import styles from './HostGame.module.css';
 import { useNavigate } from "react-router-dom";
@@ -35,10 +34,6 @@ export default function HostGame() {
   const handleSelectQuiz = (quiz: Quiz) => {
     setSelectedQuiz(quiz);
   };
-
-  const handleModifyLobbySettings = () => {
-    console.log("modify lobby settings pressed")
-  }
 
   const handleHostGame = async () => {
     const errors: string[] = [];
