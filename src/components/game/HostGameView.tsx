@@ -1,11 +1,14 @@
-import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, Typography, Avatar, useTheme } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 
 import Leaderboard from "./Leaderboard";
 import QuestionView from "./QuestionView";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { useSelector } from "react-redux";
+import { User } from "../../stores/types";
 
 export default function HostGameView() {
   const game = useSelector((state: RootState) => state.game);
@@ -114,6 +117,26 @@ export default function HostGameView() {
   const timerSeconds = timeRemaining ?? game.gameSettings?.questionTime ?? 0;
   const isTimerCritical = timerSeconds <= 10;
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getPlayerStatuses = () => {
+    return Object.values(game.clientsInLobby)
+      .filter((user): user is User => 
+        user !== null && 
+        typeof user === 'object' && 
+        'userRole' in user && 
+        user.userRole === 'player'
+      )
+      .sort((a, b) => a.userName.localeCompare(b.userName));
+  };
+
   const adjustButtonSx = {
     minWidth: 72,
     borderRadius: 2,
@@ -137,6 +160,82 @@ export default function HostGameView() {
       {!game.showLeaderboard ? (
         <>
           <QuestionView displayCorrectAnswers={false} />
+
+          {/* Player Status Board - Jackbox Style */}
+          <Paper
+            elevation={0}
+            sx={{
+              my: 2,
+              p: 2,
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'rgba(33, 150, 243, 0.03)',
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Players ({getPlayerStatuses().filter(p => p.submittedAnswer).length}/{getPlayerStatuses().length})
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+              {getPlayerStatuses().map((player) => (
+                <Box
+                  key={player.userName}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 0.75,
+                  }}
+                >
+                  <Box sx={{ position: 'relative' }}>
+                    <Avatar
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        bgcolor: player.submittedAnswer ? 'success.main' : 'warning.main',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                      }}
+                    >
+                      {getInitials(player.userName)}
+                    </Avatar>
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        bottom: -6,
+                        right: -6,
+                        bgcolor: player.submittedAnswer ? 'success.main' : 'warning.main',
+                        borderRadius: '50%',
+                        p: 0.25,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {player.submittedAnswer ? (
+                        <CheckCircleIcon sx={{ fontSize: '1.2rem', color: 'white' }} />
+                      ) : (
+                        <HourglassEmptyIcon sx={{ fontSize: '1.2rem', color: 'white' }} />
+                      )}
+                    </Box>
+                  </Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      textAlign: 'center',
+                      maxWidth: 60,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {player.userName}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </Paper>
 
           {game.currentQuestion?.hint && (
             <Box

@@ -94,6 +94,13 @@ const gameSlice = createSlice({
         setQuizQuestions: (state, action: PayloadAction<QuizQuestion[]>) => {
             state.quizQuestions = action.payload;
         },
+        resetPlayersSubmittedAnswers: (state) => {
+            // Reset submittedAnswer flag for all players in the lobby when a new question starts
+            state.clientsInLobby = state.clientsInLobby.map(user => ({
+                ...user,
+                submittedAnswer: false,
+            }));
+        },
         setQuestionCount: (state, action: PayloadAction<number>) => {
             state.questionCount = action.payload;
         },

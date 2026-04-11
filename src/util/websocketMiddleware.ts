@@ -86,6 +86,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             store.dispatch(gameActions.setLastSubmittedAnswers([]));
                             store.dispatch(gameActions.setShowLeaderboard(false));
                             store.dispatch(gameActions.setFinalQuestionLeaderboard(false));
+                                store.dispatch(gameActions.resetPlayersSubmittedAnswers());
                             break;
 
                         case "Game start":
@@ -102,6 +103,8 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                     store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
                                 }
                             }
+                                // Reset all players' submitted answers at game start
+                                store.dispatch(gameActions.resetPlayersSubmittedAnswers());
                             break;
 
                         case "Show leaderboard":
@@ -134,6 +137,8 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             store.dispatch(gameActions.setSubmittedAnswer(false))
                             store.dispatch(gameActions.setLastSubmittedAnswers([]))
                             store.dispatch(gameActions.setShowLeaderboard(false))
+                                // Reset all players' submittedAnswer flags for the new question
+                                store.dispatch(gameActions.resetPlayersSubmittedAnswers());
                             break;
 
                         case "Game completed":
