@@ -88,9 +88,15 @@ export default function HostGameView() {
     setLeaderboardView('page2');
   };
 
-  const handleNextQuestion = () => {
+    const handleNextQuestion = () => {
     console.log("Moving onto the next question");
-    if (game.finalQuestionLeaderboard) {
+      const hasKnownQuestionCount = Number.isFinite(game.questionCount) && game.questionCount > 0;
+    const isLastQuestion =
+      typeof game.currentQuestionIndex === 'number' &&
+        (hasKnownQuestionCount
+          ? game.currentQuestionIndex === game.questionCount - 1
+          : game.finalQuestionLeaderboard);
+    if (isLastQuestion) {
       executeWebSocketCommand(
         "endGame",
         { roomCode: game.roomCode, user: game.user },
@@ -233,9 +239,15 @@ export default function HostGameView() {
           {leaderboardView === 'page1' ? (
             <>
               <QuestionView displayCorrectAnswers={true} />
-              <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard2}>
-                View Final Results
-              </Button>
+              {game.finalQuestionLeaderboard ? (
+                <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard2}>
+                  View Final Results
+                </Button>
+              ) : (
+                <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleNextQuestion}>
+                  Next Question
+                </Button>
+              )}
             </>
           ) : (
             <>

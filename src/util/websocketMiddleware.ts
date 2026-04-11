@@ -29,6 +29,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             if (data.lobby?.roomCode) {
                                 store.dispatch(gameActions.setRoomCode(data.lobby.roomCode));
                                 store.dispatch(gameActions.setGameStatus("Waiting"));
+                                if (typeof data.lobby.quizMeta?.questionCount === "number") {
+                                    store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
+                                }
                                 if (typeof data.lobby.currentQuestionIndex === "number") {
                                     store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
                                 }
@@ -42,6 +45,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             if (data.lobby?.roomCode) {
                                 store.dispatch(gameActions.setRoomCode(data.lobby.roomCode));
                                 store.dispatch(gameActions.setGameStatus(data.lobby.status || "Waiting"));
+                                if (typeof data.lobby.quizMeta?.questionCount === "number") {
+                                    store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
+                                }
                                 if (typeof data.lobby.currentQuestionIndex === "number") {
                                     store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
                                 }
@@ -61,6 +67,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                         case "Quiz changed":
                             if (data.lobby) {
                                 store.dispatch(gameActions.setGameStatus(data.lobby.status || "Waiting"));
+                                if (typeof data.lobby.quizMeta?.questionCount === "number") {
+                                    store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
+                                }
                                 if (data.lobby.currentQuestion) {
                                     store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
                                 }
@@ -80,6 +89,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                         case "Game start":
                             if (data.lobby?.status) {
                                 store.dispatch(gameActions.setGameStatus(data.lobby.status));
+                                if (typeof data.lobby.quizMeta?.questionCount === "number") {
+                                    store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
+                                }
                                 if (data.lobby.currentQuestion) {
                                     store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
                                 }
@@ -106,6 +118,9 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
 
 
                         case "Next question":
+                            if (typeof data.lobby?.quizMeta?.questionCount === "number") {
+                                store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
+                            }
                             if (data.lobby?.currentQuestion) {
                                 store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
                             }

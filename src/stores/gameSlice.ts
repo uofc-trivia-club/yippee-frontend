@@ -6,7 +6,6 @@ interface GameState {
     user: User; // own user
     roomCode: string;
     clientsInLobby: User[];
-    // quiz: Quiz | undefined; 
     gameSettings: GameSettings | undefined;
     currentQuestion: QuizQuestion | undefined;  
     currentQuestionIndex: number;
@@ -14,6 +13,8 @@ interface GameState {
     showLeaderboard: boolean;
     finalQuestionLeaderboard: boolean; // leaderboard display is different if it is the final question
     lastSubmittedAnswers: string[];
+    quizQuestions: QuizQuestion[];
+    questionCount: number;
 }
 
 const initialState = {
@@ -33,6 +34,8 @@ const initialState = {
     showLeaderboard: false,
     finalQuestionLeaderboard: false,
     lastSubmittedAnswers: [],
+    quizQuestions: [],
+    questionCount: 0,
 } satisfies GameState as GameState
 
 const gameSlice = createSlice({
@@ -87,6 +90,12 @@ const gameSlice = createSlice({
         setGameStatus: (state, action: PayloadAction<string>) => {
             // console.log('setGameStatus:', { before: state.gameStatus, after: action.payload });
             state.gameStatus = action.payload;
+        },
+        setQuizQuestions: (state, action: PayloadAction<QuizQuestion[]>) => {
+            state.quizQuestions = action.payload;
+        },
+        setQuestionCount: (state, action: PayloadAction<number>) => {
+            state.questionCount = action.payload;
         },
     }
 })
