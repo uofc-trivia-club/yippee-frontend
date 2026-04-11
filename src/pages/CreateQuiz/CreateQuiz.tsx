@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { Quiz, QuizQuestion } from "../../stores/types";
 import {
   SortableContext,
@@ -201,6 +201,9 @@ function SortableQuestionCard({
   const currentDropdownCorrectIndex = question.options.findIndex((opt) => opt.isCorrect);
   const dropdownBlankValue = currentDropdownCorrectIndex >= 0 ? question.options[currentDropdownCorrectIndex].text : '';
   const phraseBlankCount = Math.max(0, blankSegments.length - 1);
+  const [questionCursorPos, setQuestionCursorPos] = useState<number | null>(null);
+  const [draggedPhraseBlankIndex, setDraggedPhraseBlankIndex] = useState<number | null>(null);
+  const questionInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
   const handleFillBlankAnswerChange = (blankIndex: number, value: string) => {
     const nextAnswers = [...question.acceptedAnswers];
@@ -227,6 +230,12 @@ function SortableQuestionCard({
     onChange('options', [...syncedWordBank, ...remainingWords]);
   };
 
+  const syncFillBlankStructure = (nextQuestionText: string) => {
+    const blankCount = Math.max(0, nextQuestionText.split('____').length - 1);
+    const nextAnswers = Array.from({ length: blankCount }, (_, index) => question.acceptedAnswers[index] || '');
+    onChange('acceptedAnswers', nextAnswers);
+  };
+
   const syncPhraseStructure = (nextQuestionText: string) => {
     const nextBlankCount = Math.max(0, nextQuestionText.split(/_{3,}/).length - 1);
     const nextAnswers = Array.from({ length: nextBlankCount }, (_, index) => question.acceptedAnswers[index] || '');
@@ -241,10 +250,30 @@ function SortableQuestionCard({
   };
 
   const addPhraseBlank = () => {
-    const separator = question.question.trim().length > 0 && !question.question.endsWith(' ') ? ' ' : '';
-    const nextQuestionText = `${question.question}${separator}____`;
+    const position = questionCursorPos ?? question.question.length;
+    const before = question.question.slice(0, position);
+    const after = question.question.slice(position);
+    const spacerBefore = before.length > 0 && !/\s$/.test(before) ? ' ' : '';
+    const spacerAfter = after.length > 0 && !/^\s/.test(after) ? ' ' : '';
+    const nextQuestionText = `${before}${spacerBefore}___${spacerAfter}${after}`;
     onChange('question', nextQuestionText);
     syncPhraseStructure(nextQuestionText);
+  };
+
+  const movePhraseBlank = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+
+    const nextAnswers = [...question.acceptedAnswers];
+    const [movedAnswer] = nextAnswers.splice(fromIndex, 1);
+    nextAnswers.splice(toIndex, 0, movedAnswer || '');
+    onChange('acceptedAnswers', nextAnswers);
+
+    const pinnedWordBank = question.options.slice(0, phraseBlankCount);
+    const extraWordBank = question.options.slice(phraseBlankCount);
+    const nextPinnedWordBank = [...pinnedWordBank];
+    const [movedWord] = nextPinnedWordBank.splice(fromIndex, 1);
+    nextPinnedWordBank.splice(toIndex, 0, movedWord || { text: '', isCorrect: false });
+    onChange('options', [...nextPinnedWordBank, ...extraWordBank]);
   };
 
   const removePhraseBlank = () => {
@@ -254,6 +283,36 @@ function SortableQuestionCard({
     const nextQuestionText = question.question.replace(/\s*_{3,}(?!.*_{3,})/, '').trimEnd();
     onChange('question', nextQuestionText);
     syncPhraseStructure(nextQuestionText);
+  };
+
+  const addFillBlank = () => {
+    const separator = question.question.trim().length > 0 && !question.question.endsWith(' ') ? ' ' : '';
+    const nextQuestionText = `${question.question}${separator}____`;
+    onChange('question', nextQuestionText);
+    syncFillBlankStructure(nextQuestionText);
+  };
+
+  const removeFillBlankAt = (blankIndex: number) => {
+    const blankParts = question.question.split('____');
+    const blankCount = Math.max(0, blankParts.length - 1);
+    if (blankCount <= 1 || blankIndex < 0 || blankIndex >= blankCount) return;
+
+    const nextParts = [...blankParts];
+    nextParts[blankIndex] = `${nextParts[blankIndex]}${nextParts[blankIndex + 1]}`;
+    nextParts.splice(blankIndex + 1, 1);
+    const nextQuestionText = nextParts.join('____').replace(/\s{2,}/g, ' ').trimEnd();
+
+    const nextAnswers = question.acceptedAnswers.filter((_, index) => index !== blankIndex);
+    onChange('question', nextQuestionText);
+    onChange('acceptedAnswers', nextAnswers);
+  };
+
+  const removeFillBlank = () => {
+    const blankParts = question.question.split('____');
+    const blankCount = Math.max(0, blankParts.length - 1);
+    if (blankCount <= 1) return;
+
+    removeFillBlankAt(blankCount - 1);
   };
 
   const getBlankAlternatives = (blankIndex: number) =>
@@ -486,8 +545,11 @@ function SortableQuestionCard({
               fullWidth
               margin="dense"
               value={question.question}
+              inputRef={questionInputRef}
+              onClick={() => setQuestionCursorPos(questionInputRef.current?.selectionStart ?? null)}
               onChange={(e) => {
                 const nextQuestionText = e.target.value;
+                setQuestionCursorPos(e.target.selectionStart ?? null);
                 onChange("question", nextQuestionText);
 
                 if (isPhraseMatchType) {
@@ -520,7 +582,7 @@ function SortableQuestionCard({
 
                 <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
                   <Button size="small" variant="outlined" onClick={addPhraseBlank} startIcon={<AddIcon />}>
-                    Add Blank
+                    Add Blank At Cursor
                   </Button>
                   <Button size="small" variant="outlined" onClick={removePhraseBlank} disabled={phraseBlankCount <= 1}>
                     Remove Blank
@@ -537,7 +599,18 @@ function SortableQuestionCard({
                           </Typography>
                         )}
                         {index < blankSegments.length - 1 && (
-                          <Box sx={{ minWidth: 200, flex: '1 1 200px' }}>
+                          <Box
+                            sx={{ minWidth: 200, flex: '1 1 200px' }}
+                            draggable
+                            onDragStart={() => setDraggedPhraseBlankIndex(index)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => {
+                              if (draggedPhraseBlankIndex === null) return;
+                              movePhraseBlank(draggedPhraseBlankIndex, index);
+                              setDraggedPhraseBlankIndex(null);
+                            }}
+                            onDragEnd={() => setDraggedPhraseBlankIndex(null)}
+                          >
                             <TextField
                               size="small"
                               fullWidth
@@ -565,6 +638,9 @@ function SortableQuestionCard({
                                   >
                                     {index + 1}
                                   </Box>
+                                ),
+                                endAdornment: (
+                                  <DragIndicatorIcon fontSize="small" color="disabled" />
                                 ),
                               }}
                               sx={{
@@ -665,9 +741,17 @@ function SortableQuestionCard({
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => onChange('question', `${question.question}${question.question ? ' ' : ''}____`)}
+                    onClick={addFillBlank}
                   >
                     Insert Blank
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={removeFillBlank}
+                    disabled={blankSegments.length <= 2}
+                  >
+                    Delete Last
                   </Button>
                 </Box>
 
@@ -711,6 +795,16 @@ function SortableQuestionCard({
                                 >
                                   {index + 1}
                                 </Box>
+                              ),
+                              endAdornment: (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => removeFillBlankAt(index)}
+                                  disabled={blankSegments.length <= 2}
+                                  sx={{ ml: 0.5, color: theme.palette.error.main }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
                               ),
                             }}
                             sx={{
@@ -869,10 +963,6 @@ function SortableQuestionCard({
                   placeholder="e.g. 3.14"
                 />
               </Box>
-            )}
-
-            {isFillInBlankType && (
-              <Box sx={{ mb: 0.5 }} />
             )}
 
             {/* Answer Options - Multi-Select with Checkboxes */}
@@ -1192,10 +1282,8 @@ export default function CreateQuiz() {
       const isPhraseType = selectedType === 'match_the_phrase';
       const currentQuestionText = updatedQuestions[globalIndex].question || '';
 
-      if ((selectedType === 'fill_in_blank' || selectedType === 'dropdown' || selectedType === 'match_the_phrase') && !currentQuestionText.match(/_{3,}/)) {
-        updatedQuestions[globalIndex].question = selectedType === 'match_the_phrase'
-          ? 'The ___ jumps over the ___ dog'
-          : `${currentQuestionText}${currentQuestionText ? ' ' : ''}____`;
+      if ((selectedType === 'fill_in_blank' || selectedType === 'dropdown') && !currentQuestionText.match(/_{3,}/)) {
+        updatedQuestions[globalIndex].question = `${currentQuestionText}${currentQuestionText ? ' ' : ''}____`;
       }
 
       if (selectedType === 'true_false') {
@@ -1217,13 +1305,8 @@ export default function CreateQuiz() {
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
       } else if (isPhraseType) {
-        updatedQuestions[globalIndex].options = [
-          { text: 'quick', isCorrect: false },
-          { text: 'lazy', isCorrect: false },
-          { text: 'brown', isCorrect: false },
-          { text: 'fox', isCorrect: false },
-        ];
-        updatedQuestions[globalIndex].acceptedAnswers = ['fox', 'lazy'];
+        updatedQuestions[globalIndex].options = [];
+        updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
       } else if (isPairedType) {
