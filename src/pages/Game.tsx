@@ -1,5 +1,6 @@
-import { Box, Typography, useTheme } from "@mui/material";
+import { Box, Typography, useTheme, Button } from "@mui/material";
 import { HostGameView, Leaderboard, LobbyRoomView, PlayerGameView, QuestionView } from "../components/game";
+import { useNavigate } from "react-router-dom";
 import { ManageGameSettings, SelectQuiz } from "../components/quiz";
 
 import { RootState } from "../stores/store";
@@ -16,6 +17,7 @@ export default function LobbyRoom() {
   const userDetails = useSelector((state: RootState) => state.game.user); // get current user details from Redux
   const lobbyStatus = useSelector((state: RootState) => state.game.gameStatus);
   const theme = useTheme();
+  const navigate = useNavigate();
 
   return (
     <div className={styles.container}>
@@ -39,10 +41,18 @@ export default function LobbyRoom() {
         ) : lobbyStatus === "Completed" ? (
           <Box>
             {/* TODO: implement a final leaderboard */}
-              {/* <FinalLeaderBoard /> */}
-              <Typography variant="h5" gutterBottom>
-                Game has ended.
-              </Typography>
+            {/* <FinalLeaderBoard /> */}
+            <Typography variant="h5" gutterBottom>
+              Game has ended.
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ mt: 2 }}
+              onClick={() => navigate("/")}
+            >
+              Back to Home
+            </Button>
           </Box>
         ) : (
           // TODO: handle case where there is no lobbyStatus
