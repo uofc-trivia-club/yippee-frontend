@@ -108,3 +108,11 @@ Game.tsx – Lobby, active game, and results
 types.ts – Shared TypeScript types  
 SelectQuiz.tsx – Quiz selection UI  
 PlayerCard.tsx – Player display component  
+
+---
+
+## Development Notes
+
+You can find the Figma design here: https://www.figma.com/proto/f1RXPSz3CNBC5YP8O5pd7o/Yippee-?node-id=0-1&t=nFPsW2rWygzW3IUr-1
+
+When prototyping the frontend, use that link to do so. As of April 08, 2026 it looks bad.
