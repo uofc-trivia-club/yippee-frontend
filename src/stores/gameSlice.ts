@@ -6,12 +6,15 @@ interface GameState {
     user: User; // own user
     roomCode: string;
     clientsInLobby: User[];
-    // quiz: Quiz | undefined; 
     gameSettings: GameSettings | undefined;
     currentQuestion: QuizQuestion | undefined;  
+    currentQuestionIndex: number;
     gameStatus: string;
     showLeaderboard: boolean;
     finalQuestionLeaderboard: boolean; // leaderboard display is different if it is the final question
+    lastSubmittedAnswers: string[];
+    quizQuestions: QuizQuestion[];
+    questionCount: number;
 }
 
 const initialState = {
@@ -26,9 +29,13 @@ const initialState = {
     clientsInLobby: [], 
     gameSettings: undefined,
     currentQuestion: undefined, 
+    currentQuestionIndex: 0,
     gameStatus: "",
     showLeaderboard: false,
     finalQuestionLeaderboard: false,
+    lastSubmittedAnswers: [],
+    quizQuestions: [],
+    questionCount: 0,
 } satisfies GameState as GameState
 
 const gameSlice = createSlice({
@@ -55,6 +62,9 @@ const gameSlice = createSlice({
             // console.log('setSubmittedAnswer:', { before: { ...state.user }, after: { ...state.user, userMessage: action.payload } });
             state.user.submittedAnswer = action.payload;
         },
+        setLastSubmittedAnswers: (state, action: PayloadAction<string[]>) => {
+            state.lastSubmittedAnswers = action.payload;
+        },
         setShowLeaderboard: (state, action: PayloadAction<boolean>) => {
             // console.log('setShowLeaderboard:', { before: state.showLeaderboard , after: action.payload });
             state.showLeaderboard = action.payload;
@@ -74,9 +84,25 @@ const gameSlice = createSlice({
             // console.log('setCurrentQuestion:', { before: state.currentQuestion, after: action.payload });
             state.currentQuestion = action.payload;
         },
+        setCurrentQuestionIndex: (state, action: PayloadAction<number>) => {
+            state.currentQuestionIndex = action.payload;
+        },
         setGameStatus: (state, action: PayloadAction<string>) => {
             // console.log('setGameStatus:', { before: state.gameStatus, after: action.payload });
             state.gameStatus = action.payload;
+        },
+        setQuizQuestions: (state, action: PayloadAction<QuizQuestion[]>) => {
+            state.quizQuestions = action.payload;
+        },
+        resetPlayersSubmittedAnswers: (state) => {
+            // Reset submittedAnswer flag for all players in the lobby when a new question starts
+            state.clientsInLobby = state.clientsInLobby.map(user => ({
+                ...user,
+                submittedAnswer: false,
+            }));
+        },
+        setQuestionCount: (state, action: PayloadAction<number>) => {
+            state.questionCount = action.payload;
         },
     }
 })

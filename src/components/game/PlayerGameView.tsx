@@ -1,19 +1,19 @@
-import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import {
+  DropdownQuestion,
+  EssayQuestion,
+  ImageBasedQuestion,
+  MatchPhraseQuestion,
+  MatchingQuestion,
+  MultipleChoiceQuestion,
+  RankingQuestion,
+  ShortAnswerQuestion,
+  TrueFalseQuestion,
+} from "./questionTypes";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import Leaderboard from "./Leaderboard";
-import {
-  MultipleChoiceQuestion,
-  DropdownQuestion,
-  TrueFalseQuestion,
-  ShortAnswerQuestion,
-  MatchPhraseQuestion,
-  MatchingQuestion,
-  RankingQuestion,
-  ImageBasedQuestion,
-  EssayQuestion,
-} from "./questionTypes";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
@@ -25,6 +25,7 @@ export default function PlayerGameView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
+  const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
 
   useEffect(() => {
     const questionType = game.currentQuestion?.type;
@@ -41,6 +42,12 @@ export default function PlayerGameView() {
   const handleAnswerSelect = (option: string) => {
     if (game.user.submittedAnswer) return;
 
+    const typeName = game.currentQuestion?.type?.name;
+    if (typeName === 'multiple_choice') {
+      setSelectedAnswers([option]);
+      return;
+    }
+
     setSelectedAnswers(prev =>
       prev.includes(option)
         ? prev.filter(answer => answer !== option)
@@ -49,9 +56,11 @@ export default function PlayerGameView() {
   };
 
   const handleSubmitAnswers = async () => {
-    if (selectedAnswers.length === 0) return;
-
     const currentType = game.currentQuestion?.type?.name;
+    const allowsEmptySubmission = currentType === 'multi_select';
+
+    if (!allowsEmptySubmission && selectedAnswers.length === 0) return;
+
     if (currentType === 'ranking' || currentType === 'ordering') {
       console.log('[Ranking Submit] Submitted order:', selectedAnswers);
     }
@@ -70,6 +79,7 @@ export default function PlayerGameView() {
         (errorMessage) => setError(errorMessage)
       );
 
+      dispatch(gameActions.setLastSubmittedAnswers(selectedAnswers));
       setSelectedAnswers([]);
       dispatch(gameActions.setSubmittedAnswer(true));
     } catch (err) {
@@ -92,6 +102,16 @@ export default function PlayerGameView() {
 
     switch (t.name) {
       case 'multiple_choice': {
+        return (
+          <MultipleChoiceQuestion
+            options={t.options}
+            selectedAnswers={selectedAnswers}
+            onAnswerSelect={handleAnswerSelect}
+            disabled={isSubmitting}
+          />
+        );
+      }
+      case 'multi_select': {
         return (
           <MultipleChoiceQuestion
             options={t.options}
@@ -131,15 +151,27 @@ export default function PlayerGameView() {
           />
         );
       }
+      case 'numerical': {
+        return (
+          <ShortAnswerQuestion
+            textAnswer={textAnswer}
+            onAnswerChange={handleTextChange}
+            disabled={isSubmitting}
+            label="Your Numerical Answer"
+          />
+        );
+      }
       case 'match_the_phrase': {
-        const pairs = t.correctPairs || {};
+        const phrase = (t as any).phrase || q.question || '';
+        const slots = ((t as any).slots || []) as string[];
+        const options = ((t as any).options || []) as string[];
         return (
           <MatchPhraseQuestion
-            pairs={pairs}
+            phrase={phrase}
+            slots={slots}
+            options={options}
             disabled={isDisabled}
-            onMatchesChange={(formattedMatches) =>
-              setSelectedAnswers(formattedMatches)
-            }
+            onMatchesChange={(formattedMatches: string[]) => setSelectedAnswers(formattedMatches)}
           />
         );
       }
@@ -192,6 +224,105 @@ export default function PlayerGameView() {
     }
   };
 
+  const normalizeText = (value: string) => value.trim().toLowerCase();
+
+  const sortNormalized = (values: string[]) => [...values].map(normalizeText).sort();
+
+  const compareAsSets = (left: string[], right: string[]) => {
+    if (left.length !== right.length) return false;
+    const normalizedLeft = sortNormalized(left);
+    const normalizedRight = sortNormalized(right);
+    return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+  };
+
+  const isAnswerCorrect = () => {
+    const question = game.currentQuestion;
+    const type = question?.type;
+    const submitted = game.lastSubmittedAnswers;
+
+    if (!question || !type || submitted.length === 0) return false;
+
+    switch (type.name) {
+      case 'multiple_choice':
+        return selectedAnswers[0]
+          ? normalizeText(selectedAnswers[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
+          : false;
+
+      case 'multi_select':
+      case 'image_based': {
+        const accepted = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
+        return compareAsSets(submitted, accepted);
+      }
+
+      case 'dropdown':
+      case 'true_false':
+        return submitted[0]
+          ? normalizeText(submitted[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
+          : false;
+
+      case 'short_answer':
+      case 'fill_in_blank': {
+        const accepted = (question.correctAnswers || (type as any).correctAnswers || []).map(normalizeText);
+        return accepted.includes(normalizeText(submitted[0] || ''));
+      }
+
+      case 'numerical': {
+        const expected = Number((type as any).correctAnswer);
+        const actual = Number(submitted[0]);
+        return Number.isFinite(expected) && Number.isFinite(actual) && actual === expected;
+      }
+
+      case 'essay':
+        return false;
+
+      case 'match_the_phrase':
+      {
+        const correctMap = (type as any).correctAssign || {};
+        const accepted = Object.entries(correctMap).map(([slotId, value]) => `${slotId}:${value}`);
+        return compareAsSets(submitted, accepted);
+      }
+
+      case 'matching': {
+        const correct = question.correctAnswers || [];
+        return sortNormalized(submitted).join('|') === sortNormalized(correct).join('|');
+      }
+
+      case 'ranking':
+      case 'ordering': {
+        const correctOrder = ((type as any).correctOrder || question.correctAnswers || []) as string[];
+        return submitted.length === correctOrder.length && submitted.every((value, index) => normalizeText(value) === normalizeText(correctOrder[index] || ''));
+      }
+
+      default:
+        return false;
+    }
+  };
+
+  // Get player's current rank and stats
+  const getPlayerStats = () => {
+    const sortedPlayers = Object.values(game.clientsInLobby)
+      .filter((user): user is any => 
+        user !== null && 
+        typeof user === 'object' && 
+        'userRole' in user && 
+        user.userRole === 'player'
+      )
+      .sort((a, b) => b.points - a.points);
+
+    const currentPlayerIndex = sortedPlayers.findIndex(p => p.userName === game.user.userName);
+    const currentPlayer = sortedPlayers[currentPlayerIndex];
+    const leaderPlayer = sortedPlayers[0];
+    const pointsBehind = leaderPlayer && currentPlayer ? leaderPlayer.points - currentPlayer.points : 0;
+
+    return {
+      rank: currentPlayerIndex + 1,
+      points: currentPlayer?.points || 0,
+      pointsBehind,
+      leaderName: leaderPlayer?.userName,
+      totalPlayers: sortedPlayers.length,
+    };
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       {error && (
@@ -202,9 +333,40 @@ export default function PlayerGameView() {
 
       {!game.showLeaderboard ? (
         <>
-          <Typography variant="h5" gutterBottom>
-            {game.currentQuestion?.question}
-          </Typography>
+          <Card
+            elevation={0}
+            sx={{
+              mb: 2,
+              borderRadius: 3,
+              border: (theme) => `1px solid ${theme.palette.divider}`,
+              background: (theme) => theme.palette.mode === 'dark'
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
+              boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+              <Stack spacing={1.5}>
+                <Chip
+                  label={`Question ${questionNumber}`}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ width: 'fit-content', fontWeight: 700 }}
+                />
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 800,
+                    lineHeight: 1.15,
+                    letterSpacing: '-0.02em',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {game.currentQuestion?.question}
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
 
           {game.user.submittedAnswer ? (
             <Typography variant="h6" color="success.main" gutterBottom>
@@ -218,7 +380,7 @@ export default function PlayerGameView() {
                 variant="contained"
                 color="primary"
                 onClick={handleSubmitAnswers}
-                disabled={selectedAnswers.length === 0 || isSubmitting}
+                disabled={((game.currentQuestion?.type?.name !== 'multi_select') && selectedAnswers.length === 0) || isSubmitting}
                 sx={{ mt: 2 }}
               >
                 {isSubmitting ? (
@@ -229,6 +391,62 @@ export default function PlayerGameView() {
               </Button>
             </Box>
           )}
+        </>
+      ) : !game.finalQuestionLeaderboard ? (
+        <>
+          {(() => {
+            const stats = getPlayerStats();
+            const getRankOrdinal = (n: number) => {
+              const s = ['th', 'st', 'nd', 'rd'];
+              const v = n % 100;
+              return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            };
+
+            return (
+              <Box
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: isAnswerCorrect() ? 'success.main' : 'error.main',
+                  bgcolor: isAnswerCorrect() ? 'success.light' : 'error.light',
+                  color: isAnswerCorrect() ? 'success.contrastText' : 'error.contrastText',
+                  textAlign: 'center',
+                }}
+              >
+                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+                  {isAnswerCorrect() ? '✅ You got it right!' : '❌ Incorrect'}
+                </Typography>
+                
+                {/* Points Display */}
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 2 }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5 }}>Current Points</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                    {stats.points}
+                  </Typography>
+                </Box>
+
+                {/* Rank Message */}
+                <Box sx={{ mb: 1 }}>
+                  {stats.pointsBehind === 0 ? (
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      🏆 You're in {getRankOrdinal(stats.rank)} place!
+                    </Typography>
+                  ) : (
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      You are {stats.pointsBehind} {stats.pointsBehind === 1 ? 'point' : 'points'} behind {stats.leaderName}!
+                    </Typography>
+                  )}
+                </Box>
+
+                <Typography variant="body2" sx={{ opacity: 0.9, mt: 2 }}>
+                  {isAnswerCorrect()
+                    ? 'Great job! Keep this up.'
+                    : 'Review the correct answer on the host screen.'}
+                </Typography>
+              </Box>
+            );
+          })()}
         </>
       ) : (
         <Leaderboard />

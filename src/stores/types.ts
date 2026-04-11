@@ -12,6 +12,15 @@ export type Quiz = {
 export interface MultipleChoiceType {
   name: "multiple_choice";
   description: string;
+  correctAnswer: string;
+  incorrectAnswers: string[];
+  options: string[];
+}
+
+// Multi Select
+export interface MultiSelectType {
+  name: "multi_select";
+  description: string;
   correctAnswers: string[];
   incorrectAnswers: string[];
   options: string[];
@@ -44,12 +53,21 @@ export interface FillInBlankType {
   correctAnswers: string[];
 }
 
+// Numerical
+export interface NumericalType {
+  name: "numerical";
+  description: string;
+  correctAnswer: number;
+}
+
 // Match the Phrase
 export interface MatchThePhraseType {
   name: "match_the_phrase";
   description: string;
-  pairs: Record<string, string>;
-  correctPairs: Record<string, string>;
+  phrase: string;
+  slots: string[];
+  options: string[];
+  correctAssign: Record<string, string>;
 }
 
 // Dropdown
@@ -96,10 +114,12 @@ export interface ImageBasedType {
 // Union type for all question types
 export type QuestionType =
   | MultipleChoiceType
+  | MultiSelectType
   | TrueFalseType
   | ShortAnswerType
   | EssayType
   | FillInBlankType
+  | NumericalType
   | MatchThePhraseType
   | DropdownType
   | RankingType

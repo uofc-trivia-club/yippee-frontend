@@ -1,11 +1,20 @@
 import { Box, Button, useTheme } from "@mui/material";
-
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
 import styles from './Home.module.css';
 import { useNavigate } from "react-router-dom";
+import { gameActions } from "../stores/gameSlice";
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const theme = useTheme();
+
+  // Clear game state when home page mounts
+  useEffect(() => {
+    dispatch(gameActions.setRoomCode(""));
+    dispatch(gameActions.setGameStatus(""));
+  }, [dispatch]);
 
   // Create dynamic styles based on theme with improved dark mode visibility
   const buttonStyle = {
@@ -30,7 +39,7 @@ export default function HomePage() {
       <Button sx={buttonStyle} variant="contained" onClick={() => {navigate(`/host`)}}>
         Host Game
       </Button>
-      <Button sx={buttonStyle} variant="contained" onClick={() => {navigate(`/join`)}}>
+      <Button sx={buttonStyle} variant="contained" onClick={() => {navigate(`/join`, { replace: true })}}>
         Join Game
       </Button>
       <Button sx={buttonStyle} variant="contained" onClick={() => {navigate(`/create-quiz`)}}>

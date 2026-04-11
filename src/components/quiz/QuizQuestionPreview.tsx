@@ -2,6 +2,7 @@ import { Box, IconButton, Paper, Typography, useTheme } from "@mui/material";
 
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import MatchPhraseQuestion from "../game/questionTypes/MatchPhraseQuestion";
 import { QuizQuestion } from "../../stores/types";
 
 interface QuizQuestionPreviewProps {
@@ -21,31 +22,26 @@ export default function QuizQuestionPreview({
   onPrevious,
   showCorrectAnswers = false
 }: QuizQuestionPreviewProps) {
-  // Debug: check if component is rendered at all
-  console.log('QuizQuestionPreview rendered');
-  // Debug: log the question prop to inspect structure
-  console.log('QuizQuestionPreview question:', question);
   const theme = useTheme();
   
   // Type-safe extraction of options and answers based on question type
   let options: string[] = [];
   let correctAnswers: string[] = [];
-  let incorrectAnswers: string[] = [];
-  let matchPairs: Record<string, string> | undefined = undefined;
   let leftItems: string[] = [];
   let rightItems: string[] = [];
-  let correctMatches: Record<string, string> | undefined = undefined;
   let correctAnswer: string | undefined = undefined;
-  let items: string[] = [];
-  let correctOrder: string[] = [];
-  let imageUrl: string | undefined = undefined;
 
   switch (question.type.name) {
     case "multiple_choice": {
       const t = question.type;
       options = t.options;
+      correctAnswer = t.correctAnswer;
+      break;
+    }
+    case "multi_select": {
+      const t = question.type;
+      options = t.options;
       correctAnswers = t.correctAnswers;
-      incorrectAnswers = t.incorrectAnswers;
       break;
     }
     case "dropdown": {
@@ -70,28 +66,30 @@ export default function QuizQuestionPreview({
       correctAnswers = t.correctAnswers;
       break;
     }
+    case "numerical": {
+      const t = question.type;
+      correctAnswer = String(t.correctAnswer);
+      break;
+    }
     case "match_the_phrase": {
       const t = question.type;
-      matchPairs = t.correctPairs;
+      options = t.options || [];
       break;
     }
     case "matching": {
       const t = question.type;
       leftItems = t.leftItems;
       rightItems = t.rightItems;
-      correctMatches = t.correctMatches;
       break;
     }
     case "ranking":
     case "ordering": {
       const t = question.type as any;
-      items = t.items;
-      correctOrder = t.correctOrder;
+      options = t.items || [];
       break;
     }
     case "image_based": {
       const t = question.type;
-      imageUrl = t.imageUrl;
       correctAnswers = t.correctAnswers;
       break;
     }
@@ -162,30 +160,16 @@ export default function QuizQuestionPreview({
         )}
 
         {/* Render based on question type */}
-        {question.type.name === "match_the_phrase" && matchPairs && Object.keys(matchPairs).length > 0 ? (
-          <>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-              Match the following:
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 4, ml: 2 }}>
-              <Box>
-                <Typography variant="subtitle2">Term</Typography>
-                {Object.keys(matchPairs).map((term, idx) => (
-                  <Typography key={idx} variant="body2" sx={{ mb: 0.5 }}>
-                    {idx + 1}. {term}
-                  </Typography>
-                ))}
-              </Box>
-              <Box>
-                <Typography variant="subtitle2">Definition</Typography>
-                {Object.values(matchPairs).map((definition, idx) => (
-                  <Typography key={idx} variant="body2" sx={{ mb: 0.5 }}>
-                    {String.fromCharCode(65 + idx)}. {definition}
-                  </Typography>
-                ))}
-              </Box>
-            </Box>
-          </>
+        {question.type.name === "match_the_phrase" ? (
+          <MatchPhraseQuestion
+            phrase={(question.type as any).phrase || question.question}
+            slots={((question.type as any).slots || []) as string[]}
+            options={((question.type as any).options || []) as string[]}
+            disabled={true}
+            showCorrectAnswers={showCorrectAnswers}
+            correctAssign={(question.type as any).correctAssign || {}}
+            onMatchesChange={() => undefined}
+          />
         ) : question.type.name === "matching" && leftItems.length > 0 && rightItems.length > 0 ? (
           <>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -210,6 +194,16 @@ export default function QuizQuestionPreview({
               </Box>
             </Box>
           </>
+        ) : (question.type as any).name === "match_the_phrase" ? (
+          <MatchPhraseQuestion
+            phrase={(question.type as any).phrase || question.question}
+            slots={((question.type as any).slots || []) as string[]}
+            options={((question.type as any).options || []) as string[]}
+            disabled={true}
+            showCorrectAnswers={showCorrectAnswers}
+            correctAssign={(question.type as any).correctAssign || {}}
+            onMatchesChange={() => undefined}
+          />
         ) : options.length > 0 ? (
           <>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>

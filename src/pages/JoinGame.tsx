@@ -24,10 +24,15 @@ export default function JoinGame() {
   
   useCheckConnection();
 
+  // Clear room code immediately on mount to prevent old room redirects
   useEffect(() => {
-    console.log('Navigation check:', { roomCode });
+    dispatch(gameActions.setRoomCode(""));
+  }, [dispatch]);
+  
+  // When roomCode is set in Redux (after successful join), navigate to the lobby
+  useEffect(() => {
     if (roomCode) {
-      navigate(`/${roomCode}`)
+      navigate(`/${roomCode}`, { replace: true });
     }
   }, [roomCode, navigate]);
 
@@ -58,11 +63,14 @@ export default function JoinGame() {
       points: 0,
     };
 
-    // execute the "createLobby" WebSocket command
+    // execute the "joinLobby" WebSocket command
+    // The redirect will happen automatically when Redux roomCode is updated
     executeWebSocketCommand(
       "joinLobby",
       { roomCode: roomCodeToJoin, player: user },
-      (errorMessage) => setError(errorMessage)
+      (errorMessage) => {
+        setError(errorMessage);
+      }
     );
   };
 
