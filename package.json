@@ -36,8 +36,12 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "node scripts/run-with-backend.js start",
+    "build": "node scripts/run-with-backend.js build",
+    "start:local": "node scripts/run-with-backend.js start --backend=local",
+    "start:production": "node scripts/run-with-backend.js start --backend=production",
+    "build:local": "node scripts/run-with-backend.js build --backend=local",
+    "build:production": "node scripts/run-with-backend.js build --backend=production",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

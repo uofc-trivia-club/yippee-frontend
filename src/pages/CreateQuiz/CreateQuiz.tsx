@@ -35,6 +35,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import StarIcon from '@mui/icons-material/Star';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import styles from './CreateQuiz.module.css';
+import { backendUrl } from '../../util/backendConfig';
 
 type QuizQuestionForm = {
   id: string;
@@ -1843,7 +1844,7 @@ export default function CreateQuiz() {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/create-quiz", {
+      const response = await fetch(`${backendUrl}/api/create-quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(quiz),

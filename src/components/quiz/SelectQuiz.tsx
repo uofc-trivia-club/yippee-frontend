@@ -14,12 +14,13 @@ import { useEffect, useMemo, useState } from "react";
 import ImageIcon from "@mui/icons-material/Image";
 import { Quiz } from "../../stores/types";
 import QuizQuestionPreview from "./QuizQuestionPreview";
+import { backendUrl } from "../../util/backendConfig";
 import styles from "./SelectQuiz.module.css";
 
 const MAX_VISIBLE = 5;
 
 const getQuizImageUrl = (imageId: string) =>
-  `http://localhost:8080/api/images/${imageId}`;
+  `${backendUrl}/api/images/${imageId}`;
 
 interface SelectQuizProps {
   onSelectQuiz: (quiz: Quiz) => void;
@@ -44,7 +45,7 @@ export default function SelectQuiz({
 
     const fetchQuizzes = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/get-quizzes");
+        const response = await fetch(`${backendUrl}/api/get-quizzes`);
         if (!response.ok) throw new Error("Failed to fetch quizzes");
 
         const data = await response.json();

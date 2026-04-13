@@ -2,6 +2,7 @@ import { GameSettings, Quiz, User } from "../stores/types";
 import { useDispatch, useSelector } from "react-redux";
 
 import { RootState } from "../stores/store";
+import { wsUrl } from "./backendConfig";
 import { getWebSocket } from "../util/websocketMiddleware";
 import { useEffect } from "react";
 import { websocketActions } from "../stores/websocketSlice";
@@ -15,9 +16,9 @@ export const useCheckConnection = () => {
 
   useEffect(() => {
     if (!isConnected) {
-      dispatch(websocketActions.connect("ws://localhost:8080/ws"));
+      dispatch(websocketActions.connect(wsUrl));
     }
-  }, [isConnected, dispatch]);
+  }, [isConnected, dispatch, wsUrl]);
 };
 
 // Define command types for better type safety

@@ -34,17 +34,115 @@ Yippee is a real-time multiplayer quiz game built with React, TypeScript, and Ma
 - [Backend server](https://github.com/uofc-trivia-club/yippee-backend/issues) running
 
 ### Installation
+```bash
 git clone https://github.com/uofc-trivia-club/yippee-frontend.git
 cd yippee
 npm install
+```
+
+### Environment Setup (Local vs Production Backend)
+
+Use a backend target switch in your env files.
+
+Example `.env`:
+
+```dotenv
+PORT=3001
+REACT_APP_BACKEND_TARGET=local
+
+REACT_APP_BACKEND_URL_LOCAL=http://localhost:8080
+REACT_APP_WS_URL_LOCAL=ws://localhost:8080/ws
+
+REACT_APP_BACKEND_URL_PRODUCTION=https://yippee-backend-production.up.railway.app
+REACT_APP_WS_URL_PRODUCTION=wss://yippee-backend-production.up.railway.app/ws
+```
+
+Set `REACT_APP_BACKEND_TARGET` to:
+- `local` for local backend development
+- `production` for deployed backend
+
+Suggested file usage:
+- `.env` shared defaults
+- `.env.local` local machine overrides
+- `.env.production` production build values
+- `.env.copy` committed template you can duplicate
+
+You can also choose the backend at runtime without editing files:
+
+```bash
+npm start -- --backend=local
+npm start -- --backend=production
+```
+
+Quick start (copy/paste):
+
+```bash
+# 1) copy template once
+cp .env.copy .env
+
+# 2) fill in the proper values for the env variables
+
+# 3) local backend dev
+npm run start:local
+
+# 4) test against deployed backend
+npm run start:production
+
+# 5) build with a specific target
+npm run build:local
+npm run build:production
+```
+
+Convenience scripts:
+
+```bash
+npm run start:local
+npm run start:production
+npm run build:local
+npm run build:production
+```
 
 ### Development
+1. Ensure backend is running.
+2. Set `REACT_APP_BACKEND_TARGET=local`.
+3. Start frontend:
+
+```bash
 npm start
+```
 
 Runs the app at http://localhost:3000
 
 ### Production Build
+1. Set `REACT_APP_BACKEND_TARGET=production`.
+2. Build:
+
+```bash
 npm run build
+```
+
+### Deploying on Vercel
+
+Set these Vercel Environment Variables:
+
+```dotenv
+REACT_APP_BACKEND_TARGET=production
+REACT_APP_BACKEND_URL_PRODUCTION=https://yippee-backend-production.up.railway.app
+REACT_APP_WS_URL_PRODUCTION=wss://yippee-backend-production.up.railway.app/ws
+```
+
+Then redeploy.
+
+Note: a deployed frontend cannot use `localhost` backend.
+
+### Security
+
+`.env` files are gitignored. If any were tracked previously, untrack them once:
+
+```bash
+git rm --cached .env .env.local .env.production
+git commit -m "Stop tracking env files"
+```
 
 ---
 
