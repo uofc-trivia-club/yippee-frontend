@@ -18,7 +18,7 @@ export const useCheckConnection = () => {
     if (!isConnected) {
       dispatch(websocketActions.connect(wsUrl));
     }
-  }, [isConnected, dispatch, wsUrl]);
+  }, [isConnected, dispatch]);
 };
 
 // Define command types for better type safety
