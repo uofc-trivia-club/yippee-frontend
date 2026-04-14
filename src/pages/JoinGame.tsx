@@ -33,11 +33,16 @@ export default function JoinGame() {
     }
   }, [roomCode, navigate]);
 
+  const sanitizeRoomCode = (input: string) =>
+    input.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4);
+
   const handleJoinGame = async () => {
     // input room code
     const errors: string[] = [];
-    if (!roomCodeToJoin.trim()) {
+    if (!roomCodeToJoin) {
       errors.push("Room code cannot be empty");
+    } else if (!/^[A-Z]{4}$/.test(roomCodeToJoin)) {
+      errors.push("Room code must be exactly 4 letters (A-Z), no spaces");
     }
     // input player name
     if (!playerName.trim()) {
@@ -106,7 +111,9 @@ export default function JoinGame() {
           variant="outlined"
           fullWidth
           value={roomCodeToJoin}
-          onChange={(e) => setRoomCodeToJoin(e.target.value.toUpperCase())}
+          onChange={(e) => setRoomCodeToJoin(sanitizeRoomCode(e.target.value))}
+          inputProps={{ maxLength: 4, pattern: "[A-Za-z]{4}" }}
+          helperText={`${roomCodeToJoin.length}/4 letters`}
           sx={{ marginBottom: 2 }}
         />
         {error && (
