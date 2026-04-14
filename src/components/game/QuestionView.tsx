@@ -70,6 +70,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
+                    const optionImageUrl = q?.optionImageUrls?.[index];
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -83,6 +84,14 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
                                     {option}
                                 </Typography>
+                                {optionImageUrl ? (
+                                    <Box
+                                        component="img"
+                                        src={optionImageUrl}
+                                        alt={`Option ${index + 1}`}
+                                        sx={{ width: 64, height: 42, objectFit: 'cover', borderRadius: 1 }}
+                                    />
+                                ) : null}
                                 {displayCorrectAnswers && isCorrect && (
                                     <Chip label="Correct" size="small" color="success" />
                                 )}
@@ -95,6 +104,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswers.includes(option);
+                    const optionImageUrl = q?.optionImageUrls?.[index];
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -108,6 +118,14 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
                                     {option}
                                 </Typography>
+                                {optionImageUrl ? (
+                                    <Box
+                                        component="img"
+                                        src={optionImageUrl}
+                                        alt={`Option ${index + 1}`}
+                                        sx={{ width: 64, height: 42, objectFit: 'cover', borderRadius: 1 }}
+                                    />
+                                ) : null}
                                 {displayCorrectAnswers && isCorrect && (
                                     <Chip label="Correct" size="small" color="success" />
                                 )}
@@ -120,6 +138,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
+                    const optionImageUrl = q?.optionImageUrls?.[index];
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -133,6 +152,14 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
                                     {option}
                                 </Typography>
+                                {optionImageUrl ? (
+                                    <Box
+                                        component="img"
+                                        src={optionImageUrl}
+                                        alt={`Option ${index + 1}`}
+                                        sx={{ width: 64, height: 42, objectFit: 'cover', borderRadius: 1 }}
+                                    />
+                                ) : null}
                                 {displayCorrectAnswers && isCorrect && (
                                     <Chip label="Correct" size="small" color="success" />
                                 )}
@@ -331,6 +358,22 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     >
                         {q?.question || 'No question available'}
                     </Typography>
+                    {q?.imageUrl ? (
+                        <Box
+                            component="img"
+                            src={q.imageUrl}
+                            alt="Question"
+                            sx={{
+                                mt: 1.5,
+                                width: '100%',
+                                maxWidth: 520,
+                                borderRadius: 3,
+                                border: `1px solid ${theme.palette.divider}`,
+                                boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
+                                objectFit: 'cover',
+                            }}
+                        />
+                    ) : null}
                     {q?.category?.length ? (
                         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1.5 }}>
                             {q.category.map((category) => (
@@ -358,6 +401,24 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 )}
 
                 <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
+
+                {displayCorrectAnswers && q?.explanation ? (
+                    <Box
+                        sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: theme.palette.mode === 'dark'
+                                ? 'rgba(33, 150, 243, 0.16)'
+                                : 'rgba(33, 150, 243, 0.10)',
+                            border: `1px solid ${theme.palette.info.main}`,
+                        }}
+                    >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                            Explanation
+                        </Typography>
+                        <Typography variant="body2">{q.explanation}</Typography>
+                    </Box>
+                ) : null}
             </Stack>
         </Paper>
     );

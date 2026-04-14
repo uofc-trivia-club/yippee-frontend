@@ -132,6 +132,11 @@ export type QuizQuestion = {
   points: number;
   difficulty: number;
   hint: string;
+  imageUrl?: string;
+  imageId?: string;
+  explanation?: string;
+  optionImageUrls?: string[];
+  optionImageIds?: string[];
   type: QuestionType;
   category: string[];
   // The following fields are kept for compatibility, but you should use type-specific fields

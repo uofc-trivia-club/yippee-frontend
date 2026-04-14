@@ -43,6 +43,10 @@ type QuizQuestionForm = {
   points: number;
   difficulty: number;
   hint: string;
+  imageUrl: string;
+  imageId?: string;
+  imageFile: File | null;
+  explanation: string;
   type: string;
   acceptedAnswers: string[];
   acceptedAnswerInput: string;
@@ -54,6 +58,9 @@ type QuizQuestionForm = {
   options: Array<{
     text: string;
     isCorrect: boolean;
+    imageUrl?: string;
+    imageId?: string;
+    imageFile: File | null;
   }>;
 };
 
@@ -68,14 +75,18 @@ const createInitialQuestion = (): QuizQuestionForm => ({
   points: 1,
   difficulty: 1,
   hint: "",
+  imageUrl: "",
+  imageId: "",
+  imageFile: null,
+  explanation: "",
   type: "multiple",
   acceptedAnswers: [],
   acceptedAnswerInput: "",
   category: [],
   matchingPairs: createMatchingPairs(),
   options: [
-    { text: "", isCorrect: true },
-    { text: "", isCorrect: false },
+    { text: "", isCorrect: true, imageUrl: "", imageId: "", imageFile: null },
+    { text: "", isCorrect: false, imageUrl: "", imageId: "", imageFile: null },
   ],
 });
 
@@ -137,7 +148,11 @@ function SortableQuestionCard({
   onToggle: () => void;
   onDelete: () => void;
   onChange: <K extends keyof QuizQuestionForm>(field: K, value: QuizQuestionForm[K]) => void;
-  onOptionChange: (optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => void;
+  onOptionChange: (
+    optionIndex: number,
+    field: 'text' | 'isCorrect' | 'imageUrl' | 'imageId' | 'imageFile',
+    value: string | boolean | File | null
+  ) => void;
   onAddOption: () => void;
   onDeleteOption: (optionIndex: number) => void;
   onAddAcceptedAnswer: () => void;
@@ -225,6 +240,9 @@ function SortableQuestionCard({
     const syncedWordBank = nextAnswers.slice(0, phraseBlankCount).map((answer, index) => ({
       text: answer.trim() || question.options[index]?.text || '',
       isCorrect: false,
+      imageUrl: question.options[index]?.imageUrl || '',
+      imageId: question.options[index]?.imageId || '',
+      imageFile: question.options[index]?.imageFile || null,
     }));
     const remainingWords = question.options.slice(phraseBlankCount);
     onChange('options', [...syncedWordBank, ...remainingWords]);
@@ -244,6 +262,9 @@ function SortableQuestionCard({
     const syncedWordBank = nextAnswers.map((answer, index) => ({
       text: answer.trim() || question.options[index]?.text || '',
       isCorrect: false,
+      imageUrl: question.options[index]?.imageUrl || '',
+      imageId: question.options[index]?.imageId || '',
+      imageFile: question.options[index]?.imageFile || null,
     }));
     const remainingWords = question.options.slice(nextBlankCount);
     onChange('options', [...syncedWordBank, ...remainingWords]);
@@ -272,7 +293,7 @@ function SortableQuestionCard({
     const extraWordBank = question.options.slice(phraseBlankCount);
     const nextPinnedWordBank = [...pinnedWordBank];
     const [movedWord] = nextPinnedWordBank.splice(fromIndex, 1);
-    nextPinnedWordBank.splice(toIndex, 0, movedWord || { text: '', isCorrect: false });
+    nextPinnedWordBank.splice(toIndex, 0, movedWord || { text: '', isCorrect: false, imageUrl: '', imageId: '', imageFile: null });
     onChange('options', [...nextPinnedWordBank, ...extraWordBank]);
   };
 
@@ -484,6 +505,39 @@ function SortableQuestionCard({
               />
             </Box>
 
+            <Box sx={{ display: 'flex', gap: 2, mt: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <TextField
+                label="Image URL (Optional)"
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.imageUrl}
+                onChange={(e) => onChange("imageUrl", e.target.value)}
+                placeholder="https://example.com/question-image.png"
+              />
+              <Button variant="outlined" component="label" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
+                {question.imageFile ? 'Question Image Selected' : 'Upload Question Image'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    onChange('imageFile', file);
+                  }}
+                />
+              </Button>
+              <TextField
+                label="Explanation (Optional)"
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.explanation}
+                onChange={(e) => onChange("explanation", e.target.value)}
+                placeholder="Explain why the answer is correct..."
+              />
+            </Box>
+
             <Box
               sx={{
                 mt: 1.5,
@@ -560,6 +614,9 @@ function SortableQuestionCard({
                   const syncedWordBank = nextAnswers.map((answer, index) => ({
                     text: answer.trim() || question.options[index]?.text || '',
                     isCorrect: false,
+                    imageUrl: question.options[index]?.imageUrl || '',
+                    imageId: question.options[index]?.imageId || '',
+                    imageFile: question.options[index]?.imageFile || null,
                   }));
                   const remainingWords = question.options.slice(nextBlankCount);
                   onChange('options', [...syncedWordBank, ...remainingWords]);
@@ -1175,6 +1232,19 @@ function SortableQuestionCard({
                       }}
                     />
 
+                    <Button variant="outlined" component="label" size="small" sx={{ flexShrink: 0 }}>
+                      {option.imageFile || option.imageUrl ? 'Image Set' : 'Add Image'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          onOptionChange(optionIndex, 'imageFile', file);
+                        }}
+                      />
+                    </Button>
+
                     {/* Delete Button */}
                     <IconButton
                       size="small"
@@ -1288,14 +1358,14 @@ export default function CreateQuiz() {
 
       if (selectedType === 'true_false') {
         updatedQuestions[globalIndex].options = [
-          { text: 'True', isCorrect: true },
-          { text: 'False', isCorrect: false },
+          { text: 'True', isCorrect: true, imageUrl: '', imageId: '', imageFile: null },
+          { text: 'False', isCorrect: false, imageUrl: '', imageId: '', imageFile: null },
         ];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
       } else if (selectedType === 'essay') {
-        updatedQuestions[globalIndex].options = [{ text: '', isCorrect: false }];
+        updatedQuestions[globalIndex].options = [{ text: '', isCorrect: false, imageUrl: '', imageId: '', imageFile: null }];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
@@ -1318,8 +1388,8 @@ export default function CreateQuiz() {
         }
       } else if (updatedQuestions[globalIndex].options.length < 2) {
         updatedQuestions[globalIndex].options = [
-          { text: '', isCorrect: true },
-          { text: '', isCorrect: false },
+          { text: '', isCorrect: true, imageUrl: '', imageId: '', imageFile: null },
+          { text: '', isCorrect: false, imageUrl: '', imageId: '', imageFile: null },
         ];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
@@ -1346,7 +1416,12 @@ export default function CreateQuiz() {
     setQuestions(updatedQuestions);
   };
 
-  const handleOptionChange = (globalIndex: number, optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => {
+  const handleOptionChange = (
+    globalIndex: number,
+    optionIndex: number,
+    field: 'text' | 'isCorrect' | 'imageUrl' | 'imageId' | 'imageFile',
+    value: string | boolean | File | null
+  ) => {
     const updatedQuestions = [...questions];
     const updatedOptions = [...updatedQuestions[globalIndex].options];
     const qType = updatedQuestions[globalIndex].type;
@@ -1399,7 +1474,7 @@ export default function CreateQuiz() {
 
   const addOption = (globalIndex: number) => {
     const updatedQuestions = [...questions];
-    updatedQuestions[globalIndex].options.push({ text: "", isCorrect: false });
+    updatedQuestions[globalIndex].options.push({ text: "", isCorrect: false, imageUrl: '', imageId: '', imageFile: null });
     setQuestions(updatedQuestions);
   };
 
@@ -1507,6 +1582,8 @@ export default function CreateQuiz() {
       .filter((opt) => !opt.isCorrect)
       .map((opt) => opt.text);
     const options = question.options.map((opt) => opt.text);
+    const optionImageUrls = question.options.map((opt) => (opt.imageUrl || '').trim());
+    const optionImageIds = question.options.map((opt) => (opt.imageId || '').trim());
     const matchingAnswerStrings = matchingPairs.map((pair) => `${pair.left}:${pair.right}`);
 
     let typeObj: QuizQuestion["type"];
@@ -1618,7 +1695,7 @@ export default function CreateQuiz() {
         typeObj = {
           name: "image_based",
           description: "image_based question",
-          imageUrl: "",
+          imageUrl: question.imageUrl.trim(),
           correctAnswers,
         };
         break;
@@ -1637,6 +1714,11 @@ export default function CreateQuiz() {
       points: question.points,
       difficulty: question.difficulty,
       hint: question.hint,
+      imageUrl: question.imageUrl.trim(),
+      imageId: (question.imageId || '').trim() || undefined,
+      explanation: question.explanation.trim(),
+      optionImageUrls,
+      optionImageIds,
       type: typeObj,
       category: question.category,
       options: typeName === 'matching'
@@ -1843,6 +1925,49 @@ export default function CreateQuiz() {
       quizQuestions: transformedQuestions,
     };
 
+    const extractQuizId = (payload: any): string | undefined => {
+      if (!payload || typeof payload !== 'object') return undefined;
+      return payload.quizId || payload.id || payload._id || payload?.quiz?.id || payload?.quiz?._id;
+    };
+
+    const uploadQuestionImage = async (quizId: string, questionIndex: number, file: File) => {
+      const form = new FormData();
+      form.append('image', file);
+
+      const response = await fetch(
+        `${backendUrl}/api/quizzes/${encodeURIComponent(quizId)}/questions/${questionIndex}/image`,
+        {
+          method: 'POST',
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Question image upload failed for question ${questionIndex + 1}`);
+      }
+
+      return response.json().catch(() => ({}));
+    };
+
+    const uploadOptionImage = async (quizId: string, questionIndex: number, optionIndex: number, file: File) => {
+      const form = new FormData();
+      form.append('image', file);
+
+      const response = await fetch(
+        `${backendUrl}/api/quizzes/${encodeURIComponent(quizId)}/questions/${questionIndex}/options/${optionIndex}/image`,
+        {
+          method: 'POST',
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Option image upload failed for question ${questionIndex + 1}, option ${optionIndex + 1}`);
+      }
+
+      return response.json().catch(() => ({}));
+    };
+
     try {
       const response = await fetch(`${backendUrl}/api/create-quiz`, {
         method: "POST",
@@ -1851,7 +1976,59 @@ export default function CreateQuiz() {
       });
 
       if (response.ok) {
-        showSnackbar("Quiz created successfully!", "success");
+        const payload = await response.json().catch(() => ({}));
+        const quizId = extractQuizId(payload);
+
+        const hasImageUploads = questions.some((q) =>
+          Boolean(q.imageFile) || q.options.some((opt) => Boolean(opt.imageFile))
+        );
+
+        if (hasImageUploads && quizId) {
+          let uploadCount = 0;
+          for (let qIndex = 0; qIndex < questions.length; qIndex += 1) {
+            const q = questions[qIndex];
+
+            if (q.imageFile) {
+              const uploaded = await uploadQuestionImage(quizId, qIndex, q.imageFile);
+              uploadCount += 1;
+              if (uploaded.imageUrl) {
+                transformedQuestions[qIndex].imageUrl = uploaded.imageUrl;
+              }
+              if (uploaded.imageId) {
+                transformedQuestions[qIndex].imageId = uploaded.imageId;
+              }
+            }
+
+            for (let oIndex = 0; oIndex < q.options.length; oIndex += 1) {
+              const opt = q.options[oIndex];
+              if (!opt.imageFile) continue;
+
+              const uploaded = await uploadOptionImage(quizId, qIndex, oIndex, opt.imageFile);
+              uploadCount += 1;
+
+              if (uploaded.imageUrl) {
+                if (!transformedQuestions[qIndex].optionImageUrls) {
+                  transformedQuestions[qIndex].optionImageUrls = q.options.map(() => '');
+                }
+                transformedQuestions[qIndex].optionImageUrls![oIndex] = uploaded.imageUrl;
+              }
+
+              if (uploaded.imageId) {
+                if (!transformedQuestions[qIndex].optionImageIds) {
+                  transformedQuestions[qIndex].optionImageIds = q.options.map(() => '');
+                }
+                transformedQuestions[qIndex].optionImageIds![oIndex] = uploaded.imageId;
+              }
+            }
+          }
+
+          showSnackbar(`Quiz created successfully! Uploaded ${uploadCount} image${uploadCount === 1 ? '' : 's'}.`, "success");
+        } else if (hasImageUploads && !quizId) {
+          showSnackbar("Quiz created, but image upload was skipped (missing quiz id in response).", "error");
+        } else {
+          showSnackbar("Quiz created successfully!", "success");
+        }
+
         resetForm();
         setPreviewOpen(false);
       } else {

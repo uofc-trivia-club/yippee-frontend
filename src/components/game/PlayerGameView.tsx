@@ -105,6 +105,7 @@ export default function PlayerGameView() {
         return (
           <MultipleChoiceQuestion
             options={t.options}
+            optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={handleAnswerSelect}
             disabled={isSubmitting}
@@ -115,6 +116,7 @@ export default function PlayerGameView() {
         return (
           <MultipleChoiceQuestion
             options={t.options}
+            optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={handleAnswerSelect}
             disabled={isSubmitting}
@@ -126,6 +128,7 @@ export default function PlayerGameView() {
         return (
           <DropdownQuestion
             options={options}
+            optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={(answers) => setSelectedAnswers(answers)}
             disabled={isDisabled}
@@ -203,7 +206,7 @@ export default function PlayerGameView() {
       case 'image_based': {
         return (
           <ImageBasedQuestion
-            imageUrl={t.imageUrl}
+            imageUrl={t.imageUrl || q.imageUrl || ''}
             textAnswer={textAnswer}
             onAnswerChange={handleTextChange}
             disabled={isSubmitting}
@@ -364,6 +367,22 @@ export default function PlayerGameView() {
                 >
                   {game.currentQuestion?.question}
                 </Typography>
+                {game.currentQuestion?.imageUrl ? (
+                  <Box
+                    component="img"
+                    src={game.currentQuestion.imageUrl}
+                    alt="Question"
+                    sx={{
+                      width: '100%',
+                      maxWidth: 520,
+                      borderRadius: 3,
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                      boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
+                      objectFit: 'cover',
+                      mt: 1,
+                    }}
+                  />
+                ) : null}
               </Stack>
             </CardContent>
           </Card>
@@ -444,6 +463,15 @@ export default function PlayerGameView() {
                     ? 'Great job! Keep this up.'
                     : 'Review the correct answer on the host screen.'}
                 </Typography>
+
+                {game.currentQuestion?.explanation ? (
+                  <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.15)' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                      Explanation
+                    </Typography>
+                    <Typography variant="body2">{game.currentQuestion.explanation}</Typography>
+                  </Box>
+                ) : null}
               </Box>
             );
           })()}
