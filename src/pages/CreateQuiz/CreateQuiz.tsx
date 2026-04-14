@@ -8,8 +8,8 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { Fragment, useMemo, useRef, useState } from "react";
-import { Quiz, QuizQuestion } from "../../stores/types";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { PresentationSlide, Quiz, QuizItem, QuizQuestion } from "../../stores/types";
 import {
   SortableContext,
   arrayMove,
@@ -64,6 +64,19 @@ type QuizQuestionForm = {
   }>;
 };
 
+type PresentationSlideForm = {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl: string;
+};
+
+type TimelineItemRef = {
+  id: string;
+  kind: "slide" | "question";
+  refId: string;
+};
+
 const createMatchingPairs = () => ([
   { left: "", right: "" },
   { left: "", right: "" },
@@ -88,6 +101,13 @@ const createInitialQuestion = (): QuizQuestionForm => ({
     { text: "", isCorrect: true, imageUrl: "", imageId: "", imageFile: null },
     { text: "", isCorrect: false, imageUrl: "", imageId: "", imageFile: null },
   ],
+});
+
+const createInitialSlide = (): PresentationSlideForm => ({
+  id: `slide-${Date.now()}-${Math.random()}`,
+  title: "",
+  content: "",
+  imageUrl: "",
 });
 
 const QUESTIONS_PER_PAGE = 5;
@@ -125,6 +145,7 @@ const QUESTION_TYPE_OPTIONS = [
 // Sortable Question Card Component
 function SortableQuestionCard({
   question,
+  sortableId,
   index,
   globalIndex,
   expanded,
@@ -142,6 +163,7 @@ function SortableQuestionCard({
   totalQuestions,
 }: {
   question: QuizQuestionForm;
+  sortableId?: string;
   index: number;
   globalIndex: number;
   expanded: boolean;
@@ -170,7 +192,7 @@ function SortableQuestionCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: question.id });
+  } = useSortable({ id: sortableId || question.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -1287,13 +1309,24 @@ export default function CreateQuiz() {
   const theme = useTheme();
   const [quizName, setQuizName] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
-  const [questions, setQuestions] = useState<QuizQuestionForm[]>([createInitialQuestion()]);
+  const [slides, setSlides] = useState<PresentationSlideForm[]>([]);
+  const [questions, setQuestions] = useState<QuizQuestionForm[]>(() => [createInitialQuestion()]);
+  const [timelineItems, setTimelineItems] = useState<TimelineItemRef[]>([]);
+  const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set([questions[0].id]));
   const [currentPage, setCurrentPage] = useState(1);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
+
+  useEffect(() => {
+    if (timelineItems.length === 0 && questions.length > 0) {
+      const firstTimelineId = `timeline-${Date.now()}-${Math.random()}`;
+      setTimelineItems([{ id: firstTimelineId, kind: "question", refId: questions[0].id }]);
+      setSelectedTimelineId(firstTimelineId);
+    }
+  }, [timelineItems.length, questions]);
 
   // Drag and Drop
   const sensors = useSensors(
@@ -1314,11 +1347,39 @@ export default function CreateQuiz() {
     }));
   }, [questions, currentPage]);
 
+  const timelinePreviewItems = useMemo(() => {
+    return timelineItems
+      .map((itemRef, timelineIndex) => {
+        if (itemRef.kind === "slide") {
+          const slideIndex = slides.findIndex((slide) => slide.id === itemRef.refId);
+          if (slideIndex < 0) return null;
+          return {
+            timelineId: itemRef.id,
+            kind: "slide" as const,
+            timelineIndex,
+            slideIndex,
+            slide: slides[slideIndex],
+          };
+        }
+
+        const questionIndex = questions.findIndex((question) => question.id === itemRef.refId);
+        if (questionIndex < 0) return null;
+        return {
+          timelineId: itemRef.id,
+          kind: "question" as const,
+          timelineIndex,
+          questionIndex,
+          question: questions[questionIndex],
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [timelineItems, slides, questions]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setQuestions((items) => {
+      setTimelineItems((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
         return arrayMove(items, oldIndex, newIndex);
@@ -1467,9 +1528,35 @@ export default function CreateQuiz() {
     // Set default points to 1 instead of 0
     newQuestion.points = 1;
     setQuestions([...questions, newQuestion]);
+    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
+    setTimelineItems((prev) => [...prev, { id: timelineId, kind: 'question', refId: newQuestion.id }]);
+    setSelectedTimelineId(timelineId);
     setExpandedQuestions(new Set([newQuestion.id]));
     const newPage = Math.ceil((questions.length + 1) / QUESTIONS_PER_PAGE);
     setCurrentPage(newPage);
+  };
+
+  const addSlide = () => {
+    const newSlide = createInitialSlide();
+    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
+    setSlides((prev) => [...prev, newSlide]);
+    setTimelineItems((prev) => [...prev, { id: timelineId, kind: 'slide', refId: newSlide.id }]);
+    setSelectedTimelineId(timelineId);
+  };
+
+  const updateSlide = <K extends keyof PresentationSlideForm>(
+    slideId: string,
+    field: K,
+    value: PresentationSlideForm[K]
+  ) => {
+    setSlides((prev) =>
+      prev.map((slide) => (slide.id === slideId ? { ...slide, [field]: value } : slide))
+    );
+  };
+
+  const deleteSlide = (slideId: string) => {
+    setSlides((prev) => prev.filter((slide) => slide.id !== slideId));
+    setTimelineItems((prev) => prev.filter((item) => !(item.kind === 'slide' && item.refId === slideId)));
   };
 
   const addOption = (globalIndex: number) => {
@@ -1533,6 +1620,7 @@ export default function CreateQuiz() {
     const questionId = questions[globalIndex].id;
     const updatedQuestions = questions.filter((_, index) => index !== globalIndex);
     setQuestions(updatedQuestions);
+    setTimelineItems((prev) => prev.filter((item) => !(item.kind === 'question' && item.refId === questionId)));
     
     setExpandedQuestions((prev) => {
       const next = new Set(prev);
@@ -1739,6 +1827,15 @@ export default function CreateQuiz() {
       return false;
     }
 
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
+      const hasContent = slide.title.trim() || slide.content.trim() || slide.imageUrl.trim();
+      if (!hasContent) {
+        showSnackbar(`Slide ${i + 1} is empty. Add title/content/image or remove it.`, "error");
+        return false;
+      }
+    }
+
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.question.trim()) {
@@ -1916,17 +2013,43 @@ export default function CreateQuiz() {
   };
 
   const handleSubmit = async () => {
-    const transformedQuestions = questions.map(transformQuestionForSubmission);
+    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const slideMap = new Map(slides.map((s) => [s.id, s]));
+
+    const quizItems: QuizItem[] = [];
+    const orderedQuestionForms: QuizQuestionForm[] = [];
+
+    for (const item of timelineItems) {
+      if (item.kind === 'slide') {
+        const slide = slideMap.get(item.refId);
+        if (!slide) continue;
+        quizItems.push({
+          kind: 'slide',
+          slide: {
+            title: slide.title.trim(),
+            content: slide.content.trim(),
+            imageUrl: slide.imageUrl.trim(),
+          },
+        });
+      } else {
+        const question = questionMap.get(item.refId);
+        if (!question) continue;
+        const transformed = transformQuestionForSubmission(question);
+        orderedQuestionForms.push(question);
+        quizItems.push({ kind: 'question', question: transformed });
+      }
+    }
+
+    const transformedQuestions = quizItems
+      .filter((item): item is QuizItem & { question: QuizQuestion } => item.kind === 'question' && Boolean(item.question))
+      .map((item) => item.question);
 
     const quiz: Quiz = {
       quizName,
       quizDescription,
       createdBy: "Test_User",
       quizQuestions: transformedQuestions,
-      quizItems: transformedQuestions.map((question) => ({
-        kind: "question",
-        question,
-      })),
+      quizItems,
     };
 
     const extractQuizId = (payload: any): string | undefined => {
@@ -1983,14 +2106,14 @@ export default function CreateQuiz() {
         const payload = await response.json().catch(() => ({}));
         const quizId = extractQuizId(payload);
 
-        const hasImageUploads = questions.some((q) =>
+        const hasImageUploads = orderedQuestionForms.some((q) =>
           Boolean(q.imageFile) || q.options.some((opt) => Boolean(opt.imageFile))
         );
 
         if (hasImageUploads && quizId) {
           let uploadCount = 0;
-          for (let qIndex = 0; qIndex < questions.length; qIndex += 1) {
-            const q = questions[qIndex];
+          for (let qIndex = 0; qIndex < orderedQuestionForms.length; qIndex += 1) {
+            const q = orderedQuestionForms[qIndex];
 
             if (q.imageFile) {
               const uploaded = await uploadQuestionImage(quizId, qIndex, q.imageFile);
@@ -2047,9 +2170,13 @@ export default function CreateQuiz() {
 
   const resetForm = () => {
     const newQuestion = createInitialQuestion();
+    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
     setQuizName("");
     setQuizDescription("");
+    setSlides([]);
     setQuestions([newQuestion]);
+    setTimelineItems([{ id: timelineId, kind: 'question', refId: newQuestion.id }]);
+    setSelectedTimelineId(timelineId);
     setExpandedQuestions(new Set([newQuestion.id]));
     setCurrentPage(1);
   };
@@ -2144,111 +2271,197 @@ export default function CreateQuiz() {
             </CardContent>
           </Card>
 
-          {/* Questions Header with Stats */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="h5" fontWeight="600">
-                Questions
-              </Typography>
-              <Chip
-                label={`${questions.length} total`}
-                size="small"
-                color="primary"
-              />
-              <Chip
-                label={`${questions.reduce((sum, q) => sum + q.points, 0)} pts`}
-                size="small"
-                color="secondary"
-              />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button size="small" onClick={expandAll}>Expand All</Button>
-              <Button size="small" onClick={collapseAll}>Collapse All</Button>
-            </Box>
-          </Box>
-
-          {/* Drag and Drop Context */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={paginatedQuestions.map(q => q.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {paginatedQuestions.map((q, idx) => (
-                <SortableQuestionCard
-                  key={q.id}
-                  question={q}
-                  index={idx}
-                  globalIndex={q.globalIndex}
-                  expanded={expandedQuestions.has(q.id)}
-                  onToggle={() => toggleExpanded(q.id)}
-                  onDelete={() => deleteQuestion(q.globalIndex)}
-                  onChange={(field, value) => handleQuestionChange(q.globalIndex, field, value)}
-                  onOptionChange={(optionIndex, field, value) =>
-                    handleOptionChange(q.globalIndex, optionIndex, field, value)
-                  }
-                  onAddOption={() => addOption(q.globalIndex)}
-                  onDeleteOption={(optionIndex) => deleteOption(q.globalIndex, optionIndex)}
-                  onAddAcceptedAnswer={() => addAcceptedAnswer(q.globalIndex)}
-                  onRemoveAcceptedAnswer={(answerIndex) => removeAcceptedAnswer(q.globalIndex, answerIndex)}
-                  onAddMatchingPair={() => addMatchingPair(q.globalIndex)}
-                  onRemoveMatchingPair={(pairIndex) => removeMatchingPair(q.globalIndex, pairIndex)}
-                  onUpdateMatchingPair={(pairIndex, field, value) =>
-                    updateMatchingPair(q.globalIndex, pairIndex, field, value)
-                  }
-                  totalQuestions={questions.length}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-              <Pagination
-                count={totalPages}
-                page={currentPage}
-                onChange={(_, page) => setCurrentPage(page)}
-                color="primary"
-                size="large"
-                showFirstButton
-                showLastButton
-              />
-            </Box>
-          )}
-
-          {/* Action Buttons */}
-          <Box sx={{ display: 'flex', gap: 2, mt: 4, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={addQuestion}
-              startIcon={<AddIcon />}
-              size="large"
-            >
-              Add Question
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handlePreviewOpen}
-              startIcon={<VisibilityIcon />}
-              size="large"
-              sx={{ 
-                bgcolor: theme.palette.secondary.main,
-                color: '#ffffff',
-                fontWeight: 'bold',
-                '&:hover': {
-                  bgcolor: theme.palette.secondary.dark,
-                }
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '260px minmax(0, 1fr)' }, gap: 2, mb: 3 }}>
+            <Card
+              sx={{
+                height: 'fit-content',
+                position: { lg: 'sticky' },
+                top: { lg: 12 },
+                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#fafafa',
+                boxShadow: 'none',
+                border: `1px solid ${theme.palette.divider}`,
               }}
             >
-              Preview & Submit Quiz
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.25 }}>
+                  Sequence Preview
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
+                  Click an item to jump and edit.
+                </Typography>
+                <Box sx={{ display: 'grid', gap: 1, maxHeight: 560, overflowY: 'auto', pr: 0.5 }}>
+                  {timelinePreviewItems.map((item) => (
+                    <Box
+                      key={item.timelineId}
+                      onClick={() => {
+                        setSelectedTimelineId(item.timelineId);
+                        if (item.kind === 'question') {
+                          setExpandedQuestions(new Set([item.question.id]));
+                        }
+                      }}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: selectedTimelineId === item.timelineId
+                          ? (item.kind === 'slide' ? 'info.main' : 'secondary.main')
+                          : 'divider',
+                        borderRadius: 1.5,
+                        p: 1,
+                        cursor: 'pointer',
+                        bgcolor: selectedTimelineId === item.timelineId
+                          ? (item.kind === 'slide' ? 'rgba(3,169,244,0.10)' : 'rgba(255,107,149,0.10)')
+                          : 'transparent',
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, display: 'block' }}>
+                        #{item.timelineIndex + 1} • {item.kind === 'slide' ? `Slide ${item.slideIndex + 1}` : `Question ${item.questionIndex + 1}`}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {item.kind === 'slide'
+                          ? (item.slide.title || item.slide.content || 'Untitled slide')
+                          : (item.question.question || 'Untitled question')}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card
+              sx={{
+                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#fafafa',
+                boxShadow: 'none',
+                border: `1px solid ${theme.palette.divider}`,
+              }}
+            >
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                  <Typography variant="h6" fontWeight="700">Unified Timeline</Typography>
+                  <Chip size="small" color="secondary" label={`${timelinePreviewItems.length} items`} />
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                  Slides and questions live in one sequence. Drag to reorder.
+                </Typography>
+
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={timelinePreviewItems.map((item) => item.timelineId)} strategy={verticalListSortingStrategy}>
+                    <Box sx={{ display: 'grid', gap: 2 }}>
+                      {timelinePreviewItems.map((item, listIndex) => (
+                        item.kind === 'slide' ? (
+                          <Card
+                            key={item.timelineId}
+                            variant="outlined"
+                            sx={{
+                              borderColor: selectedTimelineId === item.timelineId ? 'info.main' : 'divider',
+                              bgcolor: theme.palette.mode === 'dark' ? 'rgba(3,169,244,0.08)' : 'rgba(3,169,244,0.05)',
+                            }}
+                          >
+                            <CardContent>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                                  #{listIndex + 1} • Slide {item.slideIndex + 1}
+                                </Typography>
+                                <IconButton size="small" onClick={() => deleteSlide(item.slide.id)} sx={{ color: 'error.main' }}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
+                              <TextField
+                                label="Slide Title"
+                                fullWidth
+                                size="small"
+                                sx={{ mb: 1.25 }}
+                                value={item.slide.title}
+                                onChange={(e) => updateSlide(item.slide.id, 'title', e.target.value)}
+                              />
+                              <TextField
+                                label="Slide Content"
+                                fullWidth
+                                size="small"
+                                multiline
+                                rows={3}
+                                sx={{ mb: 1.25 }}
+                                value={item.slide.content}
+                                onChange={(e) => updateSlide(item.slide.id, 'content', e.target.value)}
+                              />
+                              <TextField
+                                label="Slide Image URL (Optional)"
+                                fullWidth
+                                size="small"
+                                value={item.slide.imageUrl}
+                                onChange={(e) => updateSlide(item.slide.id, 'imageUrl', e.target.value)}
+                              />
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          <SortableQuestionCard
+                            key={item.timelineId}
+                            sortableId={item.timelineId}
+                            question={item.question}
+                            index={item.questionIndex}
+                            globalIndex={item.questionIndex}
+                            expanded={expandedQuestions.has(item.question.id)}
+                            onToggle={() => {
+                              setSelectedTimelineId(item.timelineId);
+                              toggleExpanded(item.question.id);
+                            }}
+                            onDelete={() => deleteQuestion(item.questionIndex)}
+                            onChange={(field, value) => handleQuestionChange(item.questionIndex, field, value)}
+                            onOptionChange={(optionIndex, field, value) =>
+                              handleOptionChange(item.questionIndex, optionIndex, field, value)
+                            }
+                            onAddOption={() => addOption(item.questionIndex)}
+                            onDeleteOption={(optionIndex) => deleteOption(item.questionIndex, optionIndex)}
+                            onAddAcceptedAnswer={() => addAcceptedAnswer(item.questionIndex)}
+                            onRemoveAcceptedAnswer={(answerIndex) => removeAcceptedAnswer(item.questionIndex, answerIndex)}
+                            onAddMatchingPair={() => addMatchingPair(item.questionIndex)}
+                            onRemoveMatchingPair={(pairIndex) => removeMatchingPair(item.questionIndex, pairIndex)}
+                            onUpdateMatchingPair={(pairIndex, field, value) =>
+                              updateMatchingPair(item.questionIndex, pairIndex, field, value)
+                            }
+                            totalQuestions={questions.length}
+                          />
+                        )
+                      ))}
+                    </Box>
+                  </SortableContext>
+                </DndContext>
+              </CardContent>
+            </Card>
+          </Box>
+
+          <Box sx={{ height: 72 }} />
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1200,
+          bgcolor: theme.palette.background.paper,
+          borderTop: `1px solid ${theme.palette.divider}`,
+          boxShadow: '0 -6px 24px rgba(0,0,0,0.08)',
+        }}
+      >
+        <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3 }, py: 1.5, display: 'flex', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap' }}>
+            <Button variant="contained" color="info" onClick={addSlide} startIcon={<AddIcon />}>
+              Add Slide
+            </Button>
+            <Button variant="contained" color="primary" onClick={addQuestion} startIcon={<AddIcon />}>
+              Add Question
             </Button>
           </Box>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handlePreviewOpen}
+            startIcon={<VisibilityIcon />}
+            sx={{ fontWeight: 800 }}
+          >
+            Preview & Submit Quiz
+          </Button>
         </Box>
       </Box>
 
@@ -2291,6 +2504,12 @@ export default function CreateQuiz() {
                 size="small" 
                 sx={{ mr: 1 }}
               />
+              <Chip
+                label={`${slides.length} Slide${slides.length !== 1 ? 's' : ''}`}
+                size="small"
+                sx={{ mr: 1 }}
+                variant="outlined"
+              />
               <Chip 
                 label={`${questions.reduce((sum, q) => sum + q.points, 0)} Total Points`} 
                 size="small"
@@ -2300,6 +2519,56 @@ export default function CreateQuiz() {
           </Box>
 
           <Divider sx={{ mb: 3 }} />
+
+          {/* Slides Preview */}
+          {slides.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
+                Presentation Slides
+              </Typography>
+              {slides.map((slide, slideIndex) => (
+                <Card
+                  key={slide.id}
+                  sx={{
+                    mb: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                      Slide {slideIndex + 1}
+                    </Typography>
+                    {slide.title && (
+                      <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+                        {slide.title}
+                      </Typography>
+                    )}
+                    {slide.content && (
+                      <Typography variant="body1" sx={{ mb: slide.imageUrl ? 1.5 : 0 }}>
+                        {slide.content}
+                      </Typography>
+                    )}
+                    {slide.imageUrl && (
+                      <Box
+                        component="img"
+                        src={slide.imageUrl}
+                        alt={`Slide ${slideIndex + 1}`}
+                        sx={{
+                          width: '100%',
+                          maxWidth: 520,
+                          borderRadius: 2,
+                          border: `1px solid ${theme.palette.divider}`,
+                          boxShadow: '0 8px 18px rgba(0,0,0,0.10)',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+              <Divider sx={{ mt: 1, mb: 3 }} />
+            </Box>
+          )}
 
           {/* Questions Preview */}
           {questions.map((q, qIndex) => (
