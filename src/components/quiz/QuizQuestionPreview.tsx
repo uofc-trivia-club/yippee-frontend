@@ -4,6 +4,7 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import MatchPhraseQuestion from "../game/questionTypes/MatchPhraseQuestion";
 import { QuizQuestion } from "../../stores/types";
+import { resolveMediaUrl } from "../../util/mediaUrl";
 
 interface QuizQuestionPreviewProps {
   question: QuizQuestion;
@@ -156,7 +157,7 @@ export default function QuizQuestionPreview({
         {question.imageUrl && (
           <Box
             component="img"
-            src={question.imageUrl}
+            src={resolveMediaUrl(question.imageUrl)}
             alt="Question"
             sx={{
               width: '100%',
@@ -247,7 +248,7 @@ export default function QuizQuestionPreview({
                 >
                   {question.optionImageUrls?.[idx] ? (
                     <img
-                      src={question.optionImageUrls[idx]}
+                      src={resolveMediaUrl(question.optionImageUrls[idx])}
                       alt={`Option ${idx + 1}`}
                       style={{ width: 44, height: 30, objectFit: 'cover', borderRadius: 4, marginRight: 8, verticalAlign: 'middle' }}
                     />

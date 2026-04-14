@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import { resolveMediaUrl } from "../../../util/mediaUrl";
 
 interface MultipleChoiceQuestionProps {
   options: string[];
@@ -15,6 +16,8 @@ export default function MultipleChoiceQuestion({
   onAnswerSelect,
   disabled,
 }: MultipleChoiceQuestionProps) {
+  const resolvedOptionImageUrls = (optionImageUrls || []).map((url) => resolveMediaUrl(url));
+
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
       {options.map((option, index) => (
@@ -25,9 +28,9 @@ export default function MultipleChoiceQuestion({
           sx={{ m: 1, minWidth: '120px', display: 'flex', flexDirection: 'column', gap: 0.75 }}
           disabled={disabled}
         >
-          {optionImageUrls?.[index] ? (
+          {resolvedOptionImageUrls?.[index] ? (
             <img
-              src={optionImageUrls[index]}
+              src={resolvedOptionImageUrls[index]}
               alt={`Option ${index + 1}`}
               style={{ width: 84, height: 56, objectFit: "cover", borderRadius: 6 }}
             />

@@ -5,6 +5,7 @@ import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 
 import Leaderboard from "./Leaderboard";
 import QuestionView from "./QuestionView";
+import { resolveMediaUrl } from "../../util/mediaUrl";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { useSelector } from "react-redux";
@@ -12,6 +13,8 @@ import { User } from "../../stores/types";
 
 export default function HostGameView() {
   const game = useSelector((state: RootState) => state.game);
+  const isSlideItem = game.currentItem?.kind === 'slide';
+  const currentSlide = game.currentItem?.slide;
   const [leaderboardView, setLeaderboardView] = useState<'page1' | 'page2'>('page1');
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [hintRevealed, setHintRevealed] = useState(false);
@@ -35,13 +38,13 @@ export default function HostGameView() {
     autoTriggeredRef.current = false;
     timerInitializingRef.current = true;
     setHintRevealed(false);
-    setTimeRemaining(game.gameSettings?.questionTime || null);
+    setTimeRemaining(isSlideItem ? null : game.gameSettings?.questionTime || null);
 
     // Cleanup when question changes or component unmounts
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [game.currentQuestion, game.gameSettings?.questionTime]);
+  }, [game.currentQuestion, game.gameSettings?.questionTime, isSlideItem]);
 
   useEffect(() => {
     if (countdownRef.current) clearInterval(countdownRef.current);
@@ -50,6 +53,7 @@ export default function HostGameView() {
       game.gameSettings?.questionTime &&
       game.gameSettings.questionTime > 0 &&
       !game.showLeaderboard &&
+      !isSlideItem &&
       game.currentQuestion &&
       timeRemaining !== null &&
       timeRemaining > 0
@@ -68,7 +72,7 @@ export default function HostGameView() {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [game.currentQuestion, game.gameSettings?.questionTime, game.showLeaderboard, timeRemaining]);
+  }, [game.currentQuestion, game.gameSettings?.questionTime, game.showLeaderboard, timeRemaining, isSlideItem]);
 
   useEffect(() => {
     if (timerInitializingRef.current) return;
@@ -80,7 +84,7 @@ export default function HostGameView() {
   }, [game.showLeaderboard, handleViewLeaderboard, timeRemaining]);
 
   const adjustTime = (deltaSeconds: number) => {
-    if (game.showLeaderboard || !game.currentQuestion || !game.gameSettings?.questionTime) return;
+    if (game.showLeaderboard || isSlideItem || !game.currentQuestion || !game.gameSettings?.questionTime) return;
     setTimeRemaining((prev) => {
       if (prev === null) return null;
       return Math.max(0, prev + deltaSeconds);
@@ -93,6 +97,14 @@ export default function HostGameView() {
 
     const handleNextQuestion = () => {
     console.log("Moving onto the next question");
+      if (isSlideItem) {
+      executeWebSocketCommand(
+        "nextQuestion",
+        { roomCode: game.roomCode, user: game.user },
+        (errorMessage) => console.log(errorMessage)
+      );
+      return;
+    }
       const hasKnownQuestionCount = Number.isFinite(game.questionCount) && game.questionCount > 0;
     const isLastQuestion =
       typeof game.currentQuestionIndex === 'number' &&
@@ -159,7 +171,27 @@ export default function HostGameView() {
     <>
       {!game.showLeaderboard ? (
         <>
-          <QuestionView displayCorrectAnswers={false} />
+          {isSlideItem ? (
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="overline" color="text.secondary">Presentation Slide</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, mt: 0.5, mb: 1 }}>
+                {currentSlide?.title || 'Slide'}
+              </Typography>
+              {currentSlide?.imageUrl ? (
+                <Box
+                  component="img"
+                  src={resolveMediaUrl(currentSlide.imageUrl)}
+                  alt={currentSlide?.title || 'Slide'}
+                  sx={{ width: '100%', maxWidth: 560, borderRadius: 2, border: '1px solid', borderColor: 'divider', my: 1.5 }}
+                />
+              ) : null}
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                {currentSlide?.content || 'No slide content provided.'}
+              </Typography>
+            </Paper>
+          ) : (
+            <QuestionView displayCorrectAnswers={false} />
+          )}
 
           {/* Player Status Board - Jackbox Style */}
           <Paper
@@ -237,7 +269,7 @@ export default function HostGameView() {
             </Stack>
           </Paper>
 
-          {game.currentQuestion?.hint && (
+          {!isSlideItem && game.currentQuestion?.hint && (
             <Box
               sx={{
                 mt: 1,
@@ -266,7 +298,7 @@ export default function HostGameView() {
             </Box>
           )}
 
-          {game.gameSettings?.questionTime && game.gameSettings.questionTime > 0 && (
+          {!isSlideItem && game.gameSettings?.questionTime && game.gameSettings.questionTime > 0 && (
             <Paper
               elevation={0}
               sx={{
@@ -328,8 +360,13 @@ export default function HostGameView() {
             </Paper>
           )}
 
-          <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard}>
-            Next
+          <Button
+            variant="contained"
+            color="primary"
+            sx={primaryActionSx}
+            onClick={isSlideItem ? handleNextQuestion : handleViewLeaderboard}
+          >
+            {isSlideItem ? 'Next Item' : 'Next'}
           </Button>
         </>
       ) : (

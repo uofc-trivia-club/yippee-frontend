@@ -7,6 +7,36 @@ let socket: WebSocket | null = null;
 
 export const getWebSocket = () => socket;
 
+const syncLobbyTimelineState = (store: any, data: MessageResponse) => {
+    const lobby = data.lobby;
+    if (!lobby) return;
+
+    if (typeof lobby.currentItemIndex === "number") {
+        store.dispatch(gameActions.setCurrentItemIndex(lobby.currentItemIndex));
+    }
+
+    if (lobby.currentItem) {
+        store.dispatch(gameActions.setCurrentItem(lobby.currentItem));
+        if (lobby.currentItem.kind === "question" && lobby.currentItem.question) {
+            store.dispatch(gameActions.setCurrentQuestion(lobby.currentItem.question));
+            if (typeof lobby.currentQuestionIndex === "number") {
+                store.dispatch(gameActions.setCurrentQuestionIndex(lobby.currentQuestionIndex));
+            }
+        } else {
+            store.dispatch(gameActions.setCurrentQuestion(undefined));
+        }
+        return;
+    }
+
+    // Backward compatibility if currentItem is not present yet.
+    if (lobby.currentQuestion) {
+        store.dispatch(gameActions.setCurrentQuestion(lobby.currentQuestion));
+        if (typeof lobby.currentQuestionIndex === "number") {
+            store.dispatch(gameActions.setCurrentQuestionIndex(lobby.currentQuestionIndex));
+        }
+    }
+};
+
 export const websocketMiddleware: Middleware = (store) => (next) => (action) => {
     if (websocketActions.connect.match(action)) {
         const url = action.payload;
@@ -31,6 +61,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 store.dispatch(gameActions.setGameStatus("Waiting"));
                                 // Reset question index to 0 for a new game
                                 store.dispatch(gameActions.setCurrentQuestionIndex(0));
+                                store.dispatch(gameActions.setCurrentItemIndex(0));
                                 if (typeof data.lobby.quizMeta?.questionCount === "number") {
                                     store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
                                 }
@@ -40,6 +71,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 if (data.clientsInLobby) {
                                     store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                                 }
+                                syncLobbyTimelineState(store, data);
                             }
                             break;
 
@@ -50,13 +82,11 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 if (typeof data.lobby.quizMeta?.questionCount === "number") {
                                     store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
                                 }
-                                if (typeof data.lobby.currentQuestionIndex === "number") {
-                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
-                                }
                                 // store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                                 if (data.clientsInLobby) {
                                     store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
                                 }
+                                syncLobbyTimelineState(store, data);
                             }
                             break;
 
@@ -72,12 +102,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 if (typeof data.lobby.quizMeta?.questionCount === "number") {
                                     store.dispatch(gameActions.setQuestionCount(data.lobby.quizMeta.questionCount));
                                 }
-                                if (data.lobby.currentQuestion) {
-                                    store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
-                                }
-                                if (typeof data.lobby.currentQuestionIndex === "number") {
-                                    store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
-                                }
+                                syncLobbyTimelineState(store, data);
                             }
                             if (data.clientsInLobby) {
                                 store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
@@ -97,11 +122,10 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                                 }
                                 // Reset to first question when game starts
                                 store.dispatch(gameActions.setCurrentQuestionIndex(0));
+                                store.dispatch(gameActions.setCurrentItemIndex(0));
                                 store.dispatch(gameActions.setShowLeaderboard(false));
                                 store.dispatch(gameActions.setFinalQuestionLeaderboard(false));
-                                if (data.lobby.currentQuestion) {
-                                    store.dispatch(gameActions.setCurrentQuestion(data.lobby.currentQuestion));
-                                }
+                                syncLobbyTimelineState(store, data);
                             }
                                 // Reset all players' submitted answers at game start
                                 store.dispatch(gameActions.resetPlayersSubmittedAnswers());
@@ -133,6 +157,7 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             if (typeof data.lobby?.currentQuestionIndex === "number") {
                                 store.dispatch(gameActions.setCurrentQuestionIndex(data.lobby.currentQuestionIndex));
                             }
+                            syncLobbyTimelineState(store, data);
                             // reset the submittedAnswer back to false for user
                             store.dispatch(gameActions.setSubmittedAnswer(false))
                             store.dispatch(gameActions.setLastSubmittedAnswers([]))

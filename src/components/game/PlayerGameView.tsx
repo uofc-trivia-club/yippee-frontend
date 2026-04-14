@@ -17,9 +17,12 @@ import Leaderboard from "./Leaderboard";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
+import { resolveMediaUrl } from "../../util/mediaUrl";
 
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
+  const isSlideItem = game.currentItem?.kind === 'slide';
+  const currentSlide = game.currentItem?.slide;
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [textAnswer, setTextAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -336,6 +339,56 @@ export default function PlayerGameView() {
 
       {!game.showLeaderboard ? (
         <>
+          {isSlideItem ? (
+            <Card
+              elevation={0}
+              sx={{
+                mb: 2,
+                borderRadius: 3,
+                border: (theme) => `1px solid ${theme.palette.divider}`,
+                background: (theme) => theme.palette.mode === 'dark'
+                  ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
+                  : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
+                boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                <Stack spacing={1.5}>
+                  <Chip
+                    label="Slide"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ width: 'fit-content', fontWeight: 700 }}
+                  />
+                  <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+                    {currentSlide?.title || 'Presentation Slide'}
+                  </Typography>
+                  {currentSlide?.imageUrl ? (
+                    <Box
+                      component="img"
+                      src={resolveMediaUrl(currentSlide.imageUrl)}
+                      alt={currentSlide?.title || 'Slide'}
+                      sx={{
+                        width: '100%',
+                        maxWidth: 520,
+                        borderRadius: 3,
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                        boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
+                        objectFit: 'cover',
+                        mt: 1,
+                      }}
+                    />
+                  ) : null}
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {currentSlide?.content || 'No slide content provided.'}
+                  </Typography>
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    Wait for the host to continue to the next item.
+                  </Alert>
+                </Stack>
+              </CardContent>
+            </Card>
+          ) : (
           <Card
             elevation={0}
             sx={{
@@ -370,7 +423,7 @@ export default function PlayerGameView() {
                 {game.currentQuestion?.imageUrl ? (
                   <Box
                     component="img"
-                    src={game.currentQuestion.imageUrl}
+                    src={resolveMediaUrl(game.currentQuestion.imageUrl)}
                     alt="Question"
                     sx={{
                       width: '100%',
@@ -386,12 +439,13 @@ export default function PlayerGameView() {
               </Stack>
             </CardContent>
           </Card>
+          )}
 
-          {game.user.submittedAnswer ? (
+          {!isSlideItem && game.user.submittedAnswer ? (
             <Typography variant="h6" color="success.main" gutterBottom>
               Answer Submitted Successfully
             </Typography>
-          ) : (
+          ) : !isSlideItem ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {renderQuestionInput()}
               
@@ -409,7 +463,7 @@ export default function PlayerGameView() {
                 )}
               </Button>
             </Box>
-          )}
+          ) : null}
         </>
       ) : !game.finalQuestionLeaderboard ? (
         <>

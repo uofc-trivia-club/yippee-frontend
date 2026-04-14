@@ -1923,6 +1923,10 @@ export default function CreateQuiz() {
       quizDescription,
       createdBy: "Test_User",
       quizQuestions: transformedQuestions,
+      quizItems: transformedQuestions.map((question) => ({
+        kind: "question",
+        question,
+      })),
     };
 
     const extractQuizId = (payload: any): string | undefined => {

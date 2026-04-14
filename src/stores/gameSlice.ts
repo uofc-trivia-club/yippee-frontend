@@ -1,12 +1,14 @@
 // this slice handles the state of a game
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
-import { GameSettings, QuizQuestion, User } from "./types"; 
+import { GameSettings, QuizItem, QuizQuestion, User } from "./types"; 
 
 interface GameState {
     user: User; // own user
     roomCode: string;
     clientsInLobby: User[];
     gameSettings: GameSettings | undefined;
+    currentItem: QuizItem | undefined;
+    currentItemIndex: number;
     currentQuestion: QuizQuestion | undefined;  
     currentQuestionIndex: number;
     gameStatus: string;
@@ -28,6 +30,8 @@ const initialState = {
     roomCode: "", 
     clientsInLobby: [], 
     gameSettings: undefined,
+    currentItem: undefined,
+    currentItemIndex: 0,
     currentQuestion: undefined, 
     currentQuestionIndex: 0,
     gameStatus: "",
@@ -80,9 +84,15 @@ const gameSlice = createSlice({
             // console.log('setGameSettings:', { before: state.gameSettings, after: action.payload });
             state.gameSettings = action.payload;
         },
-        setCurrentQuestion: (state, action: PayloadAction<QuizQuestion>) => {
+        setCurrentQuestion: (state, action: PayloadAction<QuizQuestion | undefined>) => {
             // console.log('setCurrentQuestion:', { before: state.currentQuestion, after: action.payload });
             state.currentQuestion = action.payload;
+        },
+        setCurrentItem: (state, action: PayloadAction<QuizItem | undefined>) => {
+            state.currentItem = action.payload;
+        },
+        setCurrentItemIndex: (state, action: PayloadAction<number>) => {
+            state.currentItemIndex = action.payload;
         },
         setCurrentQuestionIndex: (state, action: PayloadAction<number>) => {
             state.currentQuestionIndex = action.payload;

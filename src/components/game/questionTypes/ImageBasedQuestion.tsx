@@ -1,4 +1,5 @@
 import { Box, TextField } from "@mui/material";
+import { resolveMediaUrl } from "../../../util/mediaUrl";
 
 interface ImageBasedQuestionProps {
   imageUrl: string | undefined;
@@ -13,11 +14,13 @@ export default function ImageBasedQuestion({
   onAnswerChange,
   disabled,
 }: ImageBasedQuestionProps) {
+  const resolvedImageUrl = resolveMediaUrl(imageUrl);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {imageUrl && (
+      {resolvedImageUrl && (
         <img
-          src={imageUrl}
+          src={resolvedImageUrl}
           alt="Question"
           style={{ maxWidth: 300, marginBottom: 8 }}
         />

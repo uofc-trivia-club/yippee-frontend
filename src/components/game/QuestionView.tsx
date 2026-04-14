@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import { RootState } from "../../stores/store";
 import { useSelector } from "react-redux";
 import MatchPhraseQuestion from "./questionTypes/MatchPhraseQuestion";
+import { resolveMediaUrl } from "../../util/mediaUrl";
 
 interface QuestionViewProps {
   displayCorrectAnswers: boolean;
@@ -70,7 +71,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
-                    const optionImageUrl = q?.optionImageUrls?.[index];
+                    const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -104,7 +105,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswers.includes(option);
-                    const optionImageUrl = q?.optionImageUrls?.[index];
+                    const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -138,7 +139,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
-                    const optionImageUrl = q?.optionImageUrls?.[index];
+                    const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -289,7 +290,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'image_based': {
-                const imgUrl = t.imageUrl;
+                const imgUrl = resolveMediaUrl(t.imageUrl);
                 const answers = t.correctAnswers;
                 return (
                     <Box sx={{ display: 'grid', gap: 2 }}>
@@ -361,7 +362,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     {q?.imageUrl ? (
                         <Box
                             component="img"
-                            src={q.imageUrl}
+                            src={resolveMediaUrl(q.imageUrl)}
                             alt="Question"
                             sx={{
                                 mt: 1.5,

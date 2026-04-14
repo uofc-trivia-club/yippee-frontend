@@ -5,7 +5,20 @@ export type Quiz = {
   quizDescription: string;
   createdBy: string;
   quizQuestions: QuizQuestion[];
+  quizItems?: QuizItem[];
   imageId?: string;
+};
+
+export type PresentationSlide = {
+  title?: string;
+  content?: string;
+  imageUrl?: string;
+};
+
+export type QuizItem = {
+  kind: "slide" | "question";
+  slide?: PresentationSlide;
+  question?: QuizQuestion;
 };
 
 // Multiple Choice
@@ -174,6 +187,8 @@ export type Lobby = {
   quizMeta: QuizMeta;            // BE sends quizMeta, NOT quiz
   status: string;
   gameSettings: GameSettings;
+  currentItemIndex?: number;
+  currentItem?: QuizItem;
   currentQuestionIndex: number;
   currentQuestion: QuizQuestion;
   timeRemaining: number;

@@ -1,4 +1,5 @@
 import { Box, MenuItem, TextField } from "@mui/material";
+import { resolveMediaUrl } from "../../../util/mediaUrl";
 
 interface DropdownQuestionProps {
   options: string[];
@@ -15,6 +16,8 @@ export default function DropdownQuestion({
   onAnswerSelect,
   disabled,
 }: DropdownQuestionProps) {
+  const resolvedOptionImageUrls = (optionImageUrls || []).map((url) => resolveMediaUrl(url));
+
   return (
     <Box sx={{ maxWidth: 420 }}>
       <TextField
@@ -34,9 +37,9 @@ export default function DropdownQuestion({
         {options.map((option, index) => (
           <MenuItem key={`${option}-${index}`} value={option}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {optionImageUrls?.[index] ? (
+              {resolvedOptionImageUrls?.[index] ? (
                 <img
-                  src={optionImageUrls[index]}
+                  src={resolvedOptionImageUrls[index]}
                   alt={`Option ${index + 1}`}
                   style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }}
                 />
