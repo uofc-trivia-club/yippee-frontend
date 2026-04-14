@@ -10,8 +10,8 @@ import {
   ShortAnswerQuestion,
   TrueFalseQuestion,
 } from "./questionTypes";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
 
 import Leaderboard from "./Leaderboard";
 import { RootState } from "../../stores/store";
@@ -28,6 +28,12 @@ export default function PlayerGameView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
+  
+  // Memoize ranking order change callback to prevent RankingComponent state reset
+  const handleRankingOrderChange = useCallback((ordered: string[]) => {
+    setSelectedAnswers(ordered);
+  }, []);
+
   const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
   const getQuestionTypeTitle = (typeName?: string) => {
     switch (typeName) {
@@ -244,7 +250,7 @@ export default function PlayerGameView() {
           <RankingQuestion
             items={items}
             disabled={isDisabled}
-            onOrderChange={(ordered) => setSelectedAnswers(ordered)}
+            onOrderChange={handleRankingOrderChange}
           />
         );
       }
@@ -275,6 +281,43 @@ export default function PlayerGameView() {
   const normalizeText = (value: string) => value.trim().toLowerCase();
 
   const sortNormalized = (values: string[]) => [...values].map(normalizeText).sort();
+
+  const levenshteinDistance = (left: string, right: string): number => {
+    if (left === right) return 0;
+    if (!left.length) return right.length;
+    if (!right.length) return left.length;
+
+    const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+    const current = new Array(right.length + 1).fill(0);
+
+    for (let i = 1; i <= left.length; i += 1) {
+      current[0] = i;
+      for (let j = 1; j <= right.length; j += 1) {
+        const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
+        current[j] = Math.min(
+          previous[j] + 1,
+          current[j - 1] + 1,
+          previous[j - 1] + substitutionCost,
+        );
+      }
+
+      for (let j = 0; j <= right.length; j += 1) {
+        previous[j] = current[j];
+      }
+    }
+
+    return previous[right.length];
+  };
+
+  // Fuzzy match helper: accepts close spellings like "paicific" for "pacific"
+  const isFuzzyMatch = (submitted: string, accepted: string, threshold: number = 0.85): boolean => {
+    const maxLength = Math.max(submitted.length, accepted.length);
+    if (!maxLength) return true;
+
+    const distance = levenshteinDistance(submitted, accepted);
+    const similarity = 1 - distance / maxLength;
+    return similarity >= threshold;
+  };
 
   const compareAsSets = (left: string[], right: string[]) => {
     if (left.length !== right.length) return false;
@@ -310,8 +353,12 @@ export default function PlayerGameView() {
 
       case 'short_answer':
       {
-        const accepted = (question.correctAnswers || (type as any).correctAnswers || []).map(normalizeText);
-        return accepted.includes(normalizeText(submitted[0] || ''));
+        const accepted = ((question.correctAnswers || (type as any).correctAnswers || []) as string[]).map(normalizeText);
+        const submittedNormalized = normalizeText(submitted[0] || '');
+        // Check for exact match first, then fuzzy match
+        return accepted.some((answer: string) => 
+          answer === submittedNormalized || isFuzzyMatch(submittedNormalized, answer)
+        );
       }
 
       case 'fill_in_blank': {
@@ -328,9 +375,12 @@ export default function PlayerGameView() {
             .filter(Boolean);
           if (!acceptedValues.length) {
             const fallback = normalizeText(groupedAccepted[index] || '');
-            return fallback ? fallback === value : false;
+            return fallback ? fallback === value || isFuzzyMatch(value, fallback) : false;
           }
-          return acceptedValues.includes(value);
+          // Check for exact match first, then fuzzy match
+          return acceptedValues.some(accepted => 
+            accepted === value || isFuzzyMatch(value, accepted)
+          );
         });
       }
 
