@@ -18,18 +18,20 @@ import { useEffect, useState } from "react";
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import { resolveMediaUrl } from "../../util/mediaUrl";
 
 interface RankingComponentProps {
   items: string[];
+  optionImageUrls?: string[];
   disabled: boolean;
   onOrderChange: (orderedItems: string[]) => void;
 }
 
-type RankedItem = { id: string; text: string };
+type RankedItem = { id: string; text: string; imageUrl?: string };
 
-export default function RankingComponent({ items, disabled, onOrderChange }: RankingComponentProps) {
+export default function RankingComponent({ items, optionImageUrls, disabled, onOrderChange }: RankingComponentProps) {
   const [orderedItems, setOrderedItems] = useState<RankedItem[]>(
-    items.map((text, index) => ({ id: `${index}-${text}`, text }))
+    items.map((text, index) => ({ id: `${index}-${text}`, text, imageUrl: resolveMediaUrl(optionImageUrls?.[index]) }))
   );
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -46,10 +48,14 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
   );
 
   useEffect(() => {
-    const nextItems = items.map((text, index) => ({ id: `${index}-${text}`, text }));
+    const nextItems = items.map((text, index) => ({
+      id: `${index}-${text}`,
+      text,
+      imageUrl: resolveMediaUrl(optionImageUrls?.[index]),
+    }));
     setOrderedItems(nextItems);
     onOrderChange(nextItems.map((item: RankedItem) => item.text));
-  }, [items, onOrderChange]);
+  }, [items, optionImageUrls, onOrderChange]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -83,6 +89,7 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
               id={item.id}
               index={idx}
               text={item.text}
+              imageUrl={item.imageUrl}
               disabled={disabled}
             />
           ))}
@@ -96,11 +103,13 @@ function SortableRankRow({
   id,
   index,
   text,
+  imageUrl,
   disabled,
 }: {
   id: string;
   index: number;
   text: string;
+  imageUrl?: string;
   disabled: boolean;
 }) {
   const {
@@ -155,7 +164,19 @@ function SortableRankRow({
         {...attributes}
         {...listeners}
       >
-        <Typography variant="body2">{text}</Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0 }}>
+          {imageUrl ? (
+            <Box
+              component="img"
+              src={imageUrl}
+              alt={text}
+              sx={{ width: { xs: 72, md: 96 }, height: { xs: 52, md: 68 }, objectFit: "contain", borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper", flexShrink: 0 }}
+            />
+          ) : null}
+          <Typography variant="body2" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {text}
+          </Typography>
+        </Box>
         <DragIndicatorIcon fontSize="small" color="disabled" />
       </Paper>
     </Box>

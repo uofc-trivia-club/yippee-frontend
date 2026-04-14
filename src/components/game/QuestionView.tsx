@@ -299,7 +299,15 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Box key={idx} sx={optionTileSx(false)}>
                                     <Stack direction="row" spacing={1.25} alignItems="center">
                                         <Chip label={idx + 1} size="small" variant="outlined" sx={{ minWidth: 34, fontWeight: 700 }} />
-                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{item}</Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>{item}</Typography>
+                                        {resolveMediaUrl(q?.optionImageUrls?.[idx]) ? (
+                                            <Box
+                                                component="img"
+                                                src={resolveMediaUrl(q?.optionImageUrls?.[idx])}
+                                                alt={`Ranking item ${idx + 1}`}
+                                                sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
+                                            />
+                                        ) : null}
                                     </Stack>
                                 </Box>
                             ))}

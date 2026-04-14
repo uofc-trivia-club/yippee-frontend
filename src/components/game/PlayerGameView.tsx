@@ -249,6 +249,7 @@ export default function PlayerGameView() {
         return (
           <RankingQuestion
             items={items}
+            optionImageUrls={q.optionImageUrls}
             disabled={isDisabled}
             onOrderChange={handleRankingOrderChange}
           />
