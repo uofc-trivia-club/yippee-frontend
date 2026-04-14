@@ -10,12 +10,12 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
-import { useMemo } from "react";
 
-import { RootState } from "../../stores/store";
-import { useSelector } from "react-redux";
 import MatchPhraseQuestion from "./questionTypes/MatchPhraseQuestion";
+import { RootState } from "../../stores/store";
 import { resolveMediaUrl } from "../../util/mediaUrl";
+import { useMemo } from "react";
+import { useSelector } from "react-redux";
 
 interface QuestionViewProps {
   displayCorrectAnswers: boolean;
@@ -108,7 +108,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                         component="img"
                                         src={optionImageUrl}
                                         alt={`Option ${index + 1}`}
-                                        sx={{ width: 64, height: 42, objectFit: 'cover', borderRadius: 1 }}
+                                        sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
                                     />
                                 ) : null}
                                 {displayCorrectAnswers && isCorrect && (
@@ -142,7 +142,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                         component="img"
                                         src={optionImageUrl}
                                         alt={`Option ${index + 1}`}
-                                        sx={{ width: 64, height: 42, objectFit: 'cover', borderRadius: 1 }}
+                                        sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
                                     />
                                 ) : null}
                                 {displayCorrectAnswers && isCorrect && (
@@ -176,7 +176,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                         component="img"
                                         src={optionImageUrl}
                                         alt={`Option ${index + 1}`}
-                                        sx={{ width: 64, height: 42, objectFit: 'cover', borderRadius: 1 }}
+                                        sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
                                     />
                                 ) : null}
                                 {displayCorrectAnswers && isCorrect && (
@@ -319,11 +319,11 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 alt="Question"
                                 sx={{
                                     width: '100%',
-                                    maxWidth: 420,
+                                    maxWidth: 760,
                                     borderRadius: 3,
                                     border: `1px solid ${theme.palette.divider}`,
                                     boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
-                                    objectFit: 'cover',
+                                    objectFit: 'contain',
                                 }}
                             />
                         )}
@@ -388,11 +388,11 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                             sx={{
                                 mt: 1.5,
                                 width: '100%',
-                                maxWidth: 520,
+                                maxWidth: 860,
                                 borderRadius: 3,
                                 border: `1px solid ${theme.palette.divider}`,
                                 boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
-                                objectFit: 'cover',
+                                objectFit: 'contain',
                             }}
                         />
                     ) : null}

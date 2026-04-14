@@ -1,15 +1,15 @@
-import { Box, Button, Chip, Paper, Stack, Typography, Avatar } from "@mui/material";
+import { Avatar, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-
 import Leaderboard from "./Leaderboard";
 import QuestionView from "./QuestionView";
-import { resolveMediaUrl } from "../../util/mediaUrl";
 import { RootState } from "../../stores/store";
-import { executeWebSocketCommand } from "../../util/websocketUtil";
-import { useSelector } from "react-redux";
 import { User } from "../../stores/types";
+import { executeWebSocketCommand } from "../../util/websocketUtil";
+import { resolveMediaUrl } from "../../util/mediaUrl";
+import { useSelector } from "react-redux";
 
 export default function HostGameView() {
   const game = useSelector((state: RootState) => state.game);
@@ -182,7 +182,7 @@ export default function HostGameView() {
                   component="img"
                   src={resolveMediaUrl(currentSlide.imageUrl)}
                   alt={currentSlide?.title || 'Slide'}
-                  sx={{ width: '100%', maxWidth: 560, borderRadius: 2, border: '1px solid', borderColor: 'divider', my: 1.5 }}
+                  sx={{ width: '100%', maxWidth: 860, borderRadius: 2, border: '1px solid', borderColor: 'divider', my: 1.5, objectFit: 'contain' }}
                 />
               ) : null}
               <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>

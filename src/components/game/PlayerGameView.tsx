@@ -482,11 +482,11 @@ export default function PlayerGameView() {
                       alt={currentSlide?.title || 'Slide'}
                       sx={{
                         width: '100%',
-                        maxWidth: 520,
+                        maxWidth: 860,
                         borderRadius: 3,
                         border: (theme) => `1px solid ${theme.palette.divider}`,
                         boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
-                        objectFit: 'cover',
+                        objectFit: 'contain',
                         mt: 1,
                       }}
                     />
@@ -542,11 +542,11 @@ export default function PlayerGameView() {
                     alt="Question"
                     sx={{
                       width: '100%',
-                      maxWidth: 520,
+                      maxWidth: 860,
                       borderRadius: 3,
                       border: (theme) => `1px solid ${theme.palette.divider}`,
                       boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
-                      objectFit: 'cover',
+                      objectFit: 'contain',
                       mt: 1,
                     }}
                   />
