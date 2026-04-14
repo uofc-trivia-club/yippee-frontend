@@ -1,5 +1,5 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
-import { DndContext, DragEndEvent, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, PointerSensor, TouchSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useMemo, useState } from "react";
 
@@ -15,7 +15,7 @@ interface MatchPhraseQuestionProps {
 
 type AssignmentMap = Record<string, string>;
 
-function DraggableOption({ option, index, disabled }: { option: string; index: number; disabled: boolean }) {
+function DraggableOption({ option, index, disabled, selected, onSelect }: { option: string; index: number; disabled: boolean; selected?: boolean; onSelect?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `option-${index}`,
     data: { option },
@@ -30,12 +30,16 @@ function DraggableOption({ option, index, disabled }: { option: string; index: n
       label={option}
       color="primary"
       variant="outlined"
+      onClick={disabled ? undefined : onSelect}
       sx={{
         cursor: disabled ? "default" : "grab",
         transform: CSS.Transform.toString(transform),
         opacity: isDragging ? 0.55 : 1,
         fontWeight: 700,
         px: 0.5,
+        touchAction: "none",
+        borderColor: selected ? "primary.main" : undefined,
+        bgcolor: selected ? "rgba(25, 118, 210, 0.08)" : undefined,
       }}
     />
   );
@@ -111,20 +115,26 @@ export default function MatchPhraseQuestion({
   );
 
   const [assignments, setAssignments] = useState<AssignmentMap>(correctAssign || {});
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 120, tolerance: 8 },
     })
   );
 
   useEffect(() => {
     if (showCorrectAnswers && correctAssign) {
       setAssignments(correctAssign);
+      setSelectedOption(null);
       return;
     }
 
     setAssignments({});
+    setSelectedOption(null);
   }, [correctAssign, showCorrectAnswers, phrase]);
 
   useEffect(() => {
@@ -154,6 +164,22 @@ export default function MatchPhraseQuestion({
       next[slotId] = option;
       return next;
     });
+    setSelectedOption(null);
+  };
+
+  const assignSelectedOptionToSlot = (slotId: string) => {
+    if (disabled || showCorrectAnswers || !selectedOption) return;
+    setAssignments((prev) => {
+      const next: AssignmentMap = { ...prev };
+      for (const existingSlotId of Object.keys(next)) {
+        if (next[existingSlotId] === selectedOption) {
+          delete next[existingSlotId];
+        }
+      }
+      next[slotId] = selectedOption;
+      return next;
+    });
+    setSelectedOption(null);
   };
 
   const clearSlot = (slotId: string) => {
@@ -200,13 +226,18 @@ export default function MatchPhraseQuestion({
               <span key={`phrase-segment-${index}`}>
                 {segment}
                 {index < derivedSlotIds.length && slotId ? (
-                  <BlankSlot
-                    slotId={slotId}
-                    label={slotLabel}
-                    value={slotValue}
-                    disabled={disabled}
-                    onClear={showCorrectAnswers ? undefined : () => clearSlot(slotId)}
-                  />
+                  <Box
+                    onClick={() => assignSelectedOptionToSlot(slotId)}
+                    sx={{ display: 'inline-flex', alignItems: 'center', cursor: selectedOption && !disabled && !showCorrectAnswers ? 'pointer' : 'default' }}
+                  >
+                    <BlankSlot
+                      slotId={slotId}
+                      label={slotLabel}
+                      value={slotValue}
+                      disabled={disabled}
+                      onClear={showCorrectAnswers ? undefined : () => clearSlot(slotId)}
+                    />
+                  </Box>
                 ) : null}
               </span>
             );
@@ -216,7 +247,14 @@ export default function MatchPhraseQuestion({
 
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1.5 }}>
           {revealedOptions.map((option, index) => (
-            <DraggableOption key={`${option}-${index}`} option={option} index={index} disabled={disabled || showCorrectAnswers} />
+            <DraggableOption
+              key={`${option}-${index}`}
+              option={option}
+              index={index}
+              disabled={disabled || showCorrectAnswers}
+              selected={selectedOption === option}
+              onSelect={() => setSelectedOption((prev) => (prev === option ? null : option))}
+            />
           ))}
         </Stack>
 
@@ -235,7 +273,7 @@ export default function MatchPhraseQuestion({
 
       {!disabled && !showCorrectAnswers && (
         <Typography variant="caption" color="text.secondary">
-          Drag each word onto a blank. You can move words between blanks before submitting.
+          Drag each word onto a blank, or tap a word then tap a blank on mobile.
         </Typography>
       )}
       </Box>

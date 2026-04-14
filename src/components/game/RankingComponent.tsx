@@ -2,6 +2,7 @@ import { Box, Paper, Typography } from "@mui/material";
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -30,6 +31,12 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 6,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 120,
+        tolerance: 8,
       },
     })
   );
@@ -134,6 +141,7 @@ function SortableRankRow({
           opacity: isDragging ? 0.85 : 1,
           transition: "box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease",
           userSelect: "none",
+          touchAction: "none",
           flex: 1,
           display: "flex",
           alignItems: "center",
