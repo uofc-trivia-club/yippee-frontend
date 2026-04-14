@@ -32,10 +32,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import type { DragEvent as ReactDragEvent } from "react";
 import StarIcon from '@mui/icons-material/Star';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import styles from './CreateQuiz.module.css';
 import { backendUrl } from '../../util/backendConfig';
+import styles from './CreateQuiz.module.css';
 
 type QuizQuestionForm = {
   id: string;
@@ -239,7 +240,39 @@ function SortableQuestionCard({
   const phraseBlankCount = Math.max(0, blankSegments.length - 1);
   const [questionCursorPos, setQuestionCursorPos] = useState<number | null>(null);
   const [draggedPhraseBlankIndex, setDraggedPhraseBlankIndex] = useState<number | null>(null);
+  const [dragOverOptionIndex, setDragOverOptionIndex] = useState<number | null>(null);
+  const [dragOverQuestionImage, setDragOverQuestionImage] = useState(false);
   const questionInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const canAttachOptionImage = question.type !== 'true_false';
+
+  const handleOptionImageDrop = (event: ReactDragEvent<HTMLDivElement>, optionIndex: number) => {
+    if (!canAttachOptionImage) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverOptionIndex(null);
+
+    const fileList = event.dataTransfer?.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const imageFile = Array.from(fileList).find((file) => file.type.startsWith('image/')) || null;
+    if (!imageFile) return;
+
+    onOptionChange(optionIndex, 'imageFile', imageFile);
+  };
+
+  const handleQuestionImageDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverQuestionImage(false);
+
+    const fileList = event.dataTransfer?.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const imageFile = Array.from(fileList).find((file) => file.type.startsWith('image/')) || null;
+    if (!imageFile) return;
+
+    onChange('imageFile', imageFile);
+  };
 
   const handleFillBlankAnswerChange = (blankIndex: number, value: string) => {
     const nextAnswers = [...question.acceptedAnswers];
@@ -536,18 +569,66 @@ function SortableQuestionCard({
                 onChange={(e) => onChange("imageUrl", e.target.value)}
                 placeholder="https://example.com/question-image.png"
               />
-              <Button variant="outlined" component="label" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
-                {question.imageFile ? 'Question Image Selected' : 'Upload Question Image'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    onChange('imageFile', file);
+              <Box
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!dragOverQuestionImage) {
+                    setDragOverQuestionImage(true);
+                  }
+                }}
+                onDragLeave={() => setDragOverQuestionImage(false)}
+                onDrop={handleQuestionImageDrop}
+                sx={{
+                  minWidth: { xs: '100%', sm: 220 },
+                  borderRadius: 1,
+                  border: '1px dashed',
+                  borderColor: dragOverQuestionImage ? 'primary.main' : 'divider',
+                  bgcolor: dragOverQuestionImage
+                    ? 'action.hover'
+                    : theme.palette.mode === 'dark'
+                      ? 'rgba(255,255,255,0.02)'
+                      : 'rgba(0,0,0,0.01)',
+                  transition: 'all 0.2s ease',
+                  boxShadow: dragOverQuestionImage ? `0 0 0 1px ${theme.palette.primary.main}` : 'none',
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  sx={{
+                    minHeight: 40,
+                    border: 0,
+                    justifyContent: 'space-between',
+                    px: 1.5,
+                    '&:hover': { border: 0 },
+                    color: dragOverQuestionImage ? 'primary.main' : 'inherit',
                   }}
-                />
-              </Button>
+                >
+                  <Box sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                      {dragOverQuestionImage
+                        ? 'Drop image to attach'
+                        : question.imageFile
+                          ? 'Question Image Selected'
+                          : 'Upload Question Image'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Drag and drop or click to browse
+                    </Typography>
+                  </Box>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      onChange('imageFile', file);
+                    }}
+                  />
+                </Button>
+              </Box>
               <TextField
                 label="Explanation (Optional)"
                 variant="outlined"
@@ -1146,6 +1227,20 @@ function SortableQuestionCard({
                     return (
                   <Box
                     key={optionIndex}
+                    onDragOver={(event) => {
+                      if (!canAttachOptionImage) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (dragOverOptionIndex !== optionIndex) {
+                        setDragOverOptionIndex(optionIndex);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverOptionIndex === optionIndex) {
+                        setDragOverOptionIndex(null);
+                      }
+                    }}
+                    onDrop={(event) => handleOptionImageDrop(event, optionIndex)}
                     sx={{
                       display: 'flex',
                       alignItems: 'flex-start',
@@ -1154,6 +1249,9 @@ function SortableQuestionCard({
                       p: 1.5,
                       borderRadius: 1,
                       border: `2px solid ${
+                        dragOverOptionIndex === optionIndex && canAttachOptionImage
+                          ? theme.palette.primary.main
+                          :
                         shouldHighlightCorrect
                           ? theme.palette.success.main
                           : theme.palette.divider
@@ -1169,6 +1267,12 @@ function SortableQuestionCard({
                           ? 'rgba(255, 255, 255, 0.05)'
                           : 'rgba(0, 0, 0, 0.02)',
                       },
+                      ...(dragOverOptionIndex === optionIndex && canAttachOptionImage
+                        ? {
+                            borderStyle: 'dashed',
+                            boxShadow: `0 0 0 1px ${theme.palette.primary.main}`,
+                          }
+                        : {}),
                     }}
                   >
                     {/* Correct Answer Selector */}
@@ -1257,18 +1361,59 @@ function SortableQuestionCard({
                     />
 
                     {question.type !== 'true_false' ? (
-                      <Button variant="outlined" component="label" size="small" sx={{ flexShrink: 0 }}>
-                        {option.imageFile || option.imageUrl ? 'Image Set' : 'Add Image'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            onOptionChange(optionIndex, 'imageFile', file);
+                      <Box
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (dragOverOptionIndex !== optionIndex) {
+                            setDragOverOptionIndex(optionIndex);
+                          }
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverOptionIndex === optionIndex) {
+                            setDragOverOptionIndex(null);
+                          }
+                        }}
+                        onDrop={(event) => handleOptionImageDrop(event, optionIndex)}
+                        sx={{
+                          flexShrink: 0,
+                          borderRadius: 1,
+                          border: '1px dashed',
+                          borderColor: dragOverOptionIndex === optionIndex ? 'primary.main' : 'divider',
+                          bgcolor: dragOverOptionIndex === optionIndex
+                            ? 'action.hover'
+                            : 'transparent',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <Button
+                          variant="outlined"
+                          component="label"
+                          size="small"
+                          sx={{
+                            flexShrink: 0,
+                            minWidth: 96,
+                            border: 0,
+                            color: dragOverOptionIndex === optionIndex ? 'primary.main' : 'inherit',
+                            '&:hover': { border: 0 },
                           }}
-                        />
-                      </Button>
+                        >
+                          {dragOverOptionIndex === optionIndex
+                            ? 'Drop Image'
+                            : option.imageFile || option.imageUrl
+                              ? 'Image Set'
+                              : 'Add Image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              onOptionChange(optionIndex, 'imageFile', file);
+                            }}
+                          />
+                        </Button>
+                      </Box>
                     ) : null}
 
                     {/* Delete Button */}
