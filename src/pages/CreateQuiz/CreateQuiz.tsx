@@ -55,6 +55,12 @@ type QuizQuestionForm = {
   matchingPairs: Array<{
     left: string;
     right: string;
+    leftImageUrl?: string;
+    leftImageId?: string;
+    leftImageFile: File | null;
+    rightImageUrl?: string;
+    rightImageId?: string;
+    rightImageFile: File | null;
   }>;
   options: Array<{
     text: string;
@@ -79,8 +85,8 @@ type TimelineItemRef = {
 };
 
 const createMatchingPairs = () => ([
-  { left: "", right: "" },
-  { left: "", right: "" },
+  { left: "", right: "", leftImageUrl: "", leftImageId: "", leftImageFile: null, rightImageUrl: "", rightImageId: "", rightImageFile: null },
+  { left: "", right: "", leftImageUrl: "", leftImageId: "", leftImageFile: null, rightImageUrl: "", rightImageId: "", rightImageFile: null },
 ]);
 
 const createInitialQuestion = (): QuizQuestionForm => ({
@@ -160,6 +166,7 @@ function SortableQuestionCard({
   onAddMatchingPair,
   onRemoveMatchingPair,
   onUpdateMatchingPair,
+  onUpdateMatchingPairImage,
   totalQuestions,
 }: {
   question: QuizQuestionForm;
@@ -182,6 +189,7 @@ function SortableQuestionCard({
   onAddMatchingPair: () => void;
   onRemoveMatchingPair: (pairIndex: number) => void;
   onUpdateMatchingPair: (pairIndex: number, field: 'left' | 'right', value: string) => void;
+  onUpdateMatchingPairImage: (pairIndex: number, side: 'left' | 'right', file: File | null) => void;
   totalQuestions: number;
 }) {
   const theme = useTheme();
@@ -1105,26 +1113,70 @@ function SortableQuestionCard({
                         display: 'grid',
                         gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr auto' },
                         gap: 1,
-                        alignItems: 'center',
+                        alignItems: 'start',
                         mb: 1.5,
                       }}
                     >
-                      <TextField
-                        label={`Left item ${pairIndex + 1}`}
-                        variant="outlined"
-                        fullWidth
-                        size="small"
-                        value={pair.left}
-                        onChange={(e) => onUpdateMatchingPair(pairIndex, 'left', e.target.value)}
-                      />
-                      <TextField
-                        label={`Right item ${pairIndex + 1}`}
-                        variant="outlined"
-                        fullWidth
-                        size="small"
-                        value={pair.right}
-                        onChange={(e) => onUpdateMatchingPair(pairIndex, 'right', e.target.value)}
-                      />
+                      <Box sx={{ display: 'grid', gap: 0.75 }}>
+                        <TextField
+                          label={`Left item ${pairIndex + 1}`}
+                          variant="outlined"
+                          fullWidth
+                          size="small"
+                          value={pair.left}
+                          onChange={(e) => onUpdateMatchingPair(pairIndex, 'left', e.target.value)}
+                        />
+                        <Button variant="outlined" component="label" size="small" sx={{ justifyContent: 'flex-start' }}>
+                          {pair.leftImageFile || pair.leftImageUrl ? 'Left Image Set' : 'Add Left Image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              onUpdateMatchingPairImage(pairIndex, 'left', file);
+                            }}
+                          />
+                        </Button>
+                        {pair.leftImageFile || pair.leftImageUrl ? (
+                          <Box
+                            component="img"
+                            src={pair.leftImageFile ? URL.createObjectURL(pair.leftImageFile) : (pair.leftImageUrl || '')}
+                            alt={`Left item ${pairIndex + 1}`}
+                            sx={{ width: 72, height: 48, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
+                          />
+                        ) : null}
+                      </Box>
+                      <Box sx={{ display: 'grid', gap: 0.75 }}>
+                        <TextField
+                          label={`Right item ${pairIndex + 1}`}
+                          variant="outlined"
+                          fullWidth
+                          size="small"
+                          value={pair.right}
+                          onChange={(e) => onUpdateMatchingPair(pairIndex, 'right', e.target.value)}
+                        />
+                        <Button variant="outlined" component="label" size="small" sx={{ justifyContent: 'flex-start' }}>
+                          {pair.rightImageFile || pair.rightImageUrl ? 'Right Image Set' : 'Add Right Image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              onUpdateMatchingPairImage(pairIndex, 'right', file);
+                            }}
+                          />
+                        </Button>
+                        {pair.rightImageFile || pair.rightImageUrl ? (
+                          <Box
+                            component="img"
+                            src={pair.rightImageFile ? URL.createObjectURL(pair.rightImageFile) : (pair.rightImageUrl || '')}
+                            alt={`Right item ${pairIndex + 1}`}
+                            sx={{ width: 72, height: 48, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
+                          />
+                        ) : null}
+                      </Box>
                       <IconButton
                         size="small"
                         onClick={() => onRemoveMatchingPair(pairIndex)}
@@ -1409,6 +1461,10 @@ export default function CreateQuiz() {
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
   const hasOptionContent = (option: QuizQuestionForm['options'][number]) =>
     Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
+  const hasMatchingSideContent = (text: string, imageFile: File | null, imageUrl?: string, imageId?: string) =>
+    Boolean(text.trim()) || Boolean(imageFile) || Boolean((imageUrl || '').trim()) || Boolean((imageId || '').trim());
+  const getMatchingPreviewImageSrc = (file: File | null, url?: string) =>
+    file ? URL.createObjectURL(file) : (url || '');
 
   useEffect(() => {
     if (timelineItems.length === 0 && questions.length > 0) {
@@ -1647,7 +1703,16 @@ export default function CreateQuiz() {
 
   const addMatchingPair = (globalIndex: number) => {
     const updatedQuestions = [...questions];
-    updatedQuestions[globalIndex].matchingPairs.push({ left: '', right: '' });
+    updatedQuestions[globalIndex].matchingPairs.push({
+      left: '',
+      right: '',
+      leftImageUrl: '',
+      leftImageId: '',
+      leftImageFile: null,
+      rightImageUrl: '',
+      rightImageId: '',
+      rightImageFile: null,
+    });
     setQuestions(updatedQuestions);
   };
 
@@ -1668,6 +1733,28 @@ export default function CreateQuiz() {
       ...updatedQuestions[globalIndex].matchingPairs[pairIndex],
       [field]: value,
     };
+    setQuestions(updatedQuestions);
+  };
+
+  const updateMatchingPairImage = (globalIndex: number, pairIndex: number, side: 'left' | 'right', file: File | null) => {
+    const updatedQuestions = [...questions];
+    const pair = updatedQuestions[globalIndex].matchingPairs[pairIndex];
+    if (!pair) return;
+
+    updatedQuestions[globalIndex].matchingPairs[pairIndex] = side === 'left'
+      ? {
+          ...pair,
+          leftImageFile: file,
+          leftImageUrl: file ? '' : pair.leftImageUrl,
+          leftImageId: file ? '' : pair.leftImageId,
+        }
+      : {
+          ...pair,
+          rightImageFile: file,
+          rightImageUrl: file ? '' : pair.rightImageUrl,
+          rightImageId: file ? '' : pair.rightImageId,
+        };
+
     setQuestions(updatedQuestions);
   };
 
@@ -1737,9 +1824,9 @@ export default function CreateQuiz() {
       .map((ans) => ans.trim())
       .filter(Boolean);
     const matchingPairs = question.matchingPairs
-      .map((pair) => ({
-        left: pair.left.trim(),
-        right: pair.right.trim(),
+      .map((pair, index) => ({
+        left: pair.left.trim() || (hasMatchingSideContent(pair.left, pair.leftImageFile, pair.leftImageUrl, pair.leftImageId) ? `Left Image ${index + 1}` : ''),
+        right: pair.right.trim() || (hasMatchingSideContent(pair.right, pair.rightImageFile, pair.rightImageUrl, pair.rightImageId) ? `Right Image ${index + 1}` : ''),
       }))
       .filter((pair) => pair.left && pair.right);
 
@@ -2028,6 +2115,8 @@ export default function CreateQuiz() {
         const pairs = q.matchingPairs.map((pair) => ({
           left: pair.left.trim(),
           right: pair.right.trim(),
+          hasLeftContent: hasMatchingSideContent(pair.left, pair.leftImageFile, pair.leftImageUrl, pair.leftImageId),
+          hasRightContent: hasMatchingSideContent(pair.right, pair.rightImageFile, pair.rightImageUrl, pair.rightImageId),
         }));
 
         if (pairs.length < 2) {
@@ -2037,15 +2126,15 @@ export default function CreateQuiz() {
           return false;
         }
 
-        if (pairs.some((pair) => !pair.left || !pair.right)) {
-          showSnackbar(`All matching pairs for Question ${i + 1} must be filled`, "error");
+        if (pairs.some((pair) => !pair.hasLeftContent || !pair.hasRightContent)) {
+          showSnackbar(`All matching pairs for Question ${i + 1} must have text or an image on each side`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
         }
 
-        const leftValues = pairs.map((pair) => pair.left.toLowerCase());
-        const rightValues = pairs.map((pair) => pair.right.toLowerCase());
+        const leftValues = pairs.map((pair) => pair.left.toLowerCase()).filter(Boolean);
+        const rightValues = pairs.map((pair) => pair.right.toLowerCase()).filter(Boolean);
         if (new Set(leftValues).size !== leftValues.length || new Set(rightValues).size !== rightValues.length) {
           showSnackbar(`Question ${i + 1} cannot repeat matching items`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
@@ -2510,6 +2599,9 @@ export default function CreateQuiz() {
                             onUpdateMatchingPair={(pairIndex, field, value) =>
                               updateMatchingPair(item.questionIndex, pairIndex, field, value)
                             }
+                            onUpdateMatchingPairImage={(pairIndex, side, file) =>
+                              updateMatchingPairImage(item.questionIndex, pairIndex, side, file)
+                            }
                             totalQuestions={questions.length}
                           />
                         )
@@ -2766,6 +2858,53 @@ export default function CreateQuiz() {
                         ))}
                       </Box>
                     </Box>
+                ) : q.type === 'matching' ? (
+                  <Box sx={{ display: 'grid', gap: 1.25 }}>
+                    {q.matchingPairs.map((pair, pairIdx) => (
+                      <Box
+                        key={`preview-match-${pairIdx}`}
+                        sx={{
+                          p: 1.25,
+                          border: `1px solid ${theme.palette.divider}`,
+                          borderRadius: 1.5,
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr', sm: '1fr auto 1fr' },
+                          gap: 1,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Box sx={{ display: 'grid', gap: 0.5 }}>
+                          {(pair.leftImageFile || pair.leftImageUrl) ? (
+                            <Box
+                              component="img"
+                              src={getMatchingPreviewImageSrc(pair.leftImageFile, pair.leftImageUrl)}
+                              alt={`Matching left ${pairIdx + 1}`}
+                              sx={{ width: 88, height: 56, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
+                            />
+                          ) : null}
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {pair.left || `Left item ${pairIdx + 1}`}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                          matches
+                        </Typography>
+                        <Box sx={{ display: 'grid', gap: 0.5 }}>
+                          {(pair.rightImageFile || pair.rightImageUrl) ? (
+                            <Box
+                              component="img"
+                              src={getMatchingPreviewImageSrc(pair.rightImageFile, pair.rightImageUrl)}
+                              alt={`Matching right ${pairIdx + 1}`}
+                              sx={{ width: 88, height: 56, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
+                            />
+                          ) : null}
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {pair.right || `Right item ${pairIdx + 1}`}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
                 ) : q.type === 'numerical' ? (
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {(q.acceptedAnswers[0] || '').trim() ? (
