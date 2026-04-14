@@ -244,6 +244,8 @@ function SortableQuestionCard({
   const [dragOverQuestionImage, setDragOverQuestionImage] = useState(false);
   const questionInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const canAttachOptionImage = question.type !== 'true_false';
+  const hasOptionContent = (option: QuizQuestionForm['options'][number]) =>
+    Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
 
   const handleOptionImageDrop = (event: ReactDragEvent<HTMLDivElement>, optionIndex: number) => {
     if (!canAttachOptionImage) return;
@@ -1339,7 +1341,7 @@ function SortableQuestionCard({
                       onChange={(e) => onOptionChange(optionIndex, 'text', e.target.value)}
                       placeholder={isOrderType
                         ? `Enter item ${optionIndex + 1}`
-                        : `Enter answer option ${String.fromCharCode(65 + optionIndex)}`}
+                        : `Enter answer option ${String.fromCharCode(65 + optionIndex)}${canAttachOptionImage ? ' (optional if image set)' : ''}`}
                       disabled={question.type === 'true_false'}
                       InputProps={{
                         disableUnderline: false,
@@ -1813,13 +1815,22 @@ export default function CreateQuiz() {
       }))
       .filter((pair) => pair.left && pair.right);
 
-    const correctAnswers = question.options
-      .filter((opt) => opt.isCorrect)
-      .map((opt) => opt.text);
-    const incorrectAnswers = question.options
-      .filter((opt) => !opt.isCorrect)
-      .map((opt) => opt.text);
-    const options = question.options.map((opt) => opt.text);
+    const getOptionLabel = (opt: QuizQuestionForm['options'][number], index: number) => {
+      const trimmedText = opt.text.trim();
+      if (trimmedText) return trimmedText;
+
+      const hasImage = Boolean(opt.imageFile) || Boolean((opt.imageUrl || '').trim()) || Boolean((opt.imageId || '').trim());
+      return hasImage ? `Image ${String.fromCharCode(65 + index)}` : '';
+    };
+
+    const optionEntries = question.options.map((opt, index) => ({
+      opt,
+      index,
+      label: getOptionLabel(opt, index),
+    }));
+    const options = optionEntries.map((entry) => entry.label);
+    const correctAnswers = optionEntries.filter((entry) => entry.opt.isCorrect).map((entry) => entry.label);
+    const incorrectAnswers = optionEntries.filter((entry) => !entry.opt.isCorrect).map((entry) => entry.label);
     const optionImageUrls = question.options.map((opt) => (opt.imageUrl || '').trim());
     const optionImageIds = question.options.map((opt) => (opt.imageId || '').trim());
     const matchingAnswerStrings = matchingPairs.map((pair) => `${pair.left}:${pair.right}`);
