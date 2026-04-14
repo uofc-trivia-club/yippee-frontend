@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, IconButton, MenuItem, Pagination, Radio, Snackbar, TextField, Typography, useTheme } from "@mui/material";
+import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, IconButton, MenuItem, Radio, Snackbar, TextField, Typography, useTheme } from "@mui/material";
 import {
   DndContext,
   DragEndEvent,
@@ -9,7 +9,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { PresentationSlide, Quiz, QuizItem, QuizQuestion } from "../../stores/types";
+import { Quiz, QuizItem, QuizQuestion } from "../../stores/types";
 import {
   SortableContext,
   arrayMove,
@@ -1343,7 +1343,6 @@ export default function CreateQuiz() {
   );
 
   // Pagination
-  const totalPages = Math.ceil(questions.length / QUESTIONS_PER_PAGE);
   const paginatedQuestions = useMemo(() => {
     const start = (currentPage - 1) * QUESTIONS_PER_PAGE;
     const end = start + QUESTIONS_PER_PAGE;
@@ -2342,7 +2341,11 @@ export default function CreateQuiz() {
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                   <Typography variant="h6" fontWeight="700">Unified Timeline</Typography>
-                  <Chip size="small" color="secondary" label={`${timelinePreviewItems.length} items`} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Button size="small" onClick={expandAll}>Expand All</Button>
+                    <Button size="small" onClick={collapseAll}>Collapse All</Button>
+                    <Chip size="small" color="secondary" label={`${timelinePreviewItems.length} items`} />
+                  </Box>
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                   Slides and questions live in one sequence. Drag to reorder.
