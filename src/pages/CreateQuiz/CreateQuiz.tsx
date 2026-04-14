@@ -219,6 +219,8 @@ function SortableQuestionCard({
         .filter(Boolean)
         .length > 0
     );
+  const hasOptionContent = (option: QuizQuestionForm['options'][number]) =>
+    Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
   const isValid = isFreeTextType
     ? question.question.trim() && question.acceptedAnswers.length > 0
     : isNumericalType
@@ -226,10 +228,10 @@ function SortableQuestionCard({
     : isFillInBlankType
       ? question.question.trim() && blankAnswersValid
     : isPhraseMatchType
-      ? question.question.trim() && blankAnswersValid && question.options.every((opt) => opt.text.trim())
+      ? question.question.trim() && blankAnswersValid && question.options.every(hasOptionContent)
     : isPairType
       ? question.question.trim() && question.matchingPairs.length >= 2 && question.matchingPairs.every(pair => pair.left.trim() && pair.right.trim())
-      : question.question.trim() && (allowsNoCorrect || correctAnswersCount > 0) && question.options.every(opt => opt.text.trim());
+      : question.question.trim() && (allowsNoCorrect || correctAnswersCount > 0) && question.options.every(hasOptionContent);
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
@@ -244,8 +246,6 @@ function SortableQuestionCard({
   const [dragOverQuestionImage, setDragOverQuestionImage] = useState(false);
   const questionInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const canAttachOptionImage = question.type !== 'true_false';
-  const hasOptionContent = (option: QuizQuestionForm['options'][number]) =>
-    Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
 
   const handleOptionImageDrop = (event: ReactDragEvent<HTMLDivElement>, optionIndex: number) => {
     if (!canAttachOptionImage) return;
@@ -1472,6 +1472,8 @@ export default function CreateQuiz() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
+  const hasOptionContent = (option: QuizQuestionForm['options'][number]) =>
+    Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
 
   useEffect(() => {
     if (timelineItems.length === 0 && questions.length > 0) {
@@ -2086,8 +2088,8 @@ export default function CreateQuiz() {
           return false;
         }
 
-        if (q.options.some((opt) => !opt.text.trim())) {
-          showSnackbar(`All words in the word bank for Question ${i + 1} must be filled`, "error");
+        if (q.options.some((opt) => !hasOptionContent(opt))) {
+          showSnackbar(`All words in the word bank for Question ${i + 1} must have text or an image`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
@@ -2128,7 +2130,7 @@ export default function CreateQuiz() {
         continue;
       }
 
-      const options = q.options.filter(opt => opt.text.trim());
+      const options = q.options.filter((opt) => hasOptionContent(opt));
       if (options.length < 1) {
         showSnackbar(`Question ${i + 1} needs at least one option/item`, "error");
         const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
@@ -2136,9 +2138,9 @@ export default function CreateQuiz() {
         return false;
       }
 
-      const allOptionsFilled = q.options.every(opt => opt.text.trim());
+      const allOptionsFilled = q.options.every((opt) => hasOptionContent(opt));
       if (!allOptionsFilled) {
-        showSnackbar(`All options for Question ${i + 1} must be filled`, "error");
+        showSnackbar(`All options for Question ${i + 1} must have text or an image`, "error");
         const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
         setCurrentPage(page);
         return false;
