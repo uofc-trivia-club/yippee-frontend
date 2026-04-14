@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
 import {
   DropdownQuestion,
   EssayQuestion,
@@ -29,6 +29,24 @@ export default function PlayerGameView() {
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
   const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+  const getQuestionTypeTitle = (typeName?: string) => {
+    switch (typeName) {
+      case 'multiple_choice': return 'Multiple-choice question';
+      case 'multi_select': return 'Multi-select question';
+      case 'dropdown': return 'Dropdown question';
+      case 'true_false': return 'True/false question';
+      case 'short_answer': return 'Short-answer question';
+      case 'fill_in_blank': return 'Fill-in-the-blank question';
+      case 'numerical': return 'Numerical question';
+      case 'match_the_phrase': return 'Match-the-phrase question';
+      case 'matching': return 'Matching question';
+      case 'ranking': return 'Ranking question';
+      case 'ordering': return 'Ranking question';
+      case 'image_based': return 'Image-based question';
+      case 'essay': return 'Essay question';
+      default: return 'Question';
+    }
+  };
 
   useEffect(() => {
     const questionType = game.currentQuestion?.type;
@@ -147,8 +165,7 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'short_answer':
-      case 'fill_in_blank': {
+      case 'short_answer': {
         return (
           <ShortAnswerQuestion
             textAnswer={textAnswer}
@@ -157,13 +174,38 @@ export default function PlayerGameView() {
           />
         );
       }
+      case 'fill_in_blank': {
+        const blankCount = Math.max(1, q.question.split('____').length - 1);
+        return (
+          <Stack spacing={1.5}>
+            {Array.from({ length: blankCount }).map((_, index) => (
+              <TextField
+                key={`blank-${index}`}
+                label={`Blank ${index + 1}`}
+                value={selectedAnswers[index] || ''}
+                onChange={(e) => {
+                  const next = [...selectedAnswers];
+                  next[index] = e.target.value;
+                  setSelectedAnswers(next);
+                }}
+                disabled={isDisabled}
+                fullWidth
+              />
+            ))}
+          </Stack>
+        );
+      }
       case 'numerical': {
         return (
           <ShortAnswerQuestion
             textAnswer={textAnswer}
-            onAnswerChange={handleTextChange}
+            onAnswerChange={(value) => {
+              setTextAnswer(value);
+              setSelectedAnswers(value.trim().length > 0 ? [value] : []);
+            }}
             disabled={isSubmitting}
             label="Your Numerical Answer"
+            inputType="number"
           />
         );
       }
@@ -267,9 +309,29 @@ export default function PlayerGameView() {
           : false;
 
       case 'short_answer':
-      case 'fill_in_blank': {
+      {
         const accepted = (question.correctAnswers || (type as any).correctAnswers || []).map(normalizeText);
         return accepted.includes(normalizeText(submitted[0] || ''));
+      }
+
+      case 'fill_in_blank': {
+        const blankCount = Math.max(1, question.question.split('____').length - 1);
+        const groupedAccepted = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
+        const submittedTrimmed = submitted.slice(0, blankCount).map((s) => normalizeText(s || ''));
+        if (submittedTrimmed.length < blankCount || submittedTrimmed.some((s) => !s)) return false;
+
+        return submittedTrimmed.every((value, index) => {
+          const rawAccepted = groupedAccepted[index] || '';
+          const acceptedValues = rawAccepted
+            .split('|')
+            .map((v) => normalizeText(v))
+            .filter(Boolean);
+          if (!acceptedValues.length) {
+            const fallback = normalizeText(groupedAccepted[index] || '');
+            return fallback ? fallback === value : false;
+          }
+          return acceptedValues.includes(value);
+        });
       }
 
       case 'numerical': {
@@ -409,6 +471,9 @@ export default function PlayerGameView() {
                   variant="outlined"
                   sx={{ width: 'fit-content', fontWeight: 700 }}
                 />
+                <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                  {getQuestionTypeTitle(game.currentQuestion?.type?.name)}
+                </Typography>
                 <Typography
                   variant="h4"
                   sx={{
@@ -453,7 +518,11 @@ export default function PlayerGameView() {
                 variant="contained"
                 color="primary"
                 onClick={handleSubmitAnswers}
-                disabled={((game.currentQuestion?.type?.name !== 'multi_select') && selectedAnswers.length === 0) || isSubmitting}
+                disabled={
+                  isSubmitting ||
+                  (game.currentQuestion?.type?.name !== 'multi_select' && selectedAnswers.length === 0) ||
+                  (game.currentQuestion?.type?.name === 'fill_in_blank' && selectedAnswers.some((answer) => !answer?.trim()))
+                }
                 sx={{ mt: 2 }}
               >
                 {isSubmitting ? (

@@ -7,6 +7,7 @@ interface ShortAnswerQuestionProps {
   isMultiline?: boolean;
   minRows?: number;
   label?: string;
+  inputType?: "text" | "number";
 }
 
 export default function ShortAnswerQuestion({
@@ -16,6 +17,7 @@ export default function ShortAnswerQuestion({
   isMultiline = false,
   minRows = 1,
   label = "Your Answer",
+  inputType = "text",
 }: ShortAnswerQuestionProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -25,6 +27,7 @@ export default function ShortAnswerQuestion({
         value={textAnswer}
         onChange={(e) => onAnswerChange(e.target.value)}
         disabled={disabled}
+        type={inputType}
         multiline={isMultiline}
         minRows={isMultiline ? minRows : undefined}
       />

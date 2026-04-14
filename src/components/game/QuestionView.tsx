@@ -27,6 +27,24 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const q = game.currentQuestion;
     const t = q?.type;
     const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+    const getQuestionTypeTitle = (typeName?: string) => {
+        switch (typeName) {
+            case 'multiple_choice': return 'Multiple-choice question';
+            case 'multi_select': return 'Multi-select question';
+            case 'dropdown': return 'Dropdown question';
+            case 'true_false': return 'True/false question';
+            case 'short_answer': return 'Short-answer question';
+            case 'fill_in_blank': return 'Fill-in-the-blank question';
+            case 'numerical': return 'Numerical question';
+            case 'match_the_phrase': return 'Match-the-phrase question';
+            case 'matching': return 'Matching question';
+            case 'ranking': return 'Ranking question';
+            case 'ordering': return 'Ranking question';
+            case 'image_based': return 'Image-based question';
+            case 'essay': return 'Essay question';
+            default: return 'Question';
+        }
+    };
         const shuffledMatchingRightItems = useMemo(() => {
             const rightItems = (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
             const nextItems = [...rightItems];
@@ -348,6 +366,9 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                             sx={{ fontWeight: 700 }}
                         />
                     </Stack>
+                    <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                        {getQuestionTypeTitle(t?.name)}
+                    </Typography>
                     <Typography
                         variant="h4"
                         sx={{

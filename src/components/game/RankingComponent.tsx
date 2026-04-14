@@ -25,8 +25,12 @@ interface RankingComponentProps {
   onOrderChange: (orderedItems: string[]) => void;
 }
 
+type RankedItem = { id: string; text: string };
+
 export default function RankingComponent({ items, disabled, onOrderChange }: RankingComponentProps) {
-  const [orderedItems, setOrderedItems] = useState<string[]>(items);
+  const [orderedItems, setOrderedItems] = useState<RankedItem[]>(
+    items.map((text, index) => ({ id: `${index}-${text}`, text }))
+  );
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -42,21 +46,22 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
   );
 
   useEffect(() => {
-    setOrderedItems(items);
-    onOrderChange(items);
+    const nextItems = items.map((text, index) => ({ id: `${index}-${text}`, text }));
+    setOrderedItems(nextItems);
+    onOrderChange(nextItems.map((item: RankedItem) => item.text));
   }, [items, onOrderChange]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = orderedItems.indexOf(String(active.id));
-    const newIndex = orderedItems.indexOf(String(over.id));
+    const oldIndex = orderedItems.findIndex((item) => item.id === String(active.id));
+    const newIndex = orderedItems.findIndex((item) => item.id === String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
 
     const next = arrayMove(orderedItems, oldIndex, newIndex);
     setOrderedItems(next);
-    onOrderChange(next);
+    onOrderChange(next.map((item: RankedItem) => item.text));
   };
 
   if (!orderedItems.length) {
@@ -74,10 +79,10 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
         <SortableContext items={orderedItems} strategy={verticalListSortingStrategy}>
           {orderedItems.map((item, idx) => (
             <SortableRankRow
-              key={item}
-              id={item}
+              key={item.id}
+              id={item.id}
               index={idx}
-              text={item}
+              text={item.text}
               disabled={disabled}
             />
           ))}

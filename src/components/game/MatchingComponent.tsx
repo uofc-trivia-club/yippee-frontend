@@ -13,6 +13,7 @@ interface MatchingComponentProps {
 
 export default function MatchingComponent({ leftItems, rightItems, disabled, onMatchesChange }: MatchingComponentProps) {
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+  const [selectedRight, setSelectedRight] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [shuffledRightItems, setShuffledRightItems] = useState<string[]>(rightItems);
   const matchEntries = Object.entries(matches) as Array<[string, string]>;
@@ -46,6 +47,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
   useEffect(() => {
     // Reset selection/matches and shuffle right-side options once per question payload.
     setSelectedLeft(null);
+    setSelectedRight(null);
     setMatches({});
     const nextItems = [...rightItems];
     for (let i = nextItems.length - 1; i > 0; i -= 1) {
@@ -57,11 +59,35 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
 
   const handleLeftClick = (item: string) => {
     if (disabled) return;
+
+    // Right-to-left matching: select right first, then click left to pair.
+    if (selectedRight) {
+      setMatches(prev => {
+        const next = { ...prev };
+        delete next[item];
+        for (const leftKey of Object.keys(next)) {
+          if (next[leftKey] === selectedRight) {
+            delete next[leftKey];
+          }
+        }
+        next[item] = selectedRight;
+        return next;
+      });
+      setSelectedRight(null);
+      setSelectedLeft(null);
+      return;
+    }
+
     setSelectedLeft(item === selectedLeft ? null : item);
   };
 
   const handleRightClick = (item: string) => {
-    if (disabled || !selectedLeft) return;
+    if (disabled) return;
+
+    if (!selectedLeft) {
+      setSelectedRight(item === selectedRight ? null : item);
+      return;
+    }
     
     // Add new match
     setMatches(prev => {
@@ -77,6 +103,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
     });
     
     setSelectedLeft(null);
+    setSelectedRight(null);
   };
 
   const clearMatch = (leftItem: string) => {
@@ -145,6 +172,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
             const matchedLeftIdx = leftItems.findIndex((leftItem) => matches[leftItem] === item);
             const isMatched = matchedLeftIdx >= 0;
             const connectionColor = isMatched ? getConnectionColor(matchedLeftIdx) : undefined;
+            const isSelectedRight = selectedRight === item;
             return (
               <Paper
                 key={`right-${idx}`}
@@ -157,7 +185,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
                   bgcolor: isMatched ? 'rgba(0,0,0,0.03)' : 'background.paper',
                   color: 'text.primary',
                   border: '1px solid',
-                  borderColor: isMatched ? connectionColor : 'divider',
+                  borderColor: isSelectedRight ? 'primary.main' : isMatched ? connectionColor : 'divider',
                   borderRight: isMatched ? `8px solid ${connectionColor}` : undefined,
                   transition: 'all 0.2s',
                   display: 'flex',
@@ -165,8 +193,8 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
                   justifyContent: 'space-between',
                   minHeight: 60,
                   zIndex: 1,
-                  opacity: (!isMatched && selectedLeft && !disabled) ? 0.8 : 1,
-                  boxShadow: (!isMatched && selectedLeft && !disabled) ? '0 0 10px rgba(25, 118, 210, 0.4)' : 'none'
+                  opacity: (!isMatched && (selectedLeft || selectedRight) && !disabled) ? 0.8 : 1,
+                  boxShadow: (!isMatched && (selectedLeft || selectedRight) && !disabled) ? '0 0 10px rgba(25, 118, 210, 0.4)' : 'none'
                 }}
               >
                 <Typography variant="body2">{item}</Typography>

@@ -136,7 +136,6 @@ const QUESTION_TYPE_OPTIONS = [
   { value: 'numerical', label: 'Numerical' },
   { value: 'essay', label: 'Essay' },
   { value: 'ranking', label: 'Ranking' },
-  { value: 'ordering', label: 'Ordering' },
   { value: 'match_the_phrase', label: 'Match the Phrase' },
   { value: 'matching', label: 'Matching' },
   { value: 'image_based', label: 'Image Based' },
@@ -1142,6 +1141,9 @@ function SortableQuestionCard({
                 }}
               >
                 {question.options.map((option, optionIndex) => (
+                  (() => {
+                    const shouldHighlightCorrect = showCorrectSelector && option.isCorrect;
+                    return (
                   <Box
                     key={optionIndex}
                     sx={{
@@ -1152,11 +1154,11 @@ function SortableQuestionCard({
                       p: 1.5,
                       borderRadius: 1,
                       border: `2px solid ${
-                        option.isCorrect
+                        shouldHighlightCorrect
                           ? theme.palette.success.main
                           : theme.palette.divider
                       }`,
-                      backgroundColor: option.isCorrect
+                      backgroundColor: shouldHighlightCorrect
                         ? theme.palette.mode === 'dark'
                           ? 'rgba(76, 175, 80, 0.08)'
                           : 'rgba(76, 175, 80, 0.04)'
@@ -1209,12 +1211,12 @@ function SortableQuestionCard({
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: '50%',
-                        backgroundColor: option.isCorrect
+                        backgroundColor: shouldHighlightCorrect
                           ? theme.palette.success.main
                           : theme.palette.mode === 'dark'
                           ? 'rgba(255, 255, 255, 0.1)'
                           : 'rgba(0, 0, 0, 0.08)',
-                        color: option.isCorrect
+                        color: shouldHighlightCorrect
                           ? '#fff'
                           : theme.palette.text.primary,
                         fontWeight: 600,
@@ -1254,18 +1256,20 @@ function SortableQuestionCard({
                       }}
                     />
 
-                    <Button variant="outlined" component="label" size="small" sx={{ flexShrink: 0 }}>
-                      {option.imageFile || option.imageUrl ? 'Image Set' : 'Add Image'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          onOptionChange(optionIndex, 'imageFile', file);
-                        }}
-                      />
-                    </Button>
+                    {question.type !== 'true_false' ? (
+                      <Button variant="outlined" component="label" size="small" sx={{ flexShrink: 0 }}>
+                        {option.imageFile || option.imageUrl ? 'Image Set' : 'Add Image'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            onOptionChange(optionIndex, 'imageFile', file);
+                          }}
+                        />
+                      </Button>
+                    ) : null}
 
                     {/* Delete Button */}
                     <IconButton
@@ -1283,6 +1287,8 @@ function SortableQuestionCard({
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
+                    );
+                  })()
                 ))}
 
                 <Button
