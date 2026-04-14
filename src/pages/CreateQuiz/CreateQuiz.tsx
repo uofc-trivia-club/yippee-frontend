@@ -204,7 +204,6 @@ function SortableQuestionCard({
   const isFreeTextType = question.type === 'short_answer';
   const isFillInBlankType = question.type === 'fill_in_blank';
   const isNumericalType = question.type === 'numerical';
-  const isDropdownType = question.type === 'dropdown';
   const isPairType = question.type === 'matching';
   const isPhraseMatchType = question.type === 'match_the_phrase';
   const allowsNoCorrect = question.type === 'multi_select';
@@ -237,8 +236,6 @@ function SortableQuestionCard({
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
   const usesOptionsEditor = !isFreeTextType && !isFillInBlankType && !isNumericalType && !isPhraseMatchType;
   const showCorrectSelector = !isEssayType && !isOrderType;
-  const currentDropdownCorrectIndex = question.options.findIndex((opt) => opt.isCorrect);
-  const dropdownBlankValue = currentDropdownCorrectIndex >= 0 ? question.options[currentDropdownCorrectIndex].text : '';
   const phraseBlankCount = Math.max(0, blankSegments.length - 1);
   const [questionCursorPos, setQuestionCursorPos] = useState<number | null>(null);
   const [draggedPhraseBlankIndex, setDraggedPhraseBlankIndex] = useState<number | null>(null);
@@ -280,12 +277,6 @@ function SortableQuestionCard({
     const nextAnswers = [...question.acceptedAnswers];
     nextAnswers[blankIndex] = value;
     onChange('acceptedAnswers', nextAnswers);
-  };
-
-  const handleDropdownBlankAnswerChange = (value: string) => {
-    const targetIndex = currentDropdownCorrectIndex >= 0 ? currentDropdownCorrectIndex : 0;
-    onOptionChange(targetIndex, 'isCorrect', true);
-    onOptionChange(targetIndex, 'text', value);
   };
 
   const handlePhraseAnswerChange = (blankIndex: number, value: string) => {
@@ -1002,60 +993,6 @@ function SortableQuestionCard({
               </Box>
             )}
 
-            {isDropdownType && (
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Type the dropdown correct answer directly in the first blank below.
-                </Typography>
-
-                {hasBlankTokens ? (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-                    {blankSegments.map((segment, index) => (
-                      <Fragment key={`blank-segment-${index}`}>
-                        {segment && (
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {segment}
-                          </Typography>
-                        )}
-                        {index < blankSegments.length - 1 && (
-                          <Box sx={{ minWidth: 180 }}>
-                            <TextField
-                              size="small"
-                              fullWidth
-                              value={
-                                isFillInBlankType
-                                  ? (question.acceptedAnswers[index] || '')
-                                  : index === 0
-                                    ? dropdownBlankValue
-                                    : ''
-                              }
-                              onChange={(e) => {
-                                if (isFillInBlankType) {
-                                  handleFillBlankAnswerChange(index, e.target.value);
-                                  return;
-                                }
-
-                                if (index === 0) {
-                                  handleDropdownBlankAnswerChange(e.target.value);
-                                }
-                              }}
-                              disabled={isDropdownType && index > 0}
-                              placeholder={isDropdownType && index > 0 ? 'Use first blank only' : `Blank ${index + 1}`}
-                              sx={{ bgcolor: theme.palette.background.paper, borderRadius: 1 }}
-                            />
-                          </Box>
-                        )}
-                      </Fragment>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Example: "The capital of France is ____." or "The largest planet is [_____]."
-                  </Typography>
-                )}
-              </Box>
-            )}
-
             <Divider sx={{ my: 3 }} />
 
             {isFreeTextType && (
@@ -1141,8 +1078,6 @@ function SortableQuestionCard({
                     ? 'Enter each correct pair. The left and right values will be matched together in the game.'
                     : isOrderType
                     ? 'Add and arrange items. The displayed order will be treated as the correct order.'
-                    : isDropdownType
-                      ? 'Pick one correct option. The correct option text is synced with the first blank editor.'
                     : isSingleCorrectType
                       ? 'Select one correct answer.'
                       : 'Check all correct answers (multiple selections allowed).'}
@@ -1567,7 +1502,7 @@ export default function CreateQuiz() {
       const isPhraseType = selectedType === 'match_the_phrase';
       const currentQuestionText = updatedQuestions[globalIndex].question || '';
 
-      if ((selectedType === 'fill_in_blank' || selectedType === 'dropdown') && !currentQuestionText.match(/_{3,}/)) {
+      if (selectedType === 'fill_in_blank' && !currentQuestionText.match(/_{3,}/)) {
         updatedQuestions[globalIndex].question = `${currentQuestionText}${currentQuestionText ? ' ' : ''}____`;
       }
 
@@ -1611,14 +1546,6 @@ export default function CreateQuiz() {
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
       }
 
-      if (selectedType === 'dropdown') {
-        const firstCorrectIndex = updatedQuestions[globalIndex].options.findIndex((opt) => opt.isCorrect);
-        updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.map((opt, idx) => ({
-          ...opt,
-          isCorrect: firstCorrectIndex >= 0 ? idx === firstCorrectIndex : idx === 0,
-        }));
-      }
-
       if (selectedType === 'multiple') {
         const firstCorrectIndex = updatedQuestions[globalIndex].options.findIndex((opt) => opt.isCorrect);
         updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.map((opt, idx) => ({
@@ -1640,7 +1567,7 @@ export default function CreateQuiz() {
     const updatedQuestions = [...questions];
     const updatedOptions = [...updatedQuestions[globalIndex].options];
     const qType = updatedQuestions[globalIndex].type;
-    
+
     if (field === 'isCorrect' && value === true && (qType === 'multiple' || qType === 'dropdown' || qType === 'true_false')) {
       updatedQuestions[globalIndex].options = updatedOptions.map((opt, idx) => ({
         ...opt,
@@ -1654,7 +1581,7 @@ export default function CreateQuiz() {
       if (qType === 'multi_select') {
         updatedOptions[optionIndex] = {
           ...updatedOptions[optionIndex],
-          [field]: value
+          [field]: value,
         };
 
         updatedQuestions[globalIndex].options = updatedOptions;
@@ -1670,24 +1597,11 @@ export default function CreateQuiz() {
 
     updatedOptions[optionIndex] = {
       ...updatedOptions[optionIndex],
-      [field]: value
+      [field]: value,
     };
-    
+
     updatedQuestions[globalIndex].options = updatedOptions;
     setQuestions(updatedQuestions);
-  };
-
-  const addQuestion = () => {
-    const newQuestion = createInitialQuestion();
-    // Set default points to 1 instead of 0
-    newQuestion.points = 1;
-    setQuestions([...questions, newQuestion]);
-    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
-    setTimelineItems((prev) => [...prev, { id: timelineId, kind: 'question', refId: newQuestion.id }]);
-    setSelectedTimelineId(timelineId);
-    setExpandedQuestions(new Set([newQuestion.id]));
-    const newPage = Math.ceil((questions.length + 1) / QUESTIONS_PER_PAGE);
-    setCurrentPage(newPage);
   };
 
   const addSlide = () => {
@@ -1696,6 +1610,18 @@ export default function CreateQuiz() {
     setSlides((prev) => [...prev, newSlide]);
     setTimelineItems((prev) => [...prev, { id: timelineId, kind: 'slide', refId: newSlide.id }]);
     setSelectedTimelineId(timelineId);
+  };
+
+  const addQuestion = () => {
+    const newQuestion = createInitialQuestion();
+    newQuestion.points = 1;
+    setQuestions([...questions, newQuestion]);
+    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
+    setTimelineItems((prev) => [...prev, { id: timelineId, kind: 'question', refId: newQuestion.id }]);
+    setSelectedTimelineId(timelineId);
+    setExpandedQuestions(new Set([newQuestion.id]));
+    const newPage = Math.ceil((questions.length + 1) / QUESTIONS_PER_PAGE);
+    setCurrentPage(newPage);
   };
 
   const updateSlide = <K extends keyof PresentationSlideForm>(
