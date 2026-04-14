@@ -124,6 +124,13 @@ export interface ImageBasedType {
   correctAnswers: string[];
 }
 
+// Calendar
+export interface CalendarType {
+  name: "calendar";
+  description: string;
+  correctAnswers: string[]; // ISO 8601 format: YYYY-MM-DD
+}
+
 // Union type for all question types
 export type QuestionType =
   | MultipleChoiceType
@@ -138,7 +145,8 @@ export type QuestionType =
   | RankingType
   | OrderingType
   | MatchingType
-  | ImageBasedType;
+  | ImageBasedType
+  | CalendarType;
 
 export type QuizQuestion = {
   question: string;

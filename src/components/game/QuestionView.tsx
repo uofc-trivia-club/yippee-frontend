@@ -41,6 +41,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             case 'ranking': return 'Ranking question';
             case 'ordering': return 'Ranking question';
             case 'image_based': return 'Image-based question';
+            case 'calendar': return 'Calendar question';
             case 'essay': return 'Essay question';
             default: return 'Question';
         }
@@ -243,6 +244,25 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 ) : (
                     <Typography fontStyle="italic" color="text.secondary">
                         Players are entering a number...
+                    </Typography>
+                );
+            }
+            case 'calendar': {
+                const acceptedDates = ((t as any).correctAnswers || q?.correctAnswers || []) as string[];
+                return displayCorrectAnswers ? (
+                    <Stack spacing={1}>
+                        <Typography color="success.main" fontWeight="bold">
+                            Correct Date(s)
+                        </Typography>
+                        <Stack direction="row" flexWrap="wrap" gap={1}>
+                            {acceptedDates.map((date, i) => (
+                                <Chip key={i} label={date} color="success" variant="outlined" />
+                            ))}
+                        </Stack>
+                    </Stack>
+                ) : (
+                    <Typography fontStyle="italic" color="text.secondary">
+                        Players are selecting dates from the calendar...
                     </Typography>
                 );
             }

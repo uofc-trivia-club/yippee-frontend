@@ -146,6 +146,7 @@ const QUESTION_TYPE_OPTIONS = [
   { value: 'match_the_phrase', label: 'Match the Phrase' },
   { value: 'matching', label: 'Matching' },
   { value: 'image_based', label: 'Image Based' },
+  { value: 'calendar', label: 'Calendar' },
 ] as const;
 
 // Sortable Question Card Component
@@ -210,6 +211,7 @@ function SortableQuestionCard({
 
   const correctAnswersCount = question.options.filter(opt => opt.isCorrect).length;
   const isFreeTextType = question.type === 'short_answer';
+  const isCalendarType = question.type === 'calendar';
   const isFillInBlankType = question.type === 'fill_in_blank';
   const isNumericalType = question.type === 'numerical';
   const isPairType = question.type === 'matching';
@@ -230,6 +232,8 @@ function SortableQuestionCard({
     Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
   const isValid = isFreeTextType
     ? question.question.trim() && question.acceptedAnswers.length > 0
+    : isCalendarType
+      ? question.question.trim() && question.acceptedAnswers.length > 0 && question.acceptedAnswers.every((date) => /^\d{4}-\d{2}-\d{2}$/.test((date || '').trim()))
     : isNumericalType
       ? question.question.trim() && Number.isFinite(Number((question.acceptedAnswers[0] || '').trim()))
     : isFillInBlankType
@@ -242,7 +246,7 @@ function SortableQuestionCard({
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
-  const usesOptionsEditor = !isFreeTextType && !isFillInBlankType && !isNumericalType && !isPhraseMatchType;
+  const usesOptionsEditor = !isFreeTextType && !isCalendarType && !isFillInBlankType && !isNumericalType && !isPhraseMatchType;
   const showCorrectSelector = !isEssayType && !isOrderType;
   const phraseBlankCount = Math.max(0, blankSegments.length - 1);
   const [questionCursorPos, setQuestionCursorPos] = useState<number | null>(null);
@@ -1071,6 +1075,60 @@ function SortableQuestionCard({
               </Box>
             )}
 
+            {isCalendarType && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
+                  Correct Date(s)
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  Pick one or more correct dates using the calendar picker (YYYY-MM-DD).
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <TextField
+                    type="date"
+                    fullWidth
+                    size="small"
+                    value={question.acceptedAnswerInput}
+                    onChange={(e) => onChange('acceptedAnswerInput', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onAddAcceptedAnswer();
+                      }
+                    }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={onAddAcceptedAnswer}
+                    sx={{ minWidth: 120 }}
+                    disabled={!/^\d{4}-\d{2}-\d{2}$/.test((question.acceptedAnswerInput || '').trim())}
+                  >
+                    Add Date
+                  </Button>
+                </Box>
+
+                {question.acceptedAnswers.length > 0 ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {question.acceptedAnswers.map((date, idx) => (
+                      <Chip
+                        key={`${date}-${idx}`}
+                        label={date}
+                        color="success"
+                        variant="outlined"
+                        onDelete={() => onRemoveAcceptedAnswer(idx)}
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    No dates selected yet.
+                  </Typography>
+                )}
+              </Box>
+            )}
+
             {/* Answer Options - Multi-Select with Checkboxes */}
             {usesOptionsEditor && <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
@@ -1575,7 +1633,7 @@ export default function CreateQuiz() {
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
-      } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank' || selectedType === 'numerical') {
+      } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank' || selectedType === 'numerical' || selectedType === 'calendar') {
         updatedQuestions[globalIndex].options = [];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
@@ -1963,6 +2021,13 @@ export default function CreateQuiz() {
           correctAnswers,
         };
         break;
+      case "calendar":
+        typeObj = {
+          name: "calendar",
+          description: "calendar question",
+          correctAnswers: acceptedTextAnswers,
+        };
+        break;
       default:
         typeObj = {
           name: "multiple_choice",
@@ -1988,7 +2053,7 @@ export default function CreateQuiz() {
       options: typeName === 'matching'
         ? []
         : options,
-      correctAnswers: typeName === 'short_answer' || typeName === 'fill_in_blank' || typeName === 'match_the_phrase'
+      correctAnswers: typeName === 'short_answer' || typeName === 'fill_in_blank' || typeName === 'match_the_phrase' || typeName === 'calendar'
         ? acceptedTextAnswers
         : typeName === 'matching'
           ? matchingAnswerStrings
@@ -2028,6 +2093,25 @@ export default function CreateQuiz() {
       if (q.type === 'short_answer') {
         if (q.acceptedAnswers.length < 1) {
           showSnackbar(`Question ${i + 1} needs at least one accepted answer`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+        continue;
+      }
+
+      if (q.type === 'calendar') {
+        if (q.acceptedAnswers.length < 1) {
+          showSnackbar(`Question ${i + 1} needs at least one correct date in YYYY-MM-DD format`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+        const allValidDates = q.acceptedAnswers.every((date) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(date.trim())
+        );
+        if (!allValidDates) {
+          showSnackbar(`Question ${i + 1} has invalid date format. Use YYYY-MM-DD.`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
@@ -2811,6 +2895,8 @@ export default function CreateQuiz() {
                 <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1 }}>
                   {q.type === 'short_answer' || q.type === 'fill_in_blank'
                     ? 'Accepted Answers:'
+                    : q.type === 'calendar'
+                      ? 'Correct Date(s):'
                     : q.type === 'numerical'
                       ? 'Correct Number:'
                       : q.type === 'match_the_phrase'
@@ -2818,7 +2904,7 @@ export default function CreateQuiz() {
                       : 'Answer Options:'}
                 </Typography>
 
-                {(q.type === 'short_answer' || q.type === 'fill_in_blank') ? (
+                {(q.type === 'short_answer' || q.type === 'fill_in_blank' || q.type === 'calendar') ? (
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {q.acceptedAnswers.length > 0 ? q.acceptedAnswers.map((ans, ansIdx) => (
                       <Chip

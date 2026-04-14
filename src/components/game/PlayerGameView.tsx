@@ -1,5 +1,6 @@
 import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
 import {
+  CalendarQuestion,
   DropdownQuestion,
   EssayQuestion,
   ImageBasedQuestion,
@@ -49,6 +50,7 @@ export default function PlayerGameView() {
       case 'ranking': return 'Ranking question';
       case 'ordering': return 'Ranking question';
       case 'image_based': return 'Image-based question';
+      case 'calendar': return 'Calendar question';
       case 'essay': return 'Essay question';
       default: return 'Question';
     }
@@ -265,6 +267,18 @@ export default function PlayerGameView() {
           />
         );
       }
+      case 'calendar': {
+        const correctAnswers = ((t as any).correctAnswers || q.correctAnswers || []) as string[];
+        return (
+          <CalendarQuestion
+            question={q.question || ''}
+            correctAnswers={correctAnswers}
+            disabled={isDisabled}
+            onAnswer={(dates) => setSelectedAnswers(dates)}
+            showCorrectAnswers={false}
+          />
+        );
+      }
       case 'essay': {
         return (
           <EssayQuestion
@@ -410,6 +424,15 @@ export default function PlayerGameView() {
       case 'ordering': {
         const correctOrder = ((type as any).correctOrder || question.correctAnswers || []) as string[];
         return submitted.length === correctOrder.length && submitted.every((value, index) => normalizeText(value) === normalizeText(correctOrder[index] || ''));
+      }
+
+      case 'calendar': {
+        const correctDates = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
+        if (submitted.length === 0 || correctDates.length === 0) return false;
+        const submittedNormalized = new Set(submitted.map((d) => d.trim()).sort());
+        const correctNormalized = new Set(correctDates.map((d) => d.trim()).sort());
+        if (submittedNormalized.size !== correctNormalized.size) return false;
+        return Array.from(submittedNormalized).every((date) => correctNormalized.has(date));
       }
 
       default:

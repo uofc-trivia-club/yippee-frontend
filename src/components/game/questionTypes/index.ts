@@ -7,3 +7,4 @@ export { default as MatchingQuestion } from './MatchingQuestion';
 export { default as RankingQuestion } from './RankingQuestion';
 export { default as ImageBasedQuestion } from './ImageBasedQuestion';
 export { default as EssayQuestion } from './EssayQuestion';
+export { default as CalendarQuestion } from './CalendarQuestion';
