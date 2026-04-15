@@ -289,6 +289,13 @@ export default function PlayerGameView() {
 
   // Get player's current rank and stats
   const getPlayerStats = () => {
+    const safePoints = (value: unknown) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const currentAnonymousRef = ((game.user as typeof game.user & { anonymousRef?: string }).anonymousRef || '').trim().toLowerCase();
+
     const sortedPlayers = Object.values(game.clientsInLobby)
       .filter((user): user is any => 
         user !== null && 
@@ -296,18 +303,26 @@ export default function PlayerGameView() {
         'userRole' in user && 
         user.userRole === 'player'
       )
-      .sort((a, b) => b.points - a.points);
+      .sort((a, b) => safePoints(b.points) - safePoints(a.points) || String(a.userName || '').localeCompare(String(b.userName || '')));
 
     const normalize = (value: string) => (value || '').trim().toLowerCase();
     const currentPlayerName = normalize(game.user.userName);
-    const foundIndex = sortedPlayers.findIndex((p) => normalize(p.userName) === currentPlayerName);
+    const foundIndex = sortedPlayers.findIndex((p) => {
+      const playerName = normalize(p.userName);
+      const playerAnonymousRef = normalize(p.anonymousRef);
+      return (
+        (currentAnonymousRef && playerAnonymousRef === currentAnonymousRef) ||
+        (currentPlayerName && playerName === currentPlayerName)
+      );
+    });
     const currentPlayerIndex = foundIndex >= 0
       ? foundIndex
       : (sortedPlayers.length === 1 ? 0 : -1);
     const currentPlayer = currentPlayerIndex >= 0 ? sortedPlayers[currentPlayerIndex] : undefined;
     const leaderPlayer = sortedPlayers[0];
-    const currentPoints = currentPlayer?.points ?? game.user.points ?? 0;
-    const pointsBehind = leaderPlayer ? Math.max(0, leaderPlayer.points - currentPoints) : 0;
+    const currentPoints = safePoints(currentPlayer?.points ?? game.user.points ?? 0);
+    const leaderPoints = safePoints(leaderPlayer?.points ?? 0);
+    const pointsBehind = leaderPlayer ? Math.max(0, leaderPoints - currentPoints) : 0;
 
     return {
       rank: currentPlayerIndex >= 0 ? currentPlayerIndex + 1 : null,
@@ -317,6 +332,28 @@ export default function PlayerGameView() {
       totalPlayers: sortedPlayers.length,
     };
   };
+
+  const stats = getPlayerStats();
+  const submissionWasCorrect = pointsAtSubmission !== null
+    ? stats.points > pointsAtSubmission
+    : isAnswerCorrectFor(game.lastSubmittedQuestion || game.currentQuestion, game.lastSubmittedAnswers);
+
+  useEffect(() => {
+    if (!game.showLeaderboard) return;
+
+    console.groupCollapsed('[Player verdict debug]');
+    console.log('current user', {
+      userName: game.user.userName,
+      anonymousRef: (game.user as typeof game.user & { anonymousRef?: string }).anonymousRef,
+      points: game.user.points,
+      submittedAnswer: game.user.submittedAnswer,
+    });
+    console.log('last submitted question', game.lastSubmittedQuestion);
+    console.log('last submitted answers', game.lastSubmittedAnswers);
+    console.log('current question', game.currentQuestion);
+    console.log('computed verdict', submissionWasCorrect);
+    console.groupEnd();
+  }, [game.showLeaderboard, game.user.userName, game.user.points, game.user.submittedAnswer, game.lastSubmittedQuestion, game.lastSubmittedAnswers, game.currentQuestion, submissionWasCorrect]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -464,13 +501,11 @@ export default function PlayerGameView() {
       ) : !game.finalQuestionLeaderboard ? (
         <>
           <PlayerSubmissionSummary
-            submissionWasCorrect={pointsAtSubmission !== null
-              ? getPlayerStats().points > pointsAtSubmission
-              : isAnswerCorrectFor(game.lastSubmittedQuestion || game.currentQuestion, game.lastSubmittedAnswers)}
-            points={getPlayerStats().points}
-            rank={getPlayerStats().rank}
-            pointsBehind={getPlayerStats().pointsBehind}
-            leaderName={getPlayerStats().leaderName}
+            submissionWasCorrect={submissionWasCorrect}
+            points={stats.points}
+            rank={stats.rank}
+            pointsBehind={stats.pointsBehind}
+            leaderName={stats.leaderName}
             explanation={game.currentQuestion?.explanation}
           />
         </>

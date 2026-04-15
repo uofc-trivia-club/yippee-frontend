@@ -94,18 +94,36 @@ const gameSlice = createSlice({
             // console.log('upsertClientsInLobby:', { before: [...state.clientsInLobby], after: action.payload });
             state.clientsInLobby = action.payload;
 
-            const normalize = (value: string) => (value || '').trim().toLowerCase();
+            const normalize = (value: string | undefined) => (value || '').trim().toLowerCase();
             const currentUserName = normalize(state.user.userName);
-            if (!currentUserName) {
+            const currentAnonymousRef = normalize((state.user as User & { anonymousRef?: string }).anonymousRef);
+            if (!currentUserName && !currentAnonymousRef) {
                 return;
             }
 
-            const matchedUser = action.payload.find((user) => normalize(user.userName) === currentUserName);
+            const matchedUser = action.payload.find((user) => {
+                const userName = normalize(user.userName);
+                const anonymousRef = normalize(user.anonymousRef);
+                return (
+                    (currentAnonymousRef && anonymousRef === currentAnonymousRef) ||
+                    (currentUserName && userName === currentUserName)
+                );
+            });
             if (matchedUser) {
+                console.log('[Lobby sync] matched current user', {
+                    currentUserName: state.user.userName,
+                    currentAnonymousRef: (state.user as User & { anonymousRef?: string }).anonymousRef,
+                    matchedUserName: matchedUser.userName,
+                    matchedAnonymousRef: matchedUser.anonymousRef,
+                    matchedPoints: matchedUser.points,
+                    matchedSubmittedAnswer: matchedUser.submittedAnswer,
+                });
                 state.user.points = matchedUser.points;
                 state.user.submittedAnswer = matchedUser.submittedAnswer;
                 state.user.userMessage = matchedUser.userMessage;
                 state.user.userRole = matchedUser.userRole || state.user.userRole;
+                state.user.userName = matchedUser.userName || state.user.userName;
+                (state.user as User & { anonymousRef?: string }).anonymousRef = matchedUser.anonymousRef;
             }
         },
         setGameSettings: (state, action: PayloadAction<GameSettings>) => {

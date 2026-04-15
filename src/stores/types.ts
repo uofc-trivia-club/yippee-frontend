@@ -184,6 +184,7 @@ export type GameSettings = {
 
 export type User = {
   userName: string;
+  anonymousRef?: string;
   userMessage: string;
   userRole: string;
   points: number;

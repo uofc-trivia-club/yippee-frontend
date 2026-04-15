@@ -22,9 +22,16 @@ const getColorForRank = (index: number) => {
   return '#9E9E9E'; // Gray
 };
 
+const safePoints = (value: unknown) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export default function Leaderboard() {
     const game = useSelector((state: RootState) => state.game);
     const theme = useTheme();
+    const currentUserName = (game.user.userName || '').trim().toLowerCase();
+    const currentAnonymousRef = ((game.user as User & { anonymousRef?: string }).anonymousRef || '').trim().toLowerCase();
 
     // sort users by points in descending order
     const sortedUsers = Object.values(game.clientsInLobby)
@@ -34,7 +41,7 @@ export default function Leaderboard() {
             'userRole' in user && 
             user.userRole === 'player'
         )
-        .sort((a, b) => b.points - a.points);
+        .sort((a, b) => safePoints(b.points) - safePoints(a.points) || a.userName.localeCompare(b.userName));
     
     return (
         <Box sx={{ width: '100%', p: 2 }}>
@@ -44,7 +51,9 @@ export default function Leaderboard() {
         
             <Stack spacing={2} sx={{ maxWidth: 800, margin: '0 auto' }}>
                 {sortedUsers.map((user, index) => {
-                    const isCurrentUser = user.userName === game.user.userName;
+                    const isCurrentUser =
+                        (currentAnonymousRef && (user.anonymousRef || '').trim().toLowerCase() === currentAnonymousRef) ||
+                        (currentUserName && user.userName.trim().toLowerCase() === currentUserName);
                     const rankColor = getColorForRank(index);
                     const medalEmojis = ['🥇', '🥈', '🥉'];
                     
@@ -119,7 +128,7 @@ export default function Leaderboard() {
                             {/* Points */}
                             <Box sx={{ textAlign: 'right' }}>
                                 <Typography variant="h5" sx={{ fontWeight: 800, color: rankColor }}>
-                                    {user.points}
+                                    {safePoints(user.points)}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
                                     points
