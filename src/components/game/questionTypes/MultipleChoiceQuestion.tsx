@@ -17,11 +17,14 @@ export default function MultipleChoiceQuestion({
   onAnswerSelect,
   disabled,
 }: MultipleChoiceQuestionProps) {
-  const resolvedOptionImageUrls = (optionImageUrls || []).map((url) => resolveMediaUrl(url));
+  // Ensure optionImageUrls is an array before mapping
+  const normalizedImageUrls = Array.isArray(optionImageUrls) ? optionImageUrls : [];
+  const resolvedOptionImageUrls = normalizedImageUrls.map((url) => resolveMediaUrl(url));
+  const normalizedOptions = Array.isArray(options) ? options : [];
 
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 1.25 }}>
-      {options.map((option, index) => (
+      {normalizedOptions.map((option, index) => (
         <Button
           key={option}
           onClick={() => onAnswerSelect(option)}

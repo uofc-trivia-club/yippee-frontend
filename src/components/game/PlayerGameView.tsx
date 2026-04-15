@@ -11,6 +11,7 @@ import {
   ShortAnswerQuestion,
   TrueFalseQuestion,
 } from "./questionTypes";
+import { PlayerSubmissionSummary, getQuestionTypeTitle, isAnswerCorrectFor } from "./player";
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -19,7 +20,6 @@ import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
 import { resolveMediaUrl } from "../../util/mediaUrl";
-import { PlayerSubmissionSummary, getQuestionTypeTitle, isAnswerCorrectFor } from "./player";
 
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
@@ -136,9 +136,10 @@ export default function PlayerGameView() {
         );
       }
       case 'multi_select': {
+        const options = (t.options || q.options || []) as string[];
         return (
           <MultipleChoiceQuestion
-            options={t.options}
+            options={options}
             optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={handleAnswerSelect}

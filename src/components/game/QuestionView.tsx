@@ -136,7 +136,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 case 'multiple_choice':
                 case 'multi_select':
                 case 'dropdown':
-                    return t?.options || [];
+                    return t?.options || q?.options || [];
                 case 'true_false':
                     return ['True', 'False'];
                 default:
@@ -232,7 +232,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 });
             }
             case 'multi_select': {
-                const options = t.options || [];
+                const options = t.options || q.options || [];
                 const correctAnswers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return options.map((option, index) => {
                     const isCorrect = correctAnswers.includes(option);
