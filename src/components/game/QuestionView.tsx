@@ -84,58 +84,6 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 },
             }) as const;
 
-    const anonymousResponses = useMemo(() => {
-        const normalizeAnswers = (value: unknown) => {
-            if (Array.isArray(value)) {
-                return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
-            }
-
-            if (value === null || value === undefined || value === '') {
-                return [];
-            }
-
-            return [String(value).trim()].filter(Boolean);
-        };
-
-        const analyticsResponses = (game.questionAnalytics as any)?.anonymousResponses;
-        if (Array.isArray(analyticsResponses) && analyticsResponses.length > 0) {
-            return analyticsResponses
-                .map((entry) => {
-                    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-                        const payload = entry as any;
-                        return normalizeAnswers(
-                            payload.submittedAnswers ??
-                            payload.lastSubmittedAnswers ??
-                            payload.answer ??
-                            payload.responses ??
-                            payload.values
-                        );
-                    }
-
-                    return normalizeAnswers(entry);
-                })
-                .filter((answers) => answers.length > 0);
-        }
-
-        const pickAnswerPayload = (payload: any) => {
-            const candidates = [payload.submittedAnswers, payload.lastSubmittedAnswers, payload.answer];
-
-            for (const candidate of candidates) {
-                const normalized = normalizeAnswers(candidate);
-                if (normalized.length > 0) {
-                    return normalized;
-                }
-            }
-
-            return [];
-        };
-
-        return (game.clientsInLobby || [])
-            .filter((user) => user?.userRole === 'player')
-            .map((user) => pickAnswerPayload(user as any))
-            .filter((answers) => answers.length > 0);
-    }, [game.clientsInLobby, game.questionAnalytics]);
-
     const answerBreakdown = useMemo(() => {
         const normalizeText = (value: unknown) => String(value ?? '').trim();
 

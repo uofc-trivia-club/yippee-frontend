@@ -42,7 +42,6 @@ export default function CalendarQuestion({
   };
 
   const isDateCorrect = (date: string) => correctAnswers.includes(date);
-  const isDateIncorrect = (date: string) => !isDateCorrect(date);
 
   return (
     <Box sx={{ mt: 2 }}>
