@@ -4,6 +4,7 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import MatchPhraseQuestion from "../game/questionTypes/MatchPhraseQuestion";
 import { QuizQuestion } from "../../stores/types";
+import { resolveMediaUrl } from "../../util/mediaUrl";
 
 interface QuizQuestionPreviewProps {
   question: QuizQuestion;
@@ -153,6 +154,23 @@ export default function QuizQuestionPreview({
           {question.question || "No question available"}
         </Typography>
 
+        {question.imageUrl && (
+          <Box
+            component="img"
+            src={resolveMediaUrl(question.imageUrl)}
+            alt="Question"
+            sx={{
+              width: '100%',
+              maxWidth: 520,
+              borderRadius: 2,
+              border: `1px solid ${theme.palette.divider}`,
+              boxShadow: '0 8px 18px rgba(0,0,0,0.10)',
+              objectFit: 'cover',
+              mb: 1.5,
+            }}
+          />
+        )}
+
         {question.hint && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontStyle: 'italic' }}>
             Hint: {question.hint}
@@ -228,6 +246,13 @@ export default function QuizQuestionPreview({
                       : 'inherit'
                   }}
                 >
+                  {question.optionImageUrls?.[idx] ? (
+                    <img
+                      src={resolveMediaUrl(question.optionImageUrls[idx])}
+                      alt={`Option ${idx + 1}`}
+                      style={{ width: 44, height: 30, objectFit: 'cover', borderRadius: 4, marginRight: 8, verticalAlign: 'middle' }}
+                    />
+                  ) : null}
                   {idx + 1}. {option}
                   {showCorrectAnswers && (
                     (correctAnswers && correctAnswers.includes(option)) ||
@@ -262,6 +287,23 @@ export default function QuizQuestionPreview({
         ) : (
           <Typography variant="body2" color="text.secondary">No options to display.</Typography>
         )}
+
+        {showCorrectAnswers && question.explanation ? (
+          <Box
+            sx={{
+              mt: 2,
+              p: 1.5,
+              borderRadius: 1,
+              bgcolor: theme.palette.mode === 'dark' ? 'rgba(33,150,243,0.14)' : 'rgba(33,150,243,0.09)',
+              border: `1px solid ${theme.palette.info.main}`,
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Explanation
+            </Typography>
+            <Typography variant="body2">{question.explanation}</Typography>
+          </Box>
+        ) : null}
       </Box>
 
       {/* Question Metadata */}

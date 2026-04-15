@@ -2,6 +2,7 @@ import { Box, Paper, Typography } from "@mui/material";
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -17,39 +18,56 @@ import { useEffect, useState } from "react";
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import { resolveMediaUrl } from "../../util/mediaUrl";
 
 interface RankingComponentProps {
   items: string[];
+  optionImageUrls?: string[];
   disabled: boolean;
   onOrderChange: (orderedItems: string[]) => void;
 }
 
-export default function RankingComponent({ items, disabled, onOrderChange }: RankingComponentProps) {
-  const [orderedItems, setOrderedItems] = useState<string[]>(items);
+type RankedItem = { id: string; text: string; imageUrl?: string };
+
+export default function RankingComponent({ items, optionImageUrls, disabled, onOrderChange }: RankingComponentProps) {
+  const [orderedItems, setOrderedItems] = useState<RankedItem[]>(
+    items.map((text, index) => ({ id: `${index}-${text}`, text, imageUrl: resolveMediaUrl(optionImageUrls?.[index]) }))
+  );
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 6,
       },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 120,
+        tolerance: 8,
+      },
     })
   );
 
   useEffect(() => {
-    setOrderedItems(items);
-    onOrderChange(items);
-  }, [items, onOrderChange]);
+    const nextItems = items.map((text, index) => ({
+      id: `${index}-${text}`,
+      text,
+      imageUrl: resolveMediaUrl(optionImageUrls?.[index]),
+    }));
+    setOrderedItems(nextItems);
+    onOrderChange(nextItems.map((item: RankedItem) => item.text));
+  }, [items, optionImageUrls, onOrderChange]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = orderedItems.indexOf(String(active.id));
-    const newIndex = orderedItems.indexOf(String(over.id));
+    const oldIndex = orderedItems.findIndex((item) => item.id === String(active.id));
+    const newIndex = orderedItems.findIndex((item) => item.id === String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
 
     const next = arrayMove(orderedItems, oldIndex, newIndex);
     setOrderedItems(next);
-    onOrderChange(next);
+    onOrderChange(next.map((item: RankedItem) => item.text));
   };
 
   if (!orderedItems.length) {
@@ -67,10 +85,11 @@ export default function RankingComponent({ items, disabled, onOrderChange }: Ran
         <SortableContext items={orderedItems} strategy={verticalListSortingStrategy}>
           {orderedItems.map((item, idx) => (
             <SortableRankRow
-              key={item}
-              id={item}
+              key={item.id}
+              id={item.id}
               index={idx}
-              text={item}
+              text={item.text}
+              imageUrl={item.imageUrl}
               disabled={disabled}
             />
           ))}
@@ -84,11 +103,13 @@ function SortableRankRow({
   id,
   index,
   text,
+  imageUrl,
   disabled,
 }: {
   id: string;
   index: number;
   text: string;
+  imageUrl?: string;
   disabled: boolean;
 }) {
   const {
@@ -134,6 +155,7 @@ function SortableRankRow({
           opacity: isDragging ? 0.85 : 1,
           transition: "box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease",
           userSelect: "none",
+          touchAction: "none",
           flex: 1,
           display: "flex",
           alignItems: "center",
@@ -142,7 +164,19 @@ function SortableRankRow({
         {...attributes}
         {...listeners}
       >
-        <Typography variant="body2">{text}</Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0 }}>
+          {imageUrl ? (
+            <Box
+              component="img"
+              src={imageUrl}
+              alt={text}
+              sx={{ width: { xs: 72, md: 96 }, height: { xs: 52, md: 68 }, objectFit: "contain", borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper", flexShrink: 0 }}
+            />
+          ) : null}
+          <Typography variant="body2" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {text}
+          </Typography>
+        </Box>
         <DragIndicatorIcon fontSize="small" color="disabled" />
       </Paper>
     </Box>

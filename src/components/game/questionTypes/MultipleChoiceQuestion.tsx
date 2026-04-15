@@ -1,7 +1,10 @@
 import { Box, Button } from "@mui/material";
 
+import { resolveMediaUrl } from "../../../util/mediaUrl";
+
 interface MultipleChoiceQuestionProps {
   options: string[];
+  optionImageUrls?: string[];
   selectedAnswers: string[];
   onAnswerSelect: (option: string) => void;
   disabled: boolean;
@@ -9,20 +12,31 @@ interface MultipleChoiceQuestionProps {
 
 export default function MultipleChoiceQuestion({
   options,
+  optionImageUrls,
   selectedAnswers,
   onAnswerSelect,
   disabled,
 }: MultipleChoiceQuestionProps) {
+  const resolvedOptionImageUrls = (optionImageUrls || []).map((url) => resolveMediaUrl(url));
+
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-      {options.map((option) => (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 1.25 }}>
+      {options.map((option, index) => (
         <Button
           key={option}
           onClick={() => onAnswerSelect(option)}
           variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
-          sx={{ m: 1, minWidth: '120px' }}
+          sx={{ width: '100%', minHeight: 96, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, p: 1.25 }}
           disabled={disabled}
         >
+          {resolvedOptionImageUrls?.[index] ? (
+            <Box
+              component="img"
+              src={resolvedOptionImageUrls[index]}
+              alt={`Option ${index + 1}`}
+              sx={{ width: '100%', maxWidth: 280, height: { xs: 150, sm: 180 }, objectFit: 'contain', borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}
+            />
+          ) : null}
           {option}
         </Button>
       ))}

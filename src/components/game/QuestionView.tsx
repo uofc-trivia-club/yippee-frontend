@@ -5,16 +5,18 @@
 import {
     Box,
     Chip,
+    LinearProgress,
     Paper,
     Stack,
     Typography,
     useTheme,
 } from "@mui/material";
-import { useMemo } from "react";
 
-import { RootState } from "../../stores/store";
-import { useSelector } from "react-redux";
 import MatchPhraseQuestion from "./questionTypes/MatchPhraseQuestion";
+import { RootState } from "../../stores/store";
+import { resolveMediaUrl } from "../../util/mediaUrl";
+import { useMemo } from "react";
+import { useSelector } from "react-redux";
 
 interface QuestionViewProps {
   displayCorrectAnswers: boolean;
@@ -26,6 +28,25 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const q = game.currentQuestion;
     const t = q?.type;
     const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+    const getQuestionTypeTitle = (typeName?: string) => {
+        switch (typeName) {
+            case 'multiple_choice': return 'Multiple-choice question';
+            case 'multi_select': return 'Multi-select question';
+            case 'dropdown': return 'Dropdown question';
+            case 'true_false': return 'True/false question';
+            case 'short_answer': return 'Short-answer question';
+            case 'fill_in_blank': return 'Fill-in-the-blank question';
+            case 'numerical': return 'Numerical question';
+            case 'match_the_phrase': return 'Match-the-phrase question';
+            case 'matching': return 'Matching question';
+            case 'ranking': return 'Ranking question';
+            case 'ordering': return 'Ranking question';
+            case 'image_based': return 'Image-based question';
+            case 'calendar': return 'Calendar question';
+            case 'essay': return 'Essay question';
+            default: return 'Question';
+        }
+    };
         const shuffledMatchingRightItems = useMemo(() => {
             const rightItems = (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
             const nextItems = [...rightItems];
@@ -63,6 +84,116 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 },
             }) as const;
 
+    const answerBreakdown = useMemo(() => {
+        const normalizeText = (value: unknown) => String(value ?? '').trim();
+
+        const extractCount = (payload: any) => {
+            const candidates = [payload.count, payload.votes, payload.voteCount, payload.total, payload.value, payload.responseCount];
+            for (const candidate of candidates) {
+                const parsed = Number(candidate);
+                if (Number.isFinite(parsed)) {
+                    return Math.max(0, parsed);
+                }
+            }
+            return 0;
+        };
+
+        const extractLabel = (payload: any, fallbackIndex: number) => {
+            const candidates = [payload.label, payload.answer, payload.option, payload.text, payload.value, payload.name, payload.response];
+            for (const candidate of candidates) {
+                const label = normalizeText(candidate);
+                if (label) {
+                    return label;
+                }
+            }
+            return `Option ${fallbackIndex + 1}`;
+        };
+
+        const rawBreakdown =
+            (game.questionAnalytics as any)?.answerBuckets ||
+            (game.questionAnalytics as any)?.optionBreakdown ||
+            [];
+
+        const parsedFromAnalytics = Array.isArray(rawBreakdown)
+            ? rawBreakdown.map((entry, index) => {
+                if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+                    const payload = entry as any;
+                    return {
+                        label: extractLabel(payload, index),
+                        count: extractCount(payload),
+                    };
+                }
+
+                return {
+                    label: extractLabel({ label: entry }, index),
+                    count: extractCount({ count: entry }),
+                };
+            })
+            : [];
+
+        const questionOptions = (() => {
+            switch (t?.name) {
+                case 'multiple_choice':
+                case 'multi_select':
+                case 'dropdown':
+                    return t?.options || [];
+                case 'true_false':
+                    return ['True', 'False'];
+                default:
+                    return [];
+            }
+        })();
+
+        const countsByLabel = new Map<string, number>();
+        parsedFromAnalytics.forEach((entry) => {
+            const key = normalizeText(entry.label).toLowerCase();
+            countsByLabel.set(key, (countsByLabel.get(key) || 0) + entry.count);
+        });
+
+        if (questionOptions.length > 0) {
+            const optionEntries = questionOptions.map((option, index) => {
+                const normalizedOption = normalizeText(option).toLowerCase();
+                const count = countsByLabel.get(normalizedOption) || 0;
+                const isCorrect =
+                    t?.name === 'multiple_choice' ? (t as any).correctAnswer === option :
+                    t?.name === 'multi_select' ? Array.isArray((t as any).correctAnswers) && (t as any).correctAnswers.includes(option) :
+                    t?.name === 'dropdown' ? (t as any).correctAnswer === option :
+                    t?.name === 'true_false' ? (t as any).correctAnswer === option :
+                    false;
+
+                return { label: option, count, isCorrect, index };
+            });
+
+            return optionEntries.map((entry) => ({
+                ...entry,
+                percent: 0,
+            }));
+        }
+
+        return parsedFromAnalytics.map((entry, index) => ({
+            ...entry,
+            index,
+            percent: 0,
+            isCorrect: false,
+        }));
+    }, [game.questionAnalytics, t]);
+
+    const totalVotes = useMemo(
+        () => answerBreakdown.reduce((sum, entry) => sum + entry.count, 0),
+        [answerBreakdown]
+    );
+
+    const chartedAnswerBreakdown = useMemo(() => {
+        if (totalVotes <= 0) {
+            return answerBreakdown.map((entry) => ({ ...entry, percent: 0 }));
+        }
+
+        return answerBreakdown.map((entry) => ({
+            ...entry,
+            percent: Math.round((entry.count / totalVotes) * 100),
+        }));
+    }, [answerBreakdown, totalVotes]);
+
     const renderOptionsView = () => {
         if (!q || !t) return null;
         switch (t.name) {
@@ -70,6 +201,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
+                    const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -83,6 +215,14 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
                                     {option}
                                 </Typography>
+                                {optionImageUrl ? (
+                                    <Box
+                                        component="img"
+                                        src={optionImageUrl}
+                                        alt={`Option ${index + 1}`}
+                                        sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
+                                    />
+                                ) : null}
                                 {displayCorrectAnswers && isCorrect && (
                                     <Chip label="Correct" size="small" color="success" />
                                 )}
@@ -93,8 +233,10 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'multi_select': {
                 const options = t.options || [];
+                const correctAnswers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return options.map((option, index) => {
-                    const isCorrect = t.correctAnswers.includes(option);
+                    const isCorrect = correctAnswers.includes(option);
+                    const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -108,6 +250,14 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
                                     {option}
                                 </Typography>
+                                {optionImageUrl ? (
+                                    <Box
+                                        component="img"
+                                        src={optionImageUrl}
+                                        alt={`Option ${index + 1}`}
+                                        sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
+                                    />
+                                ) : null}
                                 {displayCorrectAnswers && isCorrect && (
                                     <Chip label="Correct" size="small" color="success" />
                                 )}
@@ -120,6 +270,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 const options = t.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
+                    const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
                             <Stack direction="row" spacing={1.25} alignItems="center">
@@ -133,6 +284,14 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
                                     {option}
                                 </Typography>
+                                {optionImageUrl ? (
+                                    <Box
+                                        component="img"
+                                        src={optionImageUrl}
+                                        alt={`Option ${index + 1}`}
+                                        sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
+                                    />
+                                ) : null}
                                 {displayCorrectAnswers && isCorrect && (
                                     <Chip label="Correct" size="small" color="success" />
                                 )}
@@ -168,17 +327,23 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'short_answer':
             case 'fill_in_blank': {
-                const acceptedAnswers = t.correctAnswers;
+                const acceptedAnswers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return displayCorrectAnswers ? (
                     <Stack spacing={1}>
                         <Typography color="success.main" fontWeight="bold">
                             Accepted Answers
                         </Typography>
-                        <Stack direction="row" flexWrap="wrap" gap={1}>
-                            {acceptedAnswers.map((ans, i) => (
-                                <Chip key={i} label={ans} color="success" variant="outlined" />
-                            ))}
-                        </Stack>
+                        {acceptedAnswers.length > 0 ? (
+                            <Stack direction="row" flexWrap="wrap" gap={1}>
+                                {acceptedAnswers.map((ans, i) => (
+                                    <Chip key={i} label={ans} color="success" variant="outlined" />
+                                ))}
+                            </Stack>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                No accepted answers were provided for this question.
+                            </Typography>
+                        )}
                     </Stack>
                 ) : (
                     <Typography fontStyle="italic" color="text.secondary">
@@ -200,6 +365,25 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     </Typography>
                 );
             }
+            case 'calendar': {
+                const acceptedDates = ((t as any).correctAnswers || q?.correctAnswers || []) as string[];
+                return displayCorrectAnswers ? (
+                    <Stack spacing={1}>
+                        <Typography color="success.main" fontWeight="bold">
+                            Correct Date(s)
+                        </Typography>
+                        <Stack direction="row" flexWrap="wrap" gap={1}>
+                            {acceptedDates.map((date, i) => (
+                                <Chip key={i} label={date} color="success" variant="outlined" />
+                            ))}
+                        </Stack>
+                    </Stack>
+                ) : (
+                    <Typography fontStyle="italic" color="text.secondary">
+                        Players are selecting dates from the calendar...
+                    </Typography>
+                );
+            }
             case 'match_the_phrase': {
                 return (
                     <MatchPhraseQuestion
@@ -214,8 +398,8 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'matching': {
-                const left = t.leftItems;
-                const right = shuffledMatchingRightItems;
+                const left = Array.isArray(t.leftItems) ? t.leftItems : [];
+                const right = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
                 if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
                 return (
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
@@ -244,7 +428,10 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'ranking':
             case 'ordering': {
-                const items = (t as any).items;
+                const items = Array.isArray((t as any).items) ? (t as any).items : [];
+                if (!items.length) {
+                    return <Typography color="text.secondary">No ranking items to display.</Typography>;
+                }
                 return (
                     <Box>
                         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Items to order</Typography>
@@ -253,7 +440,15 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 <Box key={idx} sx={optionTileSx(false)}>
                                     <Stack direction="row" spacing={1.25} alignItems="center">
                                         <Chip label={idx + 1} size="small" variant="outlined" sx={{ minWidth: 34, fontWeight: 700 }} />
-                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{item}</Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>{item}</Typography>
+                                        {resolveMediaUrl(q?.optionImageUrls?.[idx]) ? (
+                                            <Box
+                                                component="img"
+                                                src={resolveMediaUrl(q?.optionImageUrls?.[idx])}
+                                                alt={`Ranking item ${idx + 1}`}
+                                                sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
+                                            />
+                                        ) : null}
                                     </Stack>
                                 </Box>
                             ))}
@@ -262,8 +457,8 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'image_based': {
-                const imgUrl = t.imageUrl;
-                const answers = t.correctAnswers;
+                const imgUrl = resolveMediaUrl(t.imageUrl);
+                const answers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return (
                     <Box sx={{ display: 'grid', gap: 2 }}>
                         {imgUrl && (
@@ -273,22 +468,28 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 alt="Question"
                                 sx={{
                                     width: '100%',
-                                    maxWidth: 420,
+                                    maxWidth: 760,
                                     borderRadius: 3,
                                     border: `1px solid ${theme.palette.divider}`,
                                     boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
-                                    objectFit: 'cover',
+                                    objectFit: 'contain',
                                 }}
                             />
                         )}
                         {displayCorrectAnswers && (
                             <Box>
                                 <Typography color="success.main" fontWeight="bold" sx={{ mb: 1 }}>Correct Answers</Typography>
-                                <Stack direction="row" flexWrap="wrap" gap={1}>
-                                    {answers.map((ans, i) => (
-                                        <Chip key={i} label={ans} color="success" variant="outlined" />
-                                    ))}
-                                </Stack>
+                                {answers.length > 0 ? (
+                                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                                        {answers.map((ans, i) => (
+                                            <Chip key={i} label={ans} color="success" variant="outlined" />
+                                        ))}
+                                    </Stack>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                        No accepted answers were provided for this image question.
+                                    </Typography>
+                                )}
                             </Box>
                         )}
                     </Box>
@@ -320,6 +521,9 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                             sx={{ fontWeight: 700 }}
                         />
                     </Stack>
+                    <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                        {getQuestionTypeTitle(t?.name)}
+                    </Typography>
                     <Typography
                         variant="h4"
                         sx={{
@@ -331,6 +535,22 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     >
                         {q?.question || 'No question available'}
                     </Typography>
+                    {q?.imageUrl ? (
+                        <Box
+                            component="img"
+                            src={resolveMediaUrl(q.imageUrl)}
+                            alt="Question"
+                            sx={{
+                                mt: 1.5,
+                                width: '100%',
+                                maxWidth: 860,
+                                borderRadius: 3,
+                                border: `1px solid ${theme.palette.divider}`,
+                                boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
+                                objectFit: 'contain',
+                            }}
+                        />
+                    ) : null}
                     {q?.category?.length ? (
                         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1.5 }}>
                             {q.category.map((category) => (
@@ -358,6 +578,99 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 )}
 
                 <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
+
+                {displayCorrectAnswers && (
+                    <Box
+                        sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: theme.palette.mode === 'dark'
+                                ? 'rgba(255,255,255,0.04)'
+                                : 'rgba(0,0,0,0.02)',
+                            border: `1px solid ${theme.palette.divider}`,
+                        }}
+                    >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.75 }}>
+                            Answer Breakdown
+                        </Typography>
+                        {chartedAnswerBreakdown.length > 0 ? (
+                            <Stack spacing={1.25}>
+                                {chartedAnswerBreakdown.map((entry, index) => {
+                                    const barLabel = t?.name === 'ranking' || t?.name === 'ordering'
+                                        ? `${index + 1}. ${entry.label}`
+                                        : entry.label;
+
+                                    return (
+                                        <Box key={`${entry.label}-${index}`} sx={{ display: 'grid', gap: 0.75 }}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+                                                <Typography variant="body2" sx={{ fontWeight: 700, minWidth: 0, flex: 1 }} noWrap>
+                                                    {barLabel}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                                                    {entry.count}
+                                                </Typography>
+                                            </Stack>
+                                            <Box sx={{ position: 'relative' }}>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={entry.percent}
+                                                    sx={{
+                                                        height: 14,
+                                                        borderRadius: 999,
+                                                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                                                        '& .MuiLinearProgress-bar': {
+                                                            borderRadius: 999,
+                                                            bgcolor: entry.isCorrect ? theme.palette.success.main : theme.palette.primary.main,
+                                                        },
+                                                    }}
+                                                />
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        inset: 0,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontWeight: 800,
+                                                        color: theme.palette.text.primary,
+                                                    }}
+                                                >
+                                                    {entry.percent}%
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    {totalVotes} vote{totalVotes === 1 ? '' : 's'} total
+                                </Typography>
+                            </Stack>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                Vote breakdown is not available in the current lobby payload.
+                            </Typography>
+                        )}
+                    </Box>
+                )}
+
+                {displayCorrectAnswers && q?.explanation ? (
+                    <Box
+                        sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: theme.palette.mode === 'dark'
+                                ? 'rgba(33, 150, 243, 0.16)'
+                                : 'rgba(33, 150, 243, 0.10)',
+                            border: `1px solid ${theme.palette.info.main}`,
+                        }}
+                    >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                            Explanation
+                        </Typography>
+                        <Typography variant="body2">{q.explanation}</Typography>
+                    </Box>
+                ) : null}
             </Stack>
         </Paper>
     );

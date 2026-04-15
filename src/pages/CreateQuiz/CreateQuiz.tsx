@@ -1,119 +1,45 @@
-import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, IconButton, MenuItem, Pagination, Radio, Snackbar, TextField, Typography, useTheme } from "@mui/material";
+import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, IconButton, MenuItem, Radio, Snackbar, TextField, Typography, useTheme } from "@mui/material";
 import {
-  DndContext,
   DragEndEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { Fragment, useMemo, useRef, useState } from "react";
-import { Quiz, QuizQuestion } from "../../stores/types";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Quiz, QuizItem, QuizQuestion } from "../../stores/types";
 import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+  PREDEFINED_CATEGORIES,
+  QUESTION_TYPE_OPTIONS,
+  QUESTIONS_PER_PAGE,
+  PresentationSlideForm,
+  QuizQuestionForm,
+  TimelineItemRef,
+  TimelinePreviewItem,
+  createInitialQuestion,
+  createInitialSlide,
+  createMatchingPairs,
+} from "./createQuizTypes";
+import { arrayMove, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
 
 import AddIcon from '@mui/icons-material/Add';
 import { CSS } from '@dnd-kit/utilities';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import { DifficultySlider } from '../../components/common/DifficultySlider';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import EditIcon from '@mui/icons-material/Edit';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import type { DragEvent as ReactDragEvent } from "react";
 import StarIcon from '@mui/icons-material/Star';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import styles from './CreateQuiz.module.css';
 import { backendUrl } from '../../util/backendConfig';
-
-type QuizQuestionForm = {
-  id: string;
-  question: string;
-  points: number;
-  difficulty: number;
-  hint: string;
-  type: string;
-  acceptedAnswers: string[];
-  acceptedAnswerInput: string;
-  category: string[];
-  matchingPairs: Array<{
-    left: string;
-    right: string;
-  }>;
-  options: Array<{
-    text: string;
-    isCorrect: boolean;
-  }>;
-};
-
-const createMatchingPairs = () => ([
-  { left: "", right: "" },
-  { left: "", right: "" },
-]);
-
-const createInitialQuestion = (): QuizQuestionForm => ({
-  id: `question-${Date.now()}-${Math.random()}`,
-  question: "",
-  points: 1,
-  difficulty: 1,
-  hint: "",
-  type: "multiple",
-  acceptedAnswers: [],
-  acceptedAnswerInput: "",
-  category: [],
-  matchingPairs: createMatchingPairs(),
-  options: [
-    { text: "", isCorrect: true },
-    { text: "", isCorrect: false },
-  ],
-});
-
-const QUESTIONS_PER_PAGE = 5;
-
-// Add predefined categories (can be loaded from backend)
-const PREDEFINED_CATEGORIES = [
-  'Math',
-  'Science',
-  'History',
-  'Geography',
-  'Literature',
-  'Sports',
-  'Technology',
-  'Art',
-  'Music',
-  'General Knowledge',
-];
-
-const QUESTION_TYPE_OPTIONS = [
-  { value: 'multiple', label: 'Multiple Choice (Single Answer)' },
-  { value: 'multi_select', label: 'Multi-Select (Multiple Answers)' },
-  { value: 'dropdown', label: 'Dropdown' },
-  { value: 'true_false', label: 'True / False' },
-  { value: 'short_answer', label: 'Short Answer' },
-  { value: 'fill_in_blank', label: 'Fill in the Blank' },
-  { value: 'numerical', label: 'Numerical' },
-  { value: 'essay', label: 'Essay' },
-  { value: 'ranking', label: 'Ranking' },
-  { value: 'ordering', label: 'Ordering' },
-  { value: 'match_the_phrase', label: 'Match the Phrase' },
-  { value: 'matching', label: 'Matching' },
-  { value: 'image_based', label: 'Image Based' },
-] as const;
+import QuizPreviewDialog from "./components/QuizPreviewDialog";
+import QuizTimelineEditor from "./components/QuizTimelineEditor";
+import styles from './CreateQuiz.module.css';
 
 // Sortable Question Card Component
 function SortableQuestionCard({
   question,
+  sortableId,
   index,
   globalIndex,
   expanded,
@@ -128,16 +54,22 @@ function SortableQuestionCard({
   onAddMatchingPair,
   onRemoveMatchingPair,
   onUpdateMatchingPair,
+  onUpdateMatchingPairImage,
   totalQuestions,
 }: {
   question: QuizQuestionForm;
+  sortableId?: string;
   index: number;
   globalIndex: number;
   expanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
   onChange: <K extends keyof QuizQuestionForm>(field: K, value: QuizQuestionForm[K]) => void;
-  onOptionChange: (optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => void;
+  onOptionChange: (
+    optionIndex: number,
+    field: 'text' | 'isCorrect' | 'imageUrl' | 'imageId' | 'imageFile',
+    value: string | boolean | File | null
+  ) => void;
   onAddOption: () => void;
   onDeleteOption: (optionIndex: number) => void;
   onAddAcceptedAnswer: () => void;
@@ -145,6 +77,7 @@ function SortableQuestionCard({
   onAddMatchingPair: () => void;
   onRemoveMatchingPair: (pairIndex: number) => void;
   onUpdateMatchingPair: (pairIndex: number, field: 'left' | 'right', value: string) => void;
+  onUpdateMatchingPairImage: (pairIndex: number, side: 'left' | 'right', file: File | null) => void;
   totalQuestions: number;
 }) {
   const theme = useTheme();
@@ -155,7 +88,7 @@ function SortableQuestionCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: question.id });
+  } = useSortable({ id: sortableId || question.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -165,9 +98,9 @@ function SortableQuestionCard({
 
   const correctAnswersCount = question.options.filter(opt => opt.isCorrect).length;
   const isFreeTextType = question.type === 'short_answer';
+  const isCalendarType = question.type === 'calendar';
   const isFillInBlankType = question.type === 'fill_in_blank';
   const isNumericalType = question.type === 'numerical';
-  const isDropdownType = question.type === 'dropdown';
   const isPairType = question.type === 'matching';
   const isPhraseMatchType = question.type === 'match_the_phrase';
   const allowsNoCorrect = question.type === 'multi_select';
@@ -182,39 +115,67 @@ function SortableQuestionCard({
         .filter(Boolean)
         .length > 0
     );
+  const hasOptionContent = (option: QuizQuestionForm['options'][number]) =>
+    Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
   const isValid = isFreeTextType
     ? question.question.trim() && question.acceptedAnswers.length > 0
+    : isCalendarType
+      ? question.question.trim() && question.acceptedAnswers.length > 0 && question.acceptedAnswers.every((date) => /^\d{4}-\d{2}-\d{2}$/.test((date || '').trim()))
     : isNumericalType
       ? question.question.trim() && Number.isFinite(Number((question.acceptedAnswers[0] || '').trim()))
     : isFillInBlankType
       ? question.question.trim() && blankAnswersValid
     : isPhraseMatchType
-      ? question.question.trim() && blankAnswersValid && question.options.every((opt) => opt.text.trim())
+      ? question.question.trim() && blankAnswersValid && question.options.every(hasOptionContent)
     : isPairType
       ? question.question.trim() && question.matchingPairs.length >= 2 && question.matchingPairs.every(pair => pair.left.trim() && pair.right.trim())
-      : question.question.trim() && (allowsNoCorrect || correctAnswersCount > 0) && question.options.every(opt => opt.text.trim());
+      : question.question.trim() && (allowsNoCorrect || correctAnswersCount > 0) && question.options.every(hasOptionContent);
   const isEssayType = question.type === 'essay';
   const isOrderType = question.type === 'ranking' || question.type === 'ordering';
   const isSingleCorrectType = question.type === 'multiple' || question.type === 'dropdown' || question.type === 'true_false';
-  const usesOptionsEditor = !isFreeTextType && !isFillInBlankType && !isNumericalType && !isPhraseMatchType;
+  const usesOptionsEditor = !isFreeTextType && !isCalendarType && !isFillInBlankType && !isNumericalType && !isPhraseMatchType;
   const showCorrectSelector = !isEssayType && !isOrderType;
-  const currentDropdownCorrectIndex = question.options.findIndex((opt) => opt.isCorrect);
-  const dropdownBlankValue = currentDropdownCorrectIndex >= 0 ? question.options[currentDropdownCorrectIndex].text : '';
   const phraseBlankCount = Math.max(0, blankSegments.length - 1);
   const [questionCursorPos, setQuestionCursorPos] = useState<number | null>(null);
   const [draggedPhraseBlankIndex, setDraggedPhraseBlankIndex] = useState<number | null>(null);
+  const [dragOverOptionIndex, setDragOverOptionIndex] = useState<number | null>(null);
+  const [dragOverQuestionImage, setDragOverQuestionImage] = useState(false);
   const questionInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const canAttachOptionImage = question.type !== 'true_false';
+
+  const handleOptionImageDrop = (event: ReactDragEvent<HTMLDivElement>, optionIndex: number) => {
+    if (!canAttachOptionImage) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverOptionIndex(null);
+
+    const fileList = event.dataTransfer?.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const imageFile = Array.from(fileList).find((file) => file.type.startsWith('image/')) || null;
+    if (!imageFile) return;
+
+    onOptionChange(optionIndex, 'imageFile', imageFile);
+  };
+
+  const handleQuestionImageDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverQuestionImage(false);
+
+    const fileList = event.dataTransfer?.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const imageFile = Array.from(fileList).find((file) => file.type.startsWith('image/')) || null;
+    if (!imageFile) return;
+
+    onChange('imageFile', imageFile);
+  };
 
   const handleFillBlankAnswerChange = (blankIndex: number, value: string) => {
     const nextAnswers = [...question.acceptedAnswers];
     nextAnswers[blankIndex] = value;
     onChange('acceptedAnswers', nextAnswers);
-  };
-
-  const handleDropdownBlankAnswerChange = (value: string) => {
-    const targetIndex = currentDropdownCorrectIndex >= 0 ? currentDropdownCorrectIndex : 0;
-    onOptionChange(targetIndex, 'isCorrect', true);
-    onOptionChange(targetIndex, 'text', value);
   };
 
   const handlePhraseAnswerChange = (blankIndex: number, value: string) => {
@@ -225,6 +186,9 @@ function SortableQuestionCard({
     const syncedWordBank = nextAnswers.slice(0, phraseBlankCount).map((answer, index) => ({
       text: answer.trim() || question.options[index]?.text || '',
       isCorrect: false,
+      imageUrl: question.options[index]?.imageUrl || '',
+      imageId: question.options[index]?.imageId || '',
+      imageFile: question.options[index]?.imageFile || null,
     }));
     const remainingWords = question.options.slice(phraseBlankCount);
     onChange('options', [...syncedWordBank, ...remainingWords]);
@@ -244,6 +208,9 @@ function SortableQuestionCard({
     const syncedWordBank = nextAnswers.map((answer, index) => ({
       text: answer.trim() || question.options[index]?.text || '',
       isCorrect: false,
+      imageUrl: question.options[index]?.imageUrl || '',
+      imageId: question.options[index]?.imageId || '',
+      imageFile: question.options[index]?.imageFile || null,
     }));
     const remainingWords = question.options.slice(nextBlankCount);
     onChange('options', [...syncedWordBank, ...remainingWords]);
@@ -272,7 +239,7 @@ function SortableQuestionCard({
     const extraWordBank = question.options.slice(phraseBlankCount);
     const nextPinnedWordBank = [...pinnedWordBank];
     const [movedWord] = nextPinnedWordBank.splice(fromIndex, 1);
-    nextPinnedWordBank.splice(toIndex, 0, movedWord || { text: '', isCorrect: false });
+    nextPinnedWordBank.splice(toIndex, 0, movedWord || { text: '', isCorrect: false, imageUrl: '', imageId: '', imageFile: null });
     onChange('options', [...nextPinnedWordBank, ...extraWordBank]);
   };
 
@@ -484,6 +451,87 @@ function SortableQuestionCard({
               />
             </Box>
 
+            <Box sx={{ display: 'flex', gap: 2, mt: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <TextField
+                label="Image URL (Optional)"
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.imageUrl}
+                onChange={(e) => onChange("imageUrl", e.target.value)}
+                placeholder="https://example.com/question-image.png"
+              />
+              <Box
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!dragOverQuestionImage) {
+                    setDragOverQuestionImage(true);
+                  }
+                }}
+                onDragLeave={() => setDragOverQuestionImage(false)}
+                onDrop={handleQuestionImageDrop}
+                sx={{
+                  minWidth: { xs: '100%', sm: 220 },
+                  borderRadius: 1,
+                  border: '1px dashed',
+                  borderColor: dragOverQuestionImage ? 'primary.main' : 'divider',
+                  bgcolor: dragOverQuestionImage
+                    ? 'action.hover'
+                    : theme.palette.mode === 'dark'
+                      ? 'rgba(255,255,255,0.02)'
+                      : 'rgba(0,0,0,0.01)',
+                  transition: 'all 0.2s ease',
+                  boxShadow: dragOverQuestionImage ? `0 0 0 1px ${theme.palette.primary.main}` : 'none',
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  sx={{
+                    minHeight: 40,
+                    border: 0,
+                    justifyContent: 'space-between',
+                    px: 1.5,
+                    '&:hover': { border: 0 },
+                    color: dragOverQuestionImage ? 'primary.main' : 'inherit',
+                  }}
+                >
+                  <Box sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                      {dragOverQuestionImage
+                        ? 'Drop image to attach'
+                        : question.imageFile
+                          ? 'Question Image Selected'
+                          : 'Upload Question Image'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Drag and drop or click to browse
+                    </Typography>
+                  </Box>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      onChange('imageFile', file);
+                    }}
+                  />
+                </Button>
+              </Box>
+              <TextField
+                label="Explanation (Optional)"
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.explanation}
+                onChange={(e) => onChange("explanation", e.target.value)}
+                placeholder="Explain why the answer is correct..."
+              />
+            </Box>
+
             <Box
               sx={{
                 mt: 1.5,
@@ -560,6 +608,9 @@ function SortableQuestionCard({
                   const syncedWordBank = nextAnswers.map((answer, index) => ({
                     text: answer.trim() || question.options[index]?.text || '',
                     isCorrect: false,
+                    imageUrl: question.options[index]?.imageUrl || '',
+                    imageId: question.options[index]?.imageId || '',
+                    imageFile: question.options[index]?.imageFile || null,
                   }));
                   const remainingWords = question.options.slice(nextBlankCount);
                   onChange('options', [...syncedWordBank, ...remainingWords]);
@@ -841,60 +892,6 @@ function SortableQuestionCard({
               </Box>
             )}
 
-            {isDropdownType && (
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Type the dropdown correct answer directly in the first blank below.
-                </Typography>
-
-                {hasBlankTokens ? (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-                    {blankSegments.map((segment, index) => (
-                      <Fragment key={`blank-segment-${index}`}>
-                        {segment && (
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {segment}
-                          </Typography>
-                        )}
-                        {index < blankSegments.length - 1 && (
-                          <Box sx={{ minWidth: 180 }}>
-                            <TextField
-                              size="small"
-                              fullWidth
-                              value={
-                                isFillInBlankType
-                                  ? (question.acceptedAnswers[index] || '')
-                                  : index === 0
-                                    ? dropdownBlankValue
-                                    : ''
-                              }
-                              onChange={(e) => {
-                                if (isFillInBlankType) {
-                                  handleFillBlankAnswerChange(index, e.target.value);
-                                  return;
-                                }
-
-                                if (index === 0) {
-                                  handleDropdownBlankAnswerChange(e.target.value);
-                                }
-                              }}
-                              disabled={isDropdownType && index > 0}
-                              placeholder={isDropdownType && index > 0 ? 'Use first blank only' : `Blank ${index + 1}`}
-                              sx={{ bgcolor: theme.palette.background.paper, borderRadius: 1 }}
-                            />
-                          </Box>
-                        )}
-                      </Fragment>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Example: "The capital of France is ____." or "The largest planet is [_____]."
-                  </Typography>
-                )}
-              </Box>
-            )}
-
             <Divider sx={{ my: 3 }} />
 
             {isFreeTextType && (
@@ -965,6 +962,60 @@ function SortableQuestionCard({
               </Box>
             )}
 
+            {isCalendarType && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
+                  Correct Date(s)
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  Pick one or more correct dates using the calendar picker (YYYY-MM-DD).
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <TextField
+                    type="date"
+                    fullWidth
+                    size="small"
+                    value={question.acceptedAnswerInput}
+                    onChange={(e) => onChange('acceptedAnswerInput', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onAddAcceptedAnswer();
+                      }
+                    }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={onAddAcceptedAnswer}
+                    sx={{ minWidth: 120 }}
+                    disabled={!/^\d{4}-\d{2}-\d{2}$/.test((question.acceptedAnswerInput || '').trim())}
+                  >
+                    Add Date
+                  </Button>
+                </Box>
+
+                {question.acceptedAnswers.length > 0 ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {question.acceptedAnswers.map((date, idx) => (
+                      <Chip
+                        key={`${date}-${idx}`}
+                        label={date}
+                        color="success"
+                        variant="outlined"
+                        onDelete={() => onRemoveAcceptedAnswer(idx)}
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    No dates selected yet.
+                  </Typography>
+                )}
+              </Box>
+            )}
+
             {/* Answer Options - Multi-Select with Checkboxes */}
             {usesOptionsEditor && <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
@@ -980,8 +1031,6 @@ function SortableQuestionCard({
                     ? 'Enter each correct pair. The left and right values will be matched together in the game.'
                     : isOrderType
                     ? 'Add and arrange items. The displayed order will be treated as the correct order.'
-                    : isDropdownType
-                      ? 'Pick one correct option. The correct option text is synced with the first blank editor.'
                     : isSingleCorrectType
                       ? 'Select one correct answer.'
                       : 'Check all correct answers (multiple selections allowed).'}
@@ -1009,26 +1058,70 @@ function SortableQuestionCard({
                         display: 'grid',
                         gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr auto' },
                         gap: 1,
-                        alignItems: 'center',
+                        alignItems: 'start',
                         mb: 1.5,
                       }}
                     >
-                      <TextField
-                        label={`Left item ${pairIndex + 1}`}
-                        variant="outlined"
-                        fullWidth
-                        size="small"
-                        value={pair.left}
-                        onChange={(e) => onUpdateMatchingPair(pairIndex, 'left', e.target.value)}
-                      />
-                      <TextField
-                        label={`Right item ${pairIndex + 1}`}
-                        variant="outlined"
-                        fullWidth
-                        size="small"
-                        value={pair.right}
-                        onChange={(e) => onUpdateMatchingPair(pairIndex, 'right', e.target.value)}
-                      />
+                      <Box sx={{ display: 'grid', gap: 0.75 }}>
+                        <TextField
+                          label={`Left item ${pairIndex + 1}`}
+                          variant="outlined"
+                          fullWidth
+                          size="small"
+                          value={pair.left}
+                          onChange={(e) => onUpdateMatchingPair(pairIndex, 'left', e.target.value)}
+                        />
+                        <Button variant="outlined" component="label" size="small" sx={{ justifyContent: 'flex-start' }}>
+                          {pair.leftImageFile || pair.leftImageUrl ? 'Left Image Set' : 'Add Left Image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              onUpdateMatchingPairImage(pairIndex, 'left', file);
+                            }}
+                          />
+                        </Button>
+                        {pair.leftImageFile || pair.leftImageUrl ? (
+                          <Box
+                            component="img"
+                            src={pair.leftImageFile ? URL.createObjectURL(pair.leftImageFile) : (pair.leftImageUrl || '')}
+                            alt={`Left item ${pairIndex + 1}`}
+                            sx={{ width: 72, height: 48, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
+                          />
+                        ) : null}
+                      </Box>
+                      <Box sx={{ display: 'grid', gap: 0.75 }}>
+                        <TextField
+                          label={`Right item ${pairIndex + 1}`}
+                          variant="outlined"
+                          fullWidth
+                          size="small"
+                          value={pair.right}
+                          onChange={(e) => onUpdateMatchingPair(pairIndex, 'right', e.target.value)}
+                        />
+                        <Button variant="outlined" component="label" size="small" sx={{ justifyContent: 'flex-start' }}>
+                          {pair.rightImageFile || pair.rightImageUrl ? 'Right Image Set' : 'Add Right Image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              onUpdateMatchingPairImage(pairIndex, 'right', file);
+                            }}
+                          />
+                        </Button>
+                        {pair.rightImageFile || pair.rightImageUrl ? (
+                          <Box
+                            component="img"
+                            src={pair.rightImageFile ? URL.createObjectURL(pair.rightImageFile) : (pair.rightImageUrl || '')}
+                            alt={`Right item ${pairIndex + 1}`}
+                            sx={{ width: 72, height: 48, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
+                          />
+                        ) : null}
+                      </Box>
                       <IconButton
                         size="small"
                         onClick={() => onRemoveMatchingPair(pairIndex)}
@@ -1063,8 +1156,25 @@ function SortableQuestionCard({
                 }}
               >
                 {question.options.map((option, optionIndex) => (
+                  (() => {
+                    const shouldHighlightCorrect = showCorrectSelector && option.isCorrect;
+                    return (
                   <Box
                     key={optionIndex}
+                    onDragOver={(event) => {
+                      if (!canAttachOptionImage) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (dragOverOptionIndex !== optionIndex) {
+                        setDragOverOptionIndex(optionIndex);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverOptionIndex === optionIndex) {
+                        setDragOverOptionIndex(null);
+                      }
+                    }}
+                    onDrop={(event) => handleOptionImageDrop(event, optionIndex)}
                     sx={{
                       display: 'flex',
                       alignItems: 'flex-start',
@@ -1073,11 +1183,14 @@ function SortableQuestionCard({
                       p: 1.5,
                       borderRadius: 1,
                       border: `2px solid ${
-                        option.isCorrect
+                        dragOverOptionIndex === optionIndex && canAttachOptionImage
+                          ? theme.palette.primary.main
+                          :
+                        shouldHighlightCorrect
                           ? theme.palette.success.main
                           : theme.palette.divider
                       }`,
-                      backgroundColor: option.isCorrect
+                      backgroundColor: shouldHighlightCorrect
                         ? theme.palette.mode === 'dark'
                           ? 'rgba(76, 175, 80, 0.08)'
                           : 'rgba(76, 175, 80, 0.04)'
@@ -1088,6 +1201,12 @@ function SortableQuestionCard({
                           ? 'rgba(255, 255, 255, 0.05)'
                           : 'rgba(0, 0, 0, 0.02)',
                       },
+                      ...(dragOverOptionIndex === optionIndex && canAttachOptionImage
+                        ? {
+                            borderStyle: 'dashed',
+                            boxShadow: `0 0 0 1px ${theme.palette.primary.main}`,
+                          }
+                        : {}),
                     }}
                   >
                     {/* Correct Answer Selector */}
@@ -1130,12 +1249,12 @@ function SortableQuestionCard({
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: '50%',
-                        backgroundColor: option.isCorrect
+                        backgroundColor: shouldHighlightCorrect
                           ? theme.palette.success.main
                           : theme.palette.mode === 'dark'
                           ? 'rgba(255, 255, 255, 0.1)'
                           : 'rgba(0, 0, 0, 0.08)',
-                        color: option.isCorrect
+                        color: shouldHighlightCorrect
                           ? '#fff'
                           : theme.palette.text.primary,
                         fontWeight: 600,
@@ -1154,7 +1273,7 @@ function SortableQuestionCard({
                       onChange={(e) => onOptionChange(optionIndex, 'text', e.target.value)}
                       placeholder={isOrderType
                         ? `Enter item ${optionIndex + 1}`
-                        : `Enter answer option ${String.fromCharCode(65 + optionIndex)}`}
+                        : `Enter answer option ${String.fromCharCode(65 + optionIndex)}${canAttachOptionImage ? ' (optional if image set)' : ''}`}
                       disabled={question.type === 'true_false'}
                       InputProps={{
                         disableUnderline: false,
@@ -1175,6 +1294,62 @@ function SortableQuestionCard({
                       }}
                     />
 
+                    {question.type !== 'true_false' ? (
+                      <Box
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (dragOverOptionIndex !== optionIndex) {
+                            setDragOverOptionIndex(optionIndex);
+                          }
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverOptionIndex === optionIndex) {
+                            setDragOverOptionIndex(null);
+                          }
+                        }}
+                        onDrop={(event) => handleOptionImageDrop(event, optionIndex)}
+                        sx={{
+                          flexShrink: 0,
+                          borderRadius: 1,
+                          border: '1px dashed',
+                          borderColor: dragOverOptionIndex === optionIndex ? 'primary.main' : 'divider',
+                          bgcolor: dragOverOptionIndex === optionIndex
+                            ? 'action.hover'
+                            : 'transparent',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <Button
+                          variant="outlined"
+                          component="label"
+                          size="small"
+                          sx={{
+                            flexShrink: 0,
+                            minWidth: 96,
+                            border: 0,
+                            color: dragOverOptionIndex === optionIndex ? 'primary.main' : 'inherit',
+                            '&:hover': { border: 0 },
+                          }}
+                        >
+                          {dragOverOptionIndex === optionIndex
+                            ? 'Drop Image'
+                            : option.imageFile || option.imageUrl
+                              ? 'Image Set'
+                              : 'Add Image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              onOptionChange(optionIndex, 'imageFile', file);
+                            }}
+                          />
+                        </Button>
+                      </Box>
+                    ) : null}
+
                     {/* Delete Button */}
                     <IconButton
                       size="small"
@@ -1191,6 +1366,8 @@ function SortableQuestionCard({
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
+                    );
+                  })()
                 ))}
 
                 <Button
@@ -1217,13 +1394,28 @@ export default function CreateQuiz() {
   const theme = useTheme();
   const [quizName, setQuizName] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
-  const [questions, setQuestions] = useState<QuizQuestionForm[]>([createInitialQuestion()]);
+  const [slides, setSlides] = useState<PresentationSlideForm[]>([]);
+  const [questions, setQuestions] = useState<QuizQuestionForm[]>(() => [createInitialQuestion()]);
+  const [timelineItems, setTimelineItems] = useState<TimelineItemRef[]>([]);
+  const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(null);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set([questions[0].id]));
   const [currentPage, setCurrentPage] = useState(1);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
+  const hasOptionContent = (option: QuizQuestionForm['options'][number]) =>
+    Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
+  const hasMatchingSideContent = (text: string, imageFile: File | null, imageUrl?: string, imageId?: string) =>
+    Boolean(text.trim()) || Boolean(imageFile) || Boolean((imageUrl || '').trim()) || Boolean((imageId || '').trim());
+
+  useEffect(() => {
+    if (timelineItems.length === 0 && questions.length > 0) {
+      const firstTimelineId = `timeline-${Date.now()}-${Math.random()}`;
+      setTimelineItems([{ id: firstTimelineId, kind: "question", refId: questions[0].id }]);
+      setSelectedTimelineId(firstTimelineId);
+    }
+  }, [timelineItems.length, questions]);
 
   // Drag and Drop
   const sensors = useSensors(
@@ -1234,7 +1426,6 @@ export default function CreateQuiz() {
   );
 
   // Pagination
-  const totalPages = Math.ceil(questions.length / QUESTIONS_PER_PAGE);
   const paginatedQuestions = useMemo(() => {
     const start = (currentPage - 1) * QUESTIONS_PER_PAGE;
     const end = start + QUESTIONS_PER_PAGE;
@@ -1244,11 +1435,39 @@ export default function CreateQuiz() {
     }));
   }, [questions, currentPage]);
 
+  const timelinePreviewItems = useMemo(() => {
+    return timelineItems
+      .map((itemRef, timelineIndex) => {
+        if (itemRef.kind === "slide") {
+          const slideIndex = slides.findIndex((slide) => slide.id === itemRef.refId);
+          if (slideIndex < 0) return null;
+          return {
+            timelineId: itemRef.id,
+            kind: "slide" as const,
+            timelineIndex,
+            slideIndex,
+            slide: slides[slideIndex],
+          };
+        }
+
+        const questionIndex = questions.findIndex((question) => question.id === itemRef.refId);
+        if (questionIndex < 0) return null;
+        return {
+          timelineId: itemRef.id,
+          kind: "question" as const,
+          timelineIndex,
+          questionIndex,
+          question: questions[questionIndex],
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [timelineItems, slides, questions]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setQuestions((items) => {
+      setTimelineItems((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
         return arrayMove(items, oldIndex, newIndex);
@@ -1282,24 +1501,24 @@ export default function CreateQuiz() {
       const isPhraseType = selectedType === 'match_the_phrase';
       const currentQuestionText = updatedQuestions[globalIndex].question || '';
 
-      if ((selectedType === 'fill_in_blank' || selectedType === 'dropdown') && !currentQuestionText.match(/_{3,}/)) {
+      if (selectedType === 'fill_in_blank' && !currentQuestionText.match(/_{3,}/)) {
         updatedQuestions[globalIndex].question = `${currentQuestionText}${currentQuestionText ? ' ' : ''}____`;
       }
 
       if (selectedType === 'true_false') {
         updatedQuestions[globalIndex].options = [
-          { text: 'True', isCorrect: true },
-          { text: 'False', isCorrect: false },
+          { text: 'True', isCorrect: true, imageUrl: '', imageId: '', imageFile: null },
+          { text: 'False', isCorrect: false, imageUrl: '', imageId: '', imageFile: null },
         ];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
       } else if (selectedType === 'essay') {
-        updatedQuestions[globalIndex].options = [{ text: '', isCorrect: false }];
+        updatedQuestions[globalIndex].options = [{ text: '', isCorrect: false, imageUrl: '', imageId: '', imageFile: null }];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
-      } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank' || selectedType === 'numerical') {
+      } else if (selectedType === 'short_answer' || selectedType === 'fill_in_blank' || selectedType === 'numerical' || selectedType === 'calendar') {
         updatedQuestions[globalIndex].options = [];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
@@ -1318,20 +1537,12 @@ export default function CreateQuiz() {
         }
       } else if (updatedQuestions[globalIndex].options.length < 2) {
         updatedQuestions[globalIndex].options = [
-          { text: '', isCorrect: true },
-          { text: '', isCorrect: false },
+          { text: '', isCorrect: true, imageUrl: '', imageId: '', imageFile: null },
+          { text: '', isCorrect: false, imageUrl: '', imageId: '', imageFile: null },
         ];
         updatedQuestions[globalIndex].acceptedAnswers = [];
         updatedQuestions[globalIndex].acceptedAnswerInput = '';
         updatedQuestions[globalIndex].matchingPairs = createMatchingPairs();
-      }
-
-      if (selectedType === 'dropdown') {
-        const firstCorrectIndex = updatedQuestions[globalIndex].options.findIndex((opt) => opt.isCorrect);
-        updatedQuestions[globalIndex].options = updatedQuestions[globalIndex].options.map((opt, idx) => ({
-          ...opt,
-          isCorrect: firstCorrectIndex >= 0 ? idx === firstCorrectIndex : idx === 0,
-        }));
       }
 
       if (selectedType === 'multiple') {
@@ -1346,11 +1557,16 @@ export default function CreateQuiz() {
     setQuestions(updatedQuestions);
   };
 
-  const handleOptionChange = (globalIndex: number, optionIndex: number, field: 'text' | 'isCorrect', value: string | boolean) => {
+  const handleOptionChange = (
+    globalIndex: number,
+    optionIndex: number,
+    field: 'text' | 'isCorrect' | 'imageUrl' | 'imageId' | 'imageFile',
+    value: string | boolean | File | null
+  ) => {
     const updatedQuestions = [...questions];
     const updatedOptions = [...updatedQuestions[globalIndex].options];
     const qType = updatedQuestions[globalIndex].type;
-    
+
     if (field === 'isCorrect' && value === true && (qType === 'multiple' || qType === 'dropdown' || qType === 'true_false')) {
       updatedQuestions[globalIndex].options = updatedOptions.map((opt, idx) => ({
         ...opt,
@@ -1364,7 +1580,7 @@ export default function CreateQuiz() {
       if (qType === 'multi_select') {
         updatedOptions[optionIndex] = {
           ...updatedOptions[optionIndex],
-          [field]: value
+          [field]: value,
         };
 
         updatedQuestions[globalIndex].options = updatedOptions;
@@ -1380,32 +1596,66 @@ export default function CreateQuiz() {
 
     updatedOptions[optionIndex] = {
       ...updatedOptions[optionIndex],
-      [field]: value
+      [field]: value,
     };
-    
+
     updatedQuestions[globalIndex].options = updatedOptions;
     setQuestions(updatedQuestions);
   };
 
+  const addSlide = () => {
+    const newSlide = createInitialSlide();
+    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
+    setSlides((prev) => [...prev, newSlide]);
+    setTimelineItems((prev) => [...prev, { id: timelineId, kind: 'slide', refId: newSlide.id }]);
+    setSelectedTimelineId(timelineId);
+  };
+
   const addQuestion = () => {
     const newQuestion = createInitialQuestion();
-    // Set default points to 1 instead of 0
     newQuestion.points = 1;
     setQuestions([...questions, newQuestion]);
+    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
+    setTimelineItems((prev) => [...prev, { id: timelineId, kind: 'question', refId: newQuestion.id }]);
+    setSelectedTimelineId(timelineId);
     setExpandedQuestions(new Set([newQuestion.id]));
     const newPage = Math.ceil((questions.length + 1) / QUESTIONS_PER_PAGE);
     setCurrentPage(newPage);
   };
 
+  const updateSlide = <K extends keyof PresentationSlideForm>(
+    slideId: string,
+    field: K,
+    value: PresentationSlideForm[K]
+  ) => {
+    setSlides((prev) =>
+      prev.map((slide) => (slide.id === slideId ? { ...slide, [field]: value } : slide))
+    );
+  };
+
+  const deleteSlide = (slideId: string) => {
+    setSlides((prev) => prev.filter((slide) => slide.id !== slideId));
+    setTimelineItems((prev) => prev.filter((item) => !(item.kind === 'slide' && item.refId === slideId)));
+  };
+
   const addOption = (globalIndex: number) => {
     const updatedQuestions = [...questions];
-    updatedQuestions[globalIndex].options.push({ text: "", isCorrect: false });
+    updatedQuestions[globalIndex].options.push({ text: "", isCorrect: false, imageUrl: '', imageId: '', imageFile: null });
     setQuestions(updatedQuestions);
   };
 
   const addMatchingPair = (globalIndex: number) => {
     const updatedQuestions = [...questions];
-    updatedQuestions[globalIndex].matchingPairs.push({ left: '', right: '' });
+    updatedQuestions[globalIndex].matchingPairs.push({
+      left: '',
+      right: '',
+      leftImageUrl: '',
+      leftImageId: '',
+      leftImageFile: null,
+      rightImageUrl: '',
+      rightImageId: '',
+      rightImageFile: null,
+    });
     setQuestions(updatedQuestions);
   };
 
@@ -1426,6 +1676,28 @@ export default function CreateQuiz() {
       ...updatedQuestions[globalIndex].matchingPairs[pairIndex],
       [field]: value,
     };
+    setQuestions(updatedQuestions);
+  };
+
+  const updateMatchingPairImage = (globalIndex: number, pairIndex: number, side: 'left' | 'right', file: File | null) => {
+    const updatedQuestions = [...questions];
+    const pair = updatedQuestions[globalIndex].matchingPairs[pairIndex];
+    if (!pair) return;
+
+    updatedQuestions[globalIndex].matchingPairs[pairIndex] = side === 'left'
+      ? {
+          ...pair,
+          leftImageFile: file,
+          leftImageUrl: file ? '' : pair.leftImageUrl,
+          leftImageId: file ? '' : pair.leftImageId,
+        }
+      : {
+          ...pair,
+          rightImageFile: file,
+          rightImageUrl: file ? '' : pair.rightImageUrl,
+          rightImageId: file ? '' : pair.rightImageId,
+        };
+
     setQuestions(updatedQuestions);
   };
 
@@ -1458,6 +1730,7 @@ export default function CreateQuiz() {
     const questionId = questions[globalIndex].id;
     const updatedQuestions = questions.filter((_, index) => index !== globalIndex);
     setQuestions(updatedQuestions);
+    setTimelineItems((prev) => prev.filter((item) => !(item.kind === 'question' && item.refId === questionId)));
     
     setExpandedQuestions((prev) => {
       const next = new Set(prev);
@@ -1494,19 +1767,30 @@ export default function CreateQuiz() {
       .map((ans) => ans.trim())
       .filter(Boolean);
     const matchingPairs = question.matchingPairs
-      .map((pair) => ({
-        left: pair.left.trim(),
-        right: pair.right.trim(),
+      .map((pair, index) => ({
+        left: pair.left.trim() || (hasMatchingSideContent(pair.left, pair.leftImageFile, pair.leftImageUrl, pair.leftImageId) ? `Left Image ${index + 1}` : ''),
+        right: pair.right.trim() || (hasMatchingSideContent(pair.right, pair.rightImageFile, pair.rightImageUrl, pair.rightImageId) ? `Right Image ${index + 1}` : ''),
       }))
       .filter((pair) => pair.left && pair.right);
 
-    const correctAnswers = question.options
-      .filter((opt) => opt.isCorrect)
-      .map((opt) => opt.text);
-    const incorrectAnswers = question.options
-      .filter((opt) => !opt.isCorrect)
-      .map((opt) => opt.text);
-    const options = question.options.map((opt) => opt.text);
+    const getOptionLabel = (opt: QuizQuestionForm['options'][number], index: number) => {
+      const trimmedText = opt.text.trim();
+      if (trimmedText) return trimmedText;
+
+      const hasImage = Boolean(opt.imageFile) || Boolean((opt.imageUrl || '').trim()) || Boolean((opt.imageId || '').trim());
+      return hasImage ? `Image ${String.fromCharCode(65 + index)}` : '';
+    };
+
+    const optionEntries = question.options.map((opt, index) => ({
+      opt,
+      index,
+      label: getOptionLabel(opt, index),
+    }));
+    const options = optionEntries.map((entry) => entry.label);
+    const correctAnswers = optionEntries.filter((entry) => entry.opt.isCorrect).map((entry) => entry.label);
+    const incorrectAnswers = optionEntries.filter((entry) => !entry.opt.isCorrect).map((entry) => entry.label);
+    const optionImageUrls = question.options.map((opt) => (opt.imageUrl || '').trim());
+    const optionImageIds = question.options.map((opt) => (opt.imageId || '').trim());
     const matchingAnswerStrings = matchingPairs.map((pair) => `${pair.left}:${pair.right}`);
 
     let typeObj: QuizQuestion["type"];
@@ -1618,8 +1902,15 @@ export default function CreateQuiz() {
         typeObj = {
           name: "image_based",
           description: "image_based question",
-          imageUrl: "",
+          imageUrl: question.imageUrl.trim(),
           correctAnswers,
+        };
+        break;
+      case "calendar":
+        typeObj = {
+          name: "calendar",
+          description: "calendar question",
+          correctAnswers: acceptedTextAnswers,
         };
         break;
       default:
@@ -1637,12 +1928,17 @@ export default function CreateQuiz() {
       points: question.points,
       difficulty: question.difficulty,
       hint: question.hint,
+      imageUrl: question.imageUrl.trim(),
+      imageId: (question.imageId || '').trim() || undefined,
+      explanation: question.explanation.trim(),
+      optionImageUrls,
+      optionImageIds,
       type: typeObj,
       category: question.category,
       options: typeName === 'matching'
         ? []
         : options,
-      correctAnswers: typeName === 'short_answer' || typeName === 'fill_in_blank' || typeName === 'match_the_phrase'
+      correctAnswers: typeName === 'short_answer' || typeName === 'fill_in_blank' || typeName === 'match_the_phrase' || typeName === 'calendar'
         ? acceptedTextAnswers
         : typeName === 'matching'
           ? matchingAnswerStrings
@@ -1655,6 +1951,15 @@ export default function CreateQuiz() {
     if (!quizName.trim()) {
       showSnackbar("Quiz name is required", "error");
       return false;
+    }
+
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
+      const hasContent = slide.title.trim() || slide.content.trim() || slide.imageUrl.trim();
+      if (!hasContent) {
+        showSnackbar(`Slide ${i + 1} is empty. Add title/content/image or remove it.`, "error");
+        return false;
+      }
     }
 
     for (let i = 0; i < questions.length; i++) {
@@ -1673,6 +1978,25 @@ export default function CreateQuiz() {
       if (q.type === 'short_answer') {
         if (q.acceptedAnswers.length < 1) {
           showSnackbar(`Question ${i + 1} needs at least one accepted answer`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+        continue;
+      }
+
+      if (q.type === 'calendar') {
+        if (q.acceptedAnswers.length < 1) {
+          showSnackbar(`Question ${i + 1} needs at least one correct date in YYYY-MM-DD format`, "error");
+          const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
+          setCurrentPage(page);
+          return false;
+        }
+        const allValidDates = q.acceptedAnswers.every((date) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(date.trim())
+        );
+        if (!allValidDates) {
+          showSnackbar(`Question ${i + 1} has invalid date format. Use YYYY-MM-DD.`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
@@ -1746,8 +2070,8 @@ export default function CreateQuiz() {
           return false;
         }
 
-        if (q.options.some((opt) => !opt.text.trim())) {
-          showSnackbar(`All words in the word bank for Question ${i + 1} must be filled`, "error");
+        if (q.options.some((opt) => !hasOptionContent(opt))) {
+          showSnackbar(`All words in the word bank for Question ${i + 1} must have text or an image`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
@@ -1760,6 +2084,8 @@ export default function CreateQuiz() {
         const pairs = q.matchingPairs.map((pair) => ({
           left: pair.left.trim(),
           right: pair.right.trim(),
+          hasLeftContent: hasMatchingSideContent(pair.left, pair.leftImageFile, pair.leftImageUrl, pair.leftImageId),
+          hasRightContent: hasMatchingSideContent(pair.right, pair.rightImageFile, pair.rightImageUrl, pair.rightImageId),
         }));
 
         if (pairs.length < 2) {
@@ -1769,15 +2095,15 @@ export default function CreateQuiz() {
           return false;
         }
 
-        if (pairs.some((pair) => !pair.left || !pair.right)) {
-          showSnackbar(`All matching pairs for Question ${i + 1} must be filled`, "error");
+        if (pairs.some((pair) => !pair.hasLeftContent || !pair.hasRightContent)) {
+          showSnackbar(`All matching pairs for Question ${i + 1} must have text or an image on each side`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
           setCurrentPage(page);
           return false;
         }
 
-        const leftValues = pairs.map((pair) => pair.left.toLowerCase());
-        const rightValues = pairs.map((pair) => pair.right.toLowerCase());
+        const leftValues = pairs.map((pair) => pair.left.toLowerCase()).filter(Boolean);
+        const rightValues = pairs.map((pair) => pair.right.toLowerCase()).filter(Boolean);
         if (new Set(leftValues).size !== leftValues.length || new Set(rightValues).size !== rightValues.length) {
           showSnackbar(`Question ${i + 1} cannot repeat matching items`, "error");
           const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
@@ -1788,7 +2114,7 @@ export default function CreateQuiz() {
         continue;
       }
 
-      const options = q.options.filter(opt => opt.text.trim());
+      const options = q.options.filter((opt) => hasOptionContent(opt));
       if (options.length < 1) {
         showSnackbar(`Question ${i + 1} needs at least one option/item`, "error");
         const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
@@ -1796,9 +2122,9 @@ export default function CreateQuiz() {
         return false;
       }
 
-      const allOptionsFilled = q.options.every(opt => opt.text.trim());
+      const allOptionsFilled = q.options.every((opt) => hasOptionContent(opt));
       if (!allOptionsFilled) {
-        showSnackbar(`All options for Question ${i + 1} must be filled`, "error");
+        showSnackbar(`All options for Question ${i + 1} must have text or an image`, "error");
         const page = Math.ceil((i + 1) / QUESTIONS_PER_PAGE);
         setCurrentPage(page);
         return false;
@@ -1834,13 +2160,86 @@ export default function CreateQuiz() {
   };
 
   const handleSubmit = async () => {
-    const transformedQuestions = questions.map(transformQuestionForSubmission);
+    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const slideMap = new Map(slides.map((s) => [s.id, s]));
+
+    const quizItems: QuizItem[] = [];
+    const orderedQuestionForms: QuizQuestionForm[] = [];
+
+    for (const item of timelineItems) {
+      if (item.kind === 'slide') {
+        const slide = slideMap.get(item.refId);
+        if (!slide) continue;
+        quizItems.push({
+          kind: 'slide',
+          slide: {
+            title: slide.title.trim(),
+            content: slide.content.trim(),
+            imageUrl: slide.imageUrl.trim(),
+          },
+        });
+      } else {
+        const question = questionMap.get(item.refId);
+        if (!question) continue;
+        const transformed = transformQuestionForSubmission(question);
+        orderedQuestionForms.push(question);
+        quizItems.push({ kind: 'question', question: transformed });
+      }
+    }
+
+    const transformedQuestions = quizItems
+      .filter((item): item is QuizItem & { question: QuizQuestion } => item.kind === 'question' && Boolean(item.question))
+      .map((item) => item.question);
 
     const quiz: Quiz = {
       quizName,
       quizDescription,
       createdBy: "Test_User",
       quizQuestions: transformedQuestions,
+      quizItems,
+    };
+
+    const extractQuizId = (payload: any): string | undefined => {
+      if (!payload || typeof payload !== 'object') return undefined;
+      return payload.quizId || payload.id || payload._id || payload?.quiz?.id || payload?.quiz?._id;
+    };
+
+    const uploadQuestionImage = async (quizId: string, questionIndex: number, file: File) => {
+      const form = new FormData();
+      form.append('image', file);
+
+      const response = await fetch(
+        `${backendUrl}/api/quizzes/${encodeURIComponent(quizId)}/questions/${questionIndex}/image`,
+        {
+          method: 'POST',
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Question image upload failed for question ${questionIndex + 1}`);
+      }
+
+      return response.json().catch(() => ({}));
+    };
+
+    const uploadOptionImage = async (quizId: string, questionIndex: number, optionIndex: number, file: File) => {
+      const form = new FormData();
+      form.append('image', file);
+
+      const response = await fetch(
+        `${backendUrl}/api/quizzes/${encodeURIComponent(quizId)}/questions/${questionIndex}/options/${optionIndex}/image`,
+        {
+          method: 'POST',
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Option image upload failed for question ${questionIndex + 1}, option ${optionIndex + 1}`);
+      }
+
+      return response.json().catch(() => ({}));
     };
 
     try {
@@ -1851,7 +2250,59 @@ export default function CreateQuiz() {
       });
 
       if (response.ok) {
-        showSnackbar("Quiz created successfully!", "success");
+        const payload = await response.json().catch(() => ({}));
+        const quizId = extractQuizId(payload);
+
+        const hasImageUploads = orderedQuestionForms.some((q) =>
+          Boolean(q.imageFile) || q.options.some((opt) => Boolean(opt.imageFile))
+        );
+
+        if (hasImageUploads && quizId) {
+          let uploadCount = 0;
+          for (let qIndex = 0; qIndex < orderedQuestionForms.length; qIndex += 1) {
+            const q = orderedQuestionForms[qIndex];
+
+            if (q.imageFile) {
+              const uploaded = await uploadQuestionImage(quizId, qIndex, q.imageFile);
+              uploadCount += 1;
+              if (uploaded.imageUrl) {
+                transformedQuestions[qIndex].imageUrl = uploaded.imageUrl;
+              }
+              if (uploaded.imageId) {
+                transformedQuestions[qIndex].imageId = uploaded.imageId;
+              }
+            }
+
+            for (let oIndex = 0; oIndex < q.options.length; oIndex += 1) {
+              const opt = q.options[oIndex];
+              if (!opt.imageFile) continue;
+
+              const uploaded = await uploadOptionImage(quizId, qIndex, oIndex, opt.imageFile);
+              uploadCount += 1;
+
+              if (uploaded.imageUrl) {
+                if (!transformedQuestions[qIndex].optionImageUrls) {
+                  transformedQuestions[qIndex].optionImageUrls = q.options.map(() => '');
+                }
+                transformedQuestions[qIndex].optionImageUrls![oIndex] = uploaded.imageUrl;
+              }
+
+              if (uploaded.imageId) {
+                if (!transformedQuestions[qIndex].optionImageIds) {
+                  transformedQuestions[qIndex].optionImageIds = q.options.map(() => '');
+                }
+                transformedQuestions[qIndex].optionImageIds![oIndex] = uploaded.imageId;
+              }
+            }
+          }
+
+          showSnackbar(`Quiz created successfully! Uploaded ${uploadCount} image${uploadCount === 1 ? '' : 's'}.`, "success");
+        } else if (hasImageUploads && !quizId) {
+          showSnackbar("Quiz created, but image upload was skipped (missing quiz id in response).", "error");
+        } else {
+          showSnackbar("Quiz created successfully!", "success");
+        }
+
         resetForm();
         setPreviewOpen(false);
       } else {
@@ -1866,9 +2317,13 @@ export default function CreateQuiz() {
 
   const resetForm = () => {
     const newQuestion = createInitialQuestion();
+    const timelineId = `timeline-${Date.now()}-${Math.random()}`;
     setQuizName("");
     setQuizDescription("");
+    setSlides([]);
     setQuestions([newQuestion]);
+    setTimelineItems([{ id: timelineId, kind: 'question', refId: newQuestion.id }]);
+    setSelectedTimelineId(timelineId);
     setExpandedQuestions(new Set([newQuestion.id]));
     setCurrentPage(1);
   };
@@ -1889,20 +2344,6 @@ export default function CreateQuiz() {
     setPreviewOpen(false);
   };
 
-  const getDifficultyLabel = (difficulty: number): string => {
-    if (difficulty <= 2) return "Easy";
-    if (difficulty <= 4) return "Medium";
-    if (difficulty <= 6) return "Hard";
-    return "Expert";
-  };
-
-  const getDifficultyColor = (difficulty: number) => {
-    if (difficulty <= 2) return theme.palette.success.main;
-    if (difficulty <= 4) return theme.palette.warning.main;
-    if (difficulty <= 6) return theme.palette.error.main;
-    return theme.palette.error.dark;
-  };
-
   const expandAll = () => {
     setExpandedQuestions(new Set(paginatedQuestions.map(q => q.id)));
   };
@@ -1910,6 +2351,93 @@ export default function CreateQuiz() {
   const collapseAll = () => {
     setExpandedQuestions(new Set());
   };
+
+  const handleSelectTimelineItem = (item: TimelinePreviewItem) => {
+    setSelectedTimelineId(item.timelineId);
+    if (item.kind === 'question') {
+      setExpandedQuestions(new Set([item.question.id]));
+    }
+  };
+
+  const renderSlideTimelineCard = (item: Extract<TimelinePreviewItem, { kind: 'slide' }>, listIndex: number) => (
+    <Card
+      key={item.timelineId}
+      variant="outlined"
+      sx={{
+        borderColor: selectedTimelineId === item.timelineId ? 'info.main' : 'divider',
+        bgcolor: theme.palette.mode === 'dark' ? 'rgba(3,169,244,0.08)' : 'rgba(3,169,244,0.05)',
+      }}
+    >
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+            #{listIndex + 1} • Slide {item.slideIndex + 1}
+          </Typography>
+          <IconButton size="small" onClick={() => deleteSlide(item.slide.id)} sx={{ color: 'error.main' }}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <TextField
+          label="Slide Title"
+          fullWidth
+          size="small"
+          sx={{ mb: 1.25 }}
+          value={item.slide.title}
+          onChange={(e) => updateSlide(item.slide.id, 'title', e.target.value)}
+        />
+        <TextField
+          label="Slide Content"
+          fullWidth
+          size="small"
+          multiline
+          rows={3}
+          sx={{ mb: 1.25 }}
+          value={item.slide.content}
+          onChange={(e) => updateSlide(item.slide.id, 'content', e.target.value)}
+        />
+        <TextField
+          label="Slide Image URL (Optional)"
+          fullWidth
+          size="small"
+          value={item.slide.imageUrl}
+          onChange={(e) => updateSlide(item.slide.id, 'imageUrl', e.target.value)}
+        />
+      </CardContent>
+    </Card>
+  );
+
+  const renderQuestionTimelineCard = (item: Extract<TimelinePreviewItem, { kind: 'question' }>) => (
+    <SortableQuestionCard
+      key={item.timelineId}
+      sortableId={item.timelineId}
+      question={item.question}
+      index={item.questionIndex}
+      globalIndex={item.questionIndex}
+      expanded={expandedQuestions.has(item.question.id)}
+      onToggle={() => {
+        setSelectedTimelineId(item.timelineId);
+        toggleExpanded(item.question.id);
+      }}
+      onDelete={() => deleteQuestion(item.questionIndex)}
+      onChange={(field, value) => handleQuestionChange(item.questionIndex, field, value)}
+      onOptionChange={(optionIndex, field, value) =>
+        handleOptionChange(item.questionIndex, optionIndex, field, value)
+      }
+      onAddOption={() => addOption(item.questionIndex)}
+      onDeleteOption={(optionIndex) => deleteOption(item.questionIndex, optionIndex)}
+      onAddAcceptedAnswer={() => addAcceptedAnswer(item.questionIndex)}
+      onRemoveAcceptedAnswer={(answerIndex) => removeAcceptedAnswer(item.questionIndex, answerIndex)}
+      onAddMatchingPair={() => addMatchingPair(item.questionIndex)}
+      onRemoveMatchingPair={(pairIndex) => removeMatchingPair(item.questionIndex, pairIndex)}
+      onUpdateMatchingPair={(pairIndex, field, value) =>
+        updateMatchingPair(item.questionIndex, pairIndex, field, value)
+      }
+      onUpdateMatchingPairImage={(pairIndex, side, file) =>
+        updateMatchingPairImage(item.questionIndex, pairIndex, side, file)
+      }
+      totalQuestions={questions.length}
+    />
+  );
 
   return (
     <div className={styles.container}>
@@ -1963,346 +2491,79 @@ export default function CreateQuiz() {
             </CardContent>
           </Card>
 
-          {/* Questions Header with Stats */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="h5" fontWeight="600">
-                Questions
-              </Typography>
-              <Chip
-                label={`${questions.length} total`}
-                size="small"
-                color="primary"
-              />
-              <Chip
-                label={`${questions.reduce((sum, q) => sum + q.points, 0)} pts`}
-                size="small"
-                color="secondary"
-              />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button size="small" onClick={expandAll}>Expand All</Button>
-              <Button size="small" onClick={collapseAll}>Collapse All</Button>
-            </Box>
-          </Box>
-
-          {/* Drag and Drop Context */}
-          <DndContext
+          <QuizTimelineEditor
+            timelinePreviewItems={timelinePreviewItems}
+            selectedTimelineId={selectedTimelineId}
+            expandedQuestions={expandedQuestions}
             sensors={sensors}
-            collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={paginatedQuestions.map(q => q.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {paginatedQuestions.map((q, idx) => (
-                <SortableQuestionCard
-                  key={q.id}
-                  question={q}
-                  index={idx}
-                  globalIndex={q.globalIndex}
-                  expanded={expandedQuestions.has(q.id)}
-                  onToggle={() => toggleExpanded(q.id)}
-                  onDelete={() => deleteQuestion(q.globalIndex)}
-                  onChange={(field, value) => handleQuestionChange(q.globalIndex, field, value)}
-                  onOptionChange={(optionIndex, field, value) =>
-                    handleOptionChange(q.globalIndex, optionIndex, field, value)
-                  }
-                  onAddOption={() => addOption(q.globalIndex)}
-                  onDeleteOption={(optionIndex) => deleteOption(q.globalIndex, optionIndex)}
-                  onAddAcceptedAnswer={() => addAcceptedAnswer(q.globalIndex)}
-                  onRemoveAcceptedAnswer={(answerIndex) => removeAcceptedAnswer(q.globalIndex, answerIndex)}
-                  onAddMatchingPair={() => addMatchingPair(q.globalIndex)}
-                  onRemoveMatchingPair={(pairIndex) => removeMatchingPair(q.globalIndex, pairIndex)}
-                  onUpdateMatchingPair={(pairIndex, field, value) =>
-                    updateMatchingPair(q.globalIndex, pairIndex, field, value)
-                  }
-                  totalQuestions={questions.length}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+            onSelectItem={handleSelectTimelineItem}
+            onExpandQuestion={(questionId) => setExpandedQuestions(new Set([questionId]))}
+            onExpandAll={expandAll}
+            onCollapseAll={collapseAll}
+            onDeleteSlide={deleteSlide}
+            renderSlideCard={renderSlideTimelineCard}
+            renderQuestionCard={renderQuestionTimelineCard}
+          />
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-              <Pagination
-                count={totalPages}
-                page={currentPage}
-                onChange={(_, page) => setCurrentPage(page)}
-                color="primary"
-                size="large"
-                showFirstButton
-                showLastButton
-              />
-            </Box>
-          )}
-
-          {/* Action Buttons */}
-          <Box sx={{ display: 'flex', gap: 2, mt: 4, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={addQuestion}
-              startIcon={<AddIcon />}
-              size="large"
-            >
-              Add Question
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handlePreviewOpen}
-              startIcon={<VisibilityIcon />}
-              size="large"
-              sx={{ 
-                bgcolor: theme.palette.secondary.main,
-                color: '#ffffff',
-                fontWeight: 'bold',
-                '&:hover': {
-                  bgcolor: theme.palette.secondary.dark,
-                }
-              }}
-            >
-              Preview & Submit Quiz
-            </Button>
-          </Box>
+          <Box sx={{ height: 72 }} />
         </Box>
       </Box>
 
-      {/* Preview Dialog */}
-      <Dialog 
-        open={previewOpen} 
-        onClose={handlePreviewClose}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: theme.palette.background.paper,
-            minHeight: '80vh',
-          }
+      <Box
+        sx={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1200,
+          bgcolor: theme.palette.background.paper,
+          borderTop: `1px solid ${theme.palette.divider}`,
+          boxShadow: '0 -6px 24px rgba(0,0,0,0.08)',
         }}
       >
-        <DialogTitle sx={{ borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
-          <Typography variant="h5" fontWeight="bold">
-            Quiz Preview
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Review your quiz before creating it
-          </Typography>
-        </DialogTitle>
-        
-        <DialogContent sx={{ mt: 2 }}>
-          {/* Quiz Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
-              {quizName}
-            </Typography>
-            {quizDescription && (
-              <Typography variant="body1" color="text.secondary">
-                {quizDescription}
-              </Typography>
-            )}
-            <Box sx={{ mt: 2 }}>
-              <Chip 
-                label={`${questions.length} Question${questions.length !== 1 ? 's' : ''}`} 
-                size="small" 
-                sx={{ mr: 1 }}
-              />
-              <Chip 
-                label={`${questions.reduce((sum, q) => sum + q.points, 0)} Total Points`} 
-                size="small"
-                color="primary"
-              />
-            </Box>
+        <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3 }, py: 1.5, display: 'flex', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap' }}>
+            <Button variant="contained" color="info" onClick={addSlide} startIcon={<AddIcon />}>
+              Add Slide
+            </Button>
+            <Button variant="contained" color="primary" onClick={addQuestion} startIcon={<AddIcon />}>
+              Add Question
+            </Button>
           </Box>
-
-          <Divider sx={{ mb: 3 }} />
-
-          {/* Questions Preview */}
-          {questions.map((q, qIndex) => (
-            <Card 
-              key={q.id}
-              sx={{ 
-                mb: 3,
-                border: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" fontWeight="600" gutterBottom>
-                      {qIndex + 1}. {q.question}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-                    <Chip 
-                      label={`${q.points} pts`} 
-                      size="small" 
-                      color="primary"
-                    />
-                    <Chip 
-                      label={getDifficultyLabel(q.difficulty)} 
-                      size="small"
-                      sx={{ 
-                        bgcolor: getDifficultyColor(q.difficulty),
-                        color: '#fff',
-                      }}
-                    />
-                  </Box>
-                </Box>
-
-                {q.hint && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
-                    💡 Hint: {q.hint}
-                  </Typography>
-                )}
-
-                {q.category.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    {q.category.map((cat, idx) => (
-                      <Chip 
-                        key={idx}
-                        label={cat} 
-                        size="small" 
-                        variant="outlined"
-                        sx={{ mr: 0.5, mb: 0.5 }}
-                      />
-                    ))}
-                  </Box>
-                )}
-
-                <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1 }}>
-                  {q.type === 'short_answer' || q.type === 'fill_in_blank'
-                    ? 'Accepted Answers:'
-                    : q.type === 'numerical'
-                      ? 'Correct Number:'
-                      : q.type === 'match_the_phrase'
-                        ? 'Phrase Match:'
-                      : 'Answer Options:'}
-                </Typography>
-
-                {(q.type === 'short_answer' || q.type === 'fill_in_blank') ? (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {q.acceptedAnswers.length > 0 ? q.acceptedAnswers.map((ans, ansIdx) => (
-                      <Chip
-                        key={`${ans}-${ansIdx}`}
-                        icon={<CheckCircleIcon />}
-                        label={ans}
-                        color="success"
-                        variant="outlined"
-                      />
-                    )) : (
-                      <Typography variant="body2" color="text.secondary">(No answer set)</Typography>
-                    )}
-                  </Box>
-                  ) : q.type === 'match_the_phrase' ? (
-                    <Box sx={{ display: 'grid', gap: 1.5 }}>
-                      <Box sx={{ p: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)' }}>
-                        <Typography variant="body2" sx={{ lineHeight: 2 }}>
-                          {q.question.split(/_{3,}/).map((segment, segmentIndex, segmentArray) => (
-                            <span key={`preview-segment-${segmentIndex}`}>
-                              {segment}
-                              {segmentIndex < segmentArray.length - 1 && (
-                                <Chip
-                                  label={q.acceptedAnswers[segmentIndex] || `blank ${segmentIndex + 1}`}
-                                  color="primary"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ mx: 0.5, height: 24 }}
-                                />
-                              )}
-                            </span>
-                          ))}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                        {q.options.map((option, idx) => (
-                          <Chip key={`bank-${idx}`} label={option.text} variant="outlined" />
-                        ))}
-                      </Box>
-                    </Box>
-                ) : q.type === 'numerical' ? (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {(q.acceptedAnswers[0] || '').trim() ? (
-                      <Chip
-                        icon={<CheckCircleIcon />}
-                        label={q.acceptedAnswers[0]}
-                        color="success"
-                        variant="outlined"
-                      />
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">(No number set)</Typography>
-                    )}
-                  </Box>
-                ) : (
-                  q.options.map((option, oIndex) => (
-                    <Box 
-                      key={oIndex}
-                      sx={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        p: 1.5,
-                        mb: 1,
-                        borderRadius: 1,
-                        border: `2px solid ${option.isCorrect ? theme.palette.success.main : theme.palette.divider}`,
-                        backgroundColor: option.isCorrect 
-                          ? theme.palette.mode === 'dark'
-                            ? 'rgba(76, 175, 80, 0.1)'
-                            : 'rgba(76, 175, 80, 0.05)'
-                          : 'transparent',
-                      }}
-                    >
-                      {option.isCorrect ? (
-                        <CheckCircleIcon sx={{ color: theme.palette.success.main, mr: 1 }} />
-                      ) : (
-                        <RadioButtonUncheckedIcon sx={{ color: theme.palette.text.disabled, mr: 1 }} />
-                      )}
-                      <Typography 
-                        variant="body1"
-                        sx={{ 
-                          fontWeight: option.isCorrect ? 600 : 400,
-                        }}
-                      >
-                        {option.text}
-                      </Typography>
-                    </Box>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </DialogContent>
-        
-        <DialogActions sx={{ borderTop: `1px solid ${theme.palette.divider}`, p: 2 }}>
-          <Button 
-            onClick={handlePreviewClose} 
-            variant="outlined"
-            startIcon={<EditIcon />}
-            size="large"
-          >
-            Edit Quiz
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
             variant="contained"
             color="secondary"
-            size="large"
-            startIcon={<CheckCircleIcon />}
-            sx={{ 
-              bgcolor: theme.palette.secondary.main,
-              color: '#ffffff',
-              fontWeight: 'bold',
-              '&:hover': {
-                bgcolor: theme.palette.secondary.dark,
-              }
-            }}
+            onClick={handlePreviewOpen}
+            sx={{ fontWeight: 800 }}
           >
-            Create Quiz
+            Preview & Submit Quiz
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </Box>
+
+      <QuizPreviewDialog
+        open={previewOpen}
+        quizName={quizName}
+        quizDescription={quizDescription}
+        slides={slides}
+        questions={questions}
+        onClose={handlePreviewClose}
+        onSubmit={handleSubmit}
+        getDifficultyLabel={(difficulty) => {
+          if (difficulty <= 2) return 'Easy';
+          if (difficulty <= 4) return 'Medium';
+          if (difficulty <= 6) return 'Hard';
+          return 'Expert';
+        }}
+        getDifficultyColor={(difficulty) => {
+          if (difficulty <= 2) return theme.palette.success.main;
+          if (difficulty <= 4) return theme.palette.warning.main;
+          if (difficulty <= 6) return theme.palette.error.main;
+          return theme.palette.error.dark;
+        }}
+        getMatchingPreviewImageSrc={(file, url) => file ? URL.createObjectURL(file) : (url || '')}
+      />
 
       {/* Success/Error Snackbar */}
       <Snackbar 

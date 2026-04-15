@@ -5,7 +5,20 @@ export type Quiz = {
   quizDescription: string;
   createdBy: string;
   quizQuestions: QuizQuestion[];
+  quizItems?: QuizItem[];
   imageId?: string;
+};
+
+export type PresentationSlide = {
+  title?: string;
+  content?: string;
+  imageUrl?: string;
+};
+
+export type QuizItem = {
+  kind: "slide" | "question";
+  slide?: PresentationSlide;
+  question?: QuizQuestion;
 };
 
 // Multiple Choice
@@ -111,6 +124,13 @@ export interface ImageBasedType {
   correctAnswers: string[];
 }
 
+// Calendar
+export interface CalendarType {
+  name: "calendar";
+  description: string;
+  correctAnswers: string[]; // ISO 8601 format: YYYY-MM-DD
+}
+
 // Union type for all question types
 export type QuestionType =
   | MultipleChoiceType
@@ -125,13 +145,19 @@ export type QuestionType =
   | RankingType
   | OrderingType
   | MatchingType
-  | ImageBasedType;
+  | ImageBasedType
+  | CalendarType;
 
 export type QuizQuestion = {
   question: string;
   points: number;
   difficulty: number;
   hint: string;
+  imageUrl?: string;
+  imageId?: string;
+  explanation?: string;
+  optionImageUrls?: string[];
+  optionImageIds?: string[];
   type: QuestionType;
   category: string[];
   // The following fields are kept for compatibility, but you should use type-specific fields
@@ -162,6 +188,7 @@ export type User = {
   userRole: string;
   points: number;
   submittedAnswer: boolean;
+  submittedAnswers?: string[];
 };
 
 export type Lobby = {
@@ -169,9 +196,16 @@ export type Lobby = {
   quizMeta: QuizMeta;            // BE sends quizMeta, NOT quiz
   status: string;
   gameSettings: GameSettings;
+  currentItemIndex?: number;
+  currentItem?: QuizItem;
   currentQuestionIndex: number;
   currentQuestion: QuizQuestion;
   timeRemaining: number;
+  questionAnalytics?: {
+    anonymousResponses?: unknown[];
+    answerBuckets?: unknown[];
+    optionBreakdown?: unknown[];
+  };
 };
 
 export type MessageRequest = {

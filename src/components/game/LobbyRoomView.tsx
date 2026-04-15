@@ -338,7 +338,7 @@ export default function LobbyRoomView() {
                   <Stack spacing={1.5}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        Lobby Chat
+                        Chat
                       </Typography>
                       <Chip label={`${chatMessages.length} messages`} size="small" />
                     </Box>
@@ -413,51 +413,48 @@ export default function LobbyRoomView() {
                         </Box>
                       )}
                     </Box>
+
+                    <Divider />
+
+                    <TextField
+                      id="message"
+                      label="Type a message"
+                      variant="outlined"
+                      fullWidth
+                      value={lobbyMessage}
+                      onChange={(e) => setLobbyMessage(e.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Send a message to the lobby"
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              aria-label="send message"
+                              onClick={handleSendMessage}
+                              edge="end"
+                              disabled={!lobbyMessage.trim()}
+                              color="primary"
+                            >
+                              <SendIcon />
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+
+                    {error && (
+                      <Typography color="error" sx={{ mt: 0.5 }}>
+                        {error}
+                      </Typography>
+                    )}
                   </Stack>
                 </CardContent>
               </Card>
-
-              <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                Lobby Message
-              </Typography>
-              <TextField
-                id="message"
-                label="Type Message"
-                variant="outlined"
-                fullWidth
-                value={lobbyMessage}
-                onChange={(e) => setLobbyMessage(e.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                helperText="Press Enter or click the send icon to post your message to the lobby."
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="send message"
-                        onClick={handleSendMessage}
-                        edge="end"
-                        disabled={!lobbyMessage.trim()}
-                        color="primary"
-                      >
-                        <SendIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              {error && (
-                <Typography color="error" sx={{ mt: 1 }}>
-                  {error}
-                </Typography>
-              )}
-              </Box>
             </Box>
 
             {userDetails.userRole === "host" ? (

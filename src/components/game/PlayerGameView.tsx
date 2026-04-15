@@ -1,5 +1,6 @@
-import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
 import {
+  CalendarQuestion,
   DropdownQuestion,
   EssayQuestion,
   ImageBasedQuestion,
@@ -10,22 +11,52 @@ import {
   ShortAnswerQuestion,
   TrueFalseQuestion,
 } from "./questionTypes";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
 
 import Leaderboard from "./Leaderboard";
 import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
+import { resolveMediaUrl } from "../../util/mediaUrl";
+import { QuizQuestion } from "../../stores/types";
 
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
+  const isSlideItem = game.currentItem?.kind === 'slide';
+  const currentSlide = game.currentItem?.slide;
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [textAnswer, setTextAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pointsAtSubmission, setPointsAtSubmission] = useState<number | null>(null);
   const dispatch = useDispatch();
+  
+  // Memoize ranking order change callback to prevent RankingComponent state reset
+  const handleRankingOrderChange = useCallback((ordered: string[]) => {
+    setSelectedAnswers(ordered);
+  }, []);
+
   const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+  const getQuestionTypeTitle = (typeName?: string) => {
+    switch (typeName) {
+      case 'multiple_choice': return 'Multiple-choice question';
+      case 'multi_select': return 'Multi-select question';
+      case 'dropdown': return 'Dropdown question';
+      case 'true_false': return 'True/false question';
+      case 'short_answer': return 'Short-answer question';
+      case 'fill_in_blank': return 'Fill-in-the-blank question';
+      case 'numerical': return 'Numerical question';
+      case 'match_the_phrase': return 'Match-the-phrase question';
+      case 'matching': return 'Matching question';
+      case 'ranking': return 'Ranking question';
+      case 'ordering': return 'Ranking question';
+      case 'image_based': return 'Image-based question';
+      case 'calendar': return 'Calendar question';
+      case 'essay': return 'Essay question';
+      default: return 'Question';
+    }
+  };
 
   useEffect(() => {
     const questionType = game.currentQuestion?.type;
@@ -39,11 +70,17 @@ export default function PlayerGameView() {
     }
   }, [game.currentQuestion?.question, game.currentQuestion?.type]);
 
+  useEffect(() => {
+    if (!game.showLeaderboard) {
+      setPointsAtSubmission(null);
+    }
+  }, [game.currentQuestionIndex, game.showLeaderboard]);
+
   const handleAnswerSelect = (option: string) => {
     if (game.user.submittedAnswer) return;
 
     const typeName = game.currentQuestion?.type?.name;
-    if (typeName === 'multiple_choice') {
+    if (typeName === 'multiple_choice' || typeName === 'true_false') {
       setSelectedAnswers([option]);
       return;
     }
@@ -58,32 +95,37 @@ export default function PlayerGameView() {
   const handleSubmitAnswers = async () => {
     const currentType = game.currentQuestion?.type?.name;
     const allowsEmptySubmission = currentType === 'multi_select';
+    const questionSnapshot = game.currentQuestion;
+    const submittedSnapshot = [...selectedAnswers];
 
-    if (!allowsEmptySubmission && selectedAnswers.length === 0) return;
+    if (!allowsEmptySubmission && submittedSnapshot.length === 0) return;
 
     if (currentType === 'ranking' || currentType === 'ordering') {
-      console.log('[Ranking Submit] Submitted order:', selectedAnswers);
+      console.log('[Ranking Submit] Submitted order:', submittedSnapshot);
     }
 
     setIsSubmitting(true);
     setError(null);
+    setPointsAtSubmission(game.user.points ?? 0);
 
     try {
+      dispatch(gameActions.setLastSubmittedQuestion(questionSnapshot));
       await executeWebSocketCommand(
         "submitAnswer",
         {
           roomCode: game.roomCode,
           user: game.user,
-          answer: selectedAnswers
+          answer: submittedSnapshot
         },
         (errorMessage) => setError(errorMessage)
       );
 
-      dispatch(gameActions.setLastSubmittedAnswers(selectedAnswers));
+      dispatch(gameActions.setLastSubmittedAnswers(submittedSnapshot));
       setSelectedAnswers([]);
       dispatch(gameActions.setSubmittedAnswer(true));
     } catch (err) {
       setError('Failed to submit answer. Please try again.');
+      setPointsAtSubmission(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -105,6 +147,7 @@ export default function PlayerGameView() {
         return (
           <MultipleChoiceQuestion
             options={t.options}
+            optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={handleAnswerSelect}
             disabled={isSubmitting}
@@ -115,6 +158,7 @@ export default function PlayerGameView() {
         return (
           <MultipleChoiceQuestion
             options={t.options}
+            optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={handleAnswerSelect}
             disabled={isSubmitting}
@@ -126,6 +170,7 @@ export default function PlayerGameView() {
         return (
           <DropdownQuestion
             options={options}
+            optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={(answers) => setSelectedAnswers(answers)}
             disabled={isDisabled}
@@ -141,8 +186,7 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'short_answer':
-      case 'fill_in_blank': {
+      case 'short_answer': {
         return (
           <ShortAnswerQuestion
             textAnswer={textAnswer}
@@ -151,13 +195,38 @@ export default function PlayerGameView() {
           />
         );
       }
+      case 'fill_in_blank': {
+        const blankCount = Math.max(1, q.question.split('____').length - 1);
+        return (
+          <Stack spacing={1.5}>
+            {Array.from({ length: blankCount }).map((_, index) => (
+              <TextField
+                key={`blank-${index}`}
+                label={`Blank ${index + 1}`}
+                value={selectedAnswers[index] || ''}
+                onChange={(e) => {
+                  const next = [...selectedAnswers];
+                  next[index] = e.target.value;
+                  setSelectedAnswers(next);
+                }}
+                disabled={isDisabled}
+                fullWidth
+              />
+            ))}
+          </Stack>
+        );
+      }
       case 'numerical': {
         return (
           <ShortAnswerQuestion
             textAnswer={textAnswer}
-            onAnswerChange={handleTextChange}
+            onAnswerChange={(value) => {
+              setTextAnswer(value);
+              setSelectedAnswers(value.trim().length > 0 ? [value] : []);
+            }}
             disabled={isSubmitting}
             label="Your Numerical Answer"
+            inputType="number"
           />
         );
       }
@@ -195,18 +264,31 @@ export default function PlayerGameView() {
         return (
           <RankingQuestion
             items={items}
+            optionImageUrls={q.optionImageUrls}
             disabled={isDisabled}
-            onOrderChange={(ordered) => setSelectedAnswers(ordered)}
+            onOrderChange={handleRankingOrderChange}
           />
         );
       }
       case 'image_based': {
         return (
           <ImageBasedQuestion
-            imageUrl={t.imageUrl}
+            imageUrl={t.imageUrl || q.imageUrl || ''}
             textAnswer={textAnswer}
             onAnswerChange={handleTextChange}
             disabled={isSubmitting}
+          />
+        );
+      }
+      case 'calendar': {
+        const correctAnswers = ((t as any).correctAnswers || q.correctAnswers || []) as string[];
+        return (
+          <CalendarQuestion
+            question={q.question || ''}
+            correctAnswers={correctAnswers}
+            disabled={isDisabled}
+            onAnswer={(dates) => setSelectedAnswers(dates)}
+            showCorrectAnswers={false}
           />
         );
       }
@@ -228,6 +310,43 @@ export default function PlayerGameView() {
 
   const sortNormalized = (values: string[]) => [...values].map(normalizeText).sort();
 
+  const levenshteinDistance = (left: string, right: string): number => {
+    if (left === right) return 0;
+    if (!left.length) return right.length;
+    if (!right.length) return left.length;
+
+    const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+    const current = new Array(right.length + 1).fill(0);
+
+    for (let i = 1; i <= left.length; i += 1) {
+      current[0] = i;
+      for (let j = 1; j <= right.length; j += 1) {
+        const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
+        current[j] = Math.min(
+          previous[j] + 1,
+          current[j - 1] + 1,
+          previous[j - 1] + substitutionCost,
+        );
+      }
+
+      for (let j = 0; j <= right.length; j += 1) {
+        previous[j] = current[j];
+      }
+    }
+
+    return previous[right.length];
+  };
+
+  // Fuzzy match helper: accepts close spellings like "paicific" for "pacific"
+  const isFuzzyMatch = (submitted: string, accepted: string, threshold: number = 0.85): boolean => {
+    const maxLength = Math.max(submitted.length, accepted.length);
+    if (!maxLength) return true;
+
+    const distance = levenshteinDistance(submitted, accepted);
+    const similarity = 1 - distance / maxLength;
+    return similarity >= threshold;
+  };
+
   const compareAsSets = (left: string[], right: string[]) => {
     if (left.length !== right.length) return false;
     const normalizedLeft = sortNormalized(left);
@@ -235,17 +354,15 @@ export default function PlayerGameView() {
     return normalizedLeft.every((value, index) => value === normalizedRight[index]);
   };
 
-  const isAnswerCorrect = () => {
-    const question = game.currentQuestion;
+  const isAnswerCorrectFor = (question: QuizQuestion | undefined, submitted: string[]) => {
     const type = question?.type;
-    const submitted = game.lastSubmittedAnswers;
 
     if (!question || !type || submitted.length === 0) return false;
 
     switch (type.name) {
       case 'multiple_choice':
-        return selectedAnswers[0]
-          ? normalizeText(selectedAnswers[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
+        return submitted[0]
+          ? normalizeText(submitted[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
           : false;
 
       case 'multi_select':
@@ -261,9 +378,36 @@ export default function PlayerGameView() {
           : false;
 
       case 'short_answer':
+      {
+        const accepted = ((question.correctAnswers || (type as any).correctAnswers || []) as string[]).map(normalizeText);
+        const submittedNormalized = normalizeText(submitted[0] || '');
+        // Check for exact match first, then fuzzy match
+        return accepted.some((answer: string) => 
+          answer === submittedNormalized || isFuzzyMatch(submittedNormalized, answer)
+        );
+      }
+
       case 'fill_in_blank': {
-        const accepted = (question.correctAnswers || (type as any).correctAnswers || []).map(normalizeText);
-        return accepted.includes(normalizeText(submitted[0] || ''));
+        const blankCount = Math.max(1, question.question.split('____').length - 1);
+        const groupedAccepted = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
+        const submittedTrimmed = submitted.slice(0, blankCount).map((s) => normalizeText(s || ''));
+        if (submittedTrimmed.length < blankCount || submittedTrimmed.some((s) => !s)) return false;
+
+        return submittedTrimmed.every((value, index) => {
+          const rawAccepted = groupedAccepted[index] || '';
+          const acceptedValues = rawAccepted
+            .split('|')
+            .map((v) => normalizeText(v))
+            .filter(Boolean);
+          if (!acceptedValues.length) {
+            const fallback = normalizeText(groupedAccepted[index] || '');
+            return fallback ? fallback === value || isFuzzyMatch(value, fallback) : false;
+          }
+          // Check for exact match first, then fuzzy match
+          return acceptedValues.some(accepted => 
+            accepted === value || isFuzzyMatch(value, accepted)
+          );
+        });
       }
 
       case 'numerical': {
@@ -293,9 +437,23 @@ export default function PlayerGameView() {
         return submitted.length === correctOrder.length && submitted.every((value, index) => normalizeText(value) === normalizeText(correctOrder[index] || ''));
       }
 
+      case 'calendar': {
+        const correctDates = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
+        if (submitted.length === 0 || correctDates.length === 0) return false;
+        const submittedNormalized = new Set(submitted.map((d) => d.trim()).sort());
+        const correctNormalized = new Set(correctDates.map((d) => d.trim()).sort());
+        if (submittedNormalized.size !== correctNormalized.size) return false;
+        return Array.from(submittedNormalized).every((date) => correctNormalized.has(date));
+      }
+
       default:
         return false;
     }
+  };
+
+  const isAnswerCorrect = () => {
+    const question = game.lastSubmittedQuestion || game.currentQuestion;
+    return isAnswerCorrectFor(question, game.lastSubmittedAnswers);
   };
 
   // Get player's current rank and stats
@@ -309,14 +467,20 @@ export default function PlayerGameView() {
       )
       .sort((a, b) => b.points - a.points);
 
-    const currentPlayerIndex = sortedPlayers.findIndex(p => p.userName === game.user.userName);
-    const currentPlayer = sortedPlayers[currentPlayerIndex];
+    const normalize = (value: string) => (value || '').trim().toLowerCase();
+    const currentPlayerName = normalize(game.user.userName);
+    const foundIndex = sortedPlayers.findIndex((p) => normalize(p.userName) === currentPlayerName);
+    const currentPlayerIndex = foundIndex >= 0
+      ? foundIndex
+      : (sortedPlayers.length === 1 ? 0 : -1);
+    const currentPlayer = currentPlayerIndex >= 0 ? sortedPlayers[currentPlayerIndex] : undefined;
     const leaderPlayer = sortedPlayers[0];
-    const pointsBehind = leaderPlayer && currentPlayer ? leaderPlayer.points - currentPlayer.points : 0;
+    const currentPoints = currentPlayer?.points ?? game.user.points ?? 0;
+    const pointsBehind = leaderPlayer ? Math.max(0, leaderPlayer.points - currentPoints) : 0;
 
     return {
-      rank: currentPlayerIndex + 1,
-      points: currentPlayer?.points || 0,
+      rank: currentPlayerIndex >= 0 ? currentPlayerIndex + 1 : null,
+      points: currentPoints,
       pointsBehind,
       leaderName: leaderPlayer?.userName,
       totalPlayers: sortedPlayers.length,
@@ -333,6 +497,56 @@ export default function PlayerGameView() {
 
       {!game.showLeaderboard ? (
         <>
+          {isSlideItem ? (
+            <Card
+              elevation={0}
+              sx={{
+                mb: 2,
+                borderRadius: 3,
+                border: (theme) => `1px solid ${theme.palette.divider}`,
+                background: (theme) => theme.palette.mode === 'dark'
+                  ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
+                  : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
+                boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                <Stack spacing={1.5}>
+                  <Chip
+                    label="Slide"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ width: 'fit-content', fontWeight: 700 }}
+                  />
+                  <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+                    {currentSlide?.title || 'Presentation Slide'}
+                  </Typography>
+                  {currentSlide?.imageUrl ? (
+                    <Box
+                      component="img"
+                      src={resolveMediaUrl(currentSlide.imageUrl)}
+                      alt={currentSlide?.title || 'Slide'}
+                      sx={{
+                        width: '100%',
+                        maxWidth: 860,
+                        borderRadius: 3,
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                        boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
+                        objectFit: 'contain',
+                        mt: 1,
+                      }}
+                    />
+                  ) : null}
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {currentSlide?.content || 'No slide content provided.'}
+                  </Typography>
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    Wait for the host to continue to the next item.
+                  </Alert>
+                </Stack>
+              </CardContent>
+            </Card>
+          ) : (
           <Card
             elevation={0}
             sx={{
@@ -353,6 +567,9 @@ export default function PlayerGameView() {
                   variant="outlined"
                   sx={{ width: 'fit-content', fontWeight: 700 }}
                 />
+                <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                  {getQuestionTypeTitle(game.currentQuestion?.type?.name)}
+                </Typography>
                 <Typography
                   variant="h4"
                   sx={{
@@ -364,15 +581,32 @@ export default function PlayerGameView() {
                 >
                   {game.currentQuestion?.question}
                 </Typography>
+                {game.currentQuestion?.imageUrl ? (
+                  <Box
+                    component="img"
+                    src={resolveMediaUrl(game.currentQuestion.imageUrl)}
+                    alt="Question"
+                    sx={{
+                      width: '100%',
+                      maxWidth: 860,
+                      borderRadius: 3,
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                      boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
+                      objectFit: 'contain',
+                      mt: 1,
+                    }}
+                  />
+                ) : null}
               </Stack>
             </CardContent>
           </Card>
+          )}
 
-          {game.user.submittedAnswer ? (
+          {!isSlideItem && game.user.submittedAnswer ? (
             <Typography variant="h6" color="success.main" gutterBottom>
               Answer Submitted Successfully
             </Typography>
-          ) : (
+          ) : !isSlideItem ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {renderQuestionInput()}
               
@@ -380,7 +614,11 @@ export default function PlayerGameView() {
                 variant="contained"
                 color="primary"
                 onClick={handleSubmitAnswers}
-                disabled={((game.currentQuestion?.type?.name !== 'multi_select') && selectedAnswers.length === 0) || isSubmitting}
+                disabled={
+                  isSubmitting ||
+                  (game.currentQuestion?.type?.name !== 'multi_select' && selectedAnswers.length === 0) ||
+                  (game.currentQuestion?.type?.name === 'fill_in_blank' && selectedAnswers.some((answer) => !answer?.trim()))
+                }
                 sx={{ mt: 2 }}
               >
                 {isSubmitting ? (
@@ -390,12 +628,15 @@ export default function PlayerGameView() {
                 )}
               </Button>
             </Box>
-          )}
+          ) : null}
         </>
       ) : !game.finalQuestionLeaderboard ? (
         <>
           {(() => {
             const stats = getPlayerStats();
+            const submissionWasCorrect = pointsAtSubmission !== null
+              ? stats.points > pointsAtSubmission
+              : isAnswerCorrect();
             const getRankOrdinal = (n: number) => {
               const s = ['th', 'st', 'nd', 'rd'];
               const v = n % 100;
@@ -408,14 +649,14 @@ export default function PlayerGameView() {
                   p: 3,
                   borderRadius: 3,
                   border: '1px solid',
-                  borderColor: isAnswerCorrect() ? 'success.main' : 'error.main',
-                  bgcolor: isAnswerCorrect() ? 'success.light' : 'error.light',
-                  color: isAnswerCorrect() ? 'success.contrastText' : 'error.contrastText',
+                  borderColor: submissionWasCorrect ? 'success.main' : 'error.main',
+                  bgcolor: submissionWasCorrect ? 'success.light' : 'error.light',
+                  color: submissionWasCorrect ? 'success.contrastText' : 'error.contrastText',
                   textAlign: 'center',
                 }}
               >
                 <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-                  {isAnswerCorrect() ? '✅ You got it right!' : '❌ Incorrect'}
+                  {submissionWasCorrect ? '✅ You got it right!' : '❌ Incorrect'}
                 </Typography>
                 
                 {/* Points Display */}
@@ -428,22 +669,35 @@ export default function PlayerGameView() {
 
                 {/* Rank Message */}
                 <Box sx={{ mb: 1 }}>
-                  {stats.pointsBehind === 0 ? (
+                  {stats.rank && stats.pointsBehind === 0 ? (
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>
                       🏆 You're in {getRankOrdinal(stats.rank)} place!
                     </Typography>
-                  ) : (
+                  ) : stats.rank ? (
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>
                       You are {stats.pointsBehind} {stats.pointsBehind === 1 ? 'point' : 'points'} behind {stats.leaderName}!
+                    </Typography>
+                  ) : (
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      Waiting for rank update...
                     </Typography>
                   )}
                 </Box>
 
                 <Typography variant="body2" sx={{ opacity: 0.9, mt: 2 }}>
-                  {isAnswerCorrect()
+                  {submissionWasCorrect
                     ? 'Great job! Keep this up.'
                     : 'Review the correct answer on the host screen.'}
                 </Typography>
+
+                {game.currentQuestion?.explanation ? (
+                  <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.15)' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                      Explanation
+                    </Typography>
+                    <Typography variant="body2">{game.currentQuestion.explanation}</Typography>
+                  </Box>
+                ) : null}
               </Box>
             );
           })()}

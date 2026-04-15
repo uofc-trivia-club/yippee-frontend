@@ -1,18 +1,26 @@
 // this slice handles the state of a game
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
-import { GameSettings, QuizQuestion, User } from "./types"; 
+import { GameSettings, QuizItem, QuizQuestion, User } from "./types"; 
 
 interface GameState {
     user: User; // own user
     roomCode: string;
     clientsInLobby: User[];
     gameSettings: GameSettings | undefined;
+    currentItem: QuizItem | undefined;
+    currentItemIndex: number;
     currentQuestion: QuizQuestion | undefined;  
     currentQuestionIndex: number;
     gameStatus: string;
     showLeaderboard: boolean;
     finalQuestionLeaderboard: boolean; // leaderboard display is different if it is the final question
     lastSubmittedAnswers: string[];
+    lastSubmittedQuestion: QuizQuestion | undefined;
+    questionAnalytics: {
+        anonymousResponses?: unknown[];
+        answerBuckets?: unknown[];
+        optionBreakdown?: unknown[];
+    } | undefined;
     quizQuestions: QuizQuestion[];
     questionCount: number;
 }
@@ -28,12 +36,16 @@ const initialState = {
     roomCode: "", 
     clientsInLobby: [], 
     gameSettings: undefined,
+    currentItem: undefined,
+    currentItemIndex: 0,
     currentQuestion: undefined, 
     currentQuestionIndex: 0,
     gameStatus: "",
     showLeaderboard: false,
     finalQuestionLeaderboard: false,
     lastSubmittedAnswers: [],
+    lastSubmittedQuestion: undefined,
+    questionAnalytics: undefined,
     quizQuestions: [],
     questionCount: 0,
 } satisfies GameState as GameState
@@ -65,6 +77,12 @@ const gameSlice = createSlice({
         setLastSubmittedAnswers: (state, action: PayloadAction<string[]>) => {
             state.lastSubmittedAnswers = action.payload;
         },
+        setLastSubmittedQuestion: (state, action: PayloadAction<QuizQuestion | undefined>) => {
+            state.lastSubmittedQuestion = action.payload;
+        },
+        setQuestionAnalytics: (state, action: PayloadAction<GameState['questionAnalytics']>) => {
+            state.questionAnalytics = action.payload;
+        },
         setShowLeaderboard: (state, action: PayloadAction<boolean>) => {
             // console.log('setShowLeaderboard:', { before: state.showLeaderboard , after: action.payload });
             state.showLeaderboard = action.payload;
@@ -75,14 +93,34 @@ const gameSlice = createSlice({
         },        upsertClientsInLobby: (state, action: PayloadAction<User[]>) => {
             // console.log('upsertClientsInLobby:', { before: [...state.clientsInLobby], after: action.payload });
             state.clientsInLobby = action.payload;
+
+            const normalize = (value: string) => (value || '').trim().toLowerCase();
+            const currentUserName = normalize(state.user.userName);
+            if (!currentUserName) {
+                return;
+            }
+
+            const matchedUser = action.payload.find((user) => normalize(user.userName) === currentUserName);
+            if (matchedUser) {
+                state.user.points = matchedUser.points;
+                state.user.submittedAnswer = matchedUser.submittedAnswer;
+                state.user.userMessage = matchedUser.userMessage;
+                state.user.userRole = matchedUser.userRole || state.user.userRole;
+            }
         },
         setGameSettings: (state, action: PayloadAction<GameSettings>) => {
             // console.log('setGameSettings:', { before: state.gameSettings, after: action.payload });
             state.gameSettings = action.payload;
         },
-        setCurrentQuestion: (state, action: PayloadAction<QuizQuestion>) => {
+        setCurrentQuestion: (state, action: PayloadAction<QuizQuestion | undefined>) => {
             // console.log('setCurrentQuestion:', { before: state.currentQuestion, after: action.payload });
             state.currentQuestion = action.payload;
+        },
+        setCurrentItem: (state, action: PayloadAction<QuizItem | undefined>) => {
+            state.currentItem = action.payload;
+        },
+        setCurrentItemIndex: (state, action: PayloadAction<number>) => {
+            state.currentItemIndex = action.payload;
         },
         setCurrentQuestionIndex: (state, action: PayloadAction<number>) => {
             state.currentQuestionIndex = action.payload;

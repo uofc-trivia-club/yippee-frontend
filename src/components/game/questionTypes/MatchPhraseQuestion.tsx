@@ -1,5 +1,5 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
-import { DndContext, DragEndEvent, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, PointerSensor, TouchSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,11 +14,12 @@ interface MatchPhraseQuestionProps {
 }
 
 type AssignmentMap = Record<string, string>;
+type OptionEntry = { id: string; text: string };
 
-function DraggableOption({ option, index, disabled }: { option: string; index: number; disabled: boolean }) {
+function DraggableOption({ option, disabled, selected, onSelect }: { option: OptionEntry; disabled: boolean; selected?: boolean; onSelect?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `option-${index}`,
-    data: { option },
+    id: option.id,
+    data: { optionId: option.id },
     disabled,
   });
 
@@ -27,15 +28,19 @@ function DraggableOption({ option, index, disabled }: { option: string; index: n
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      label={option}
+      label={option.text}
       color="primary"
       variant="outlined"
+      onClick={disabled ? undefined : onSelect}
       sx={{
         cursor: disabled ? "default" : "grab",
         transform: CSS.Transform.toString(transform),
         opacity: isDragging ? 0.55 : 1,
         fontWeight: 700,
         px: 0.5,
+        touchAction: "none",
+        borderColor: selected ? "primary.main" : undefined,
+        bgcolor: selected ? "rgba(25, 118, 210, 0.08)" : undefined,
       }}
     />
   );
@@ -110,50 +115,73 @@ export default function MatchPhraseQuestion({
     [phraseSegments.length, slots]
   );
 
-  const [assignments, setAssignments] = useState<AssignmentMap>(correctAssign || {});
+  const optionEntries = useMemo<OptionEntry[]>(
+    () => options.map((text, index) => ({ id: `opt-${index}`, text })),
+    [options]
+  );
+  const optionMap = useMemo(() => Object.fromEntries(optionEntries.map((entry) => [entry.id, entry.text])), [optionEntries]);
+
+  const [assignments, setAssignments] = useState<AssignmentMap>({});
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 120, tolerance: 8 },
     })
   );
 
   useEffect(() => {
-    if (showCorrectAnswers && correctAssign) {
-      setAssignments(correctAssign);
-      return;
-    }
-
     setAssignments({});
+    setSelectedOptionId(null);
   }, [correctAssign, showCorrectAnswers, phrase]);
 
   useEffect(() => {
     if (showCorrectAnswers) return;
 
     const formattedMatches = Object.entries(assignments)
-      .filter(([, value]) => Boolean(value))
-      .map(([slotId, value]) => `${slotId}:${value}`);
+      .filter(([, optionId]) => Boolean(optionId))
+      .map(([slotId, optionId]) => `${slotId}:${optionMap[optionId] || ''}`)
+      .filter((entry) => !entry.endsWith(':'));
 
     onMatchesChange(formattedMatches);
-  }, [assignments, onMatchesChange, showCorrectAnswers]);
+  }, [assignments, onMatchesChange, optionMap, showCorrectAnswers]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (disabled || showCorrectAnswers) return;
 
-    const option = event.active.data.current?.option as string | undefined;
+    const optionId = event.active.data.current?.optionId as string | undefined;
     const slotId = event.over?.id as string | undefined;
-    if (!option || !slotId) return;
+    if (!optionId || !slotId) return;
 
     setAssignments((prev) => {
       const next: AssignmentMap = { ...prev };
       for (const existingSlotId of Object.keys(next)) {
-        if (next[existingSlotId] === option) {
+        if (next[existingSlotId] === optionId) {
           delete next[existingSlotId];
         }
       }
-      next[slotId] = option;
+      next[slotId] = optionId;
       return next;
     });
+    setSelectedOptionId(null);
+  };
+
+  const assignSelectedOptionToSlot = (slotId: string) => {
+    if (disabled || showCorrectAnswers || !selectedOptionId) return;
+    setAssignments((prev) => {
+      const next: AssignmentMap = { ...prev };
+      for (const existingSlotId of Object.keys(next)) {
+        if (next[existingSlotId] === selectedOptionId) {
+          delete next[existingSlotId];
+        }
+      }
+      next[slotId] = selectedOptionId;
+      return next;
+    });
+    setSelectedOptionId(null);
   };
 
   const clearSlot = (slotId: string) => {
@@ -169,8 +197,8 @@ export default function MatchPhraseQuestion({
     return <Typography>No phrase available.</Typography>;
   }
 
-  const currentAssignments = showCorrectAnswers && correctAssign ? correctAssign : assignments;
-  const revealedOptions = options.length > 0 ? options : [];
+  const revealedOptions = optionEntries.length > 0 ? optionEntries : [];
+  const assignedOptionIds = new Set(Object.values(assignments));
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -194,19 +222,28 @@ export default function MatchPhraseQuestion({
           {phraseSegments.map((segment, index) => {
             const slotId = derivedSlotIds[index];
             const slotLabel = `Blank ${index + 1}`;
-            const slotValue = slotId ? currentAssignments[slotId] : undefined;
+            const slotValue = slotId
+              ? (showCorrectAnswers
+                  ? correctAssign?.[slotId]
+                  : (assignments[slotId] ? optionMap[assignments[slotId]] : undefined))
+              : undefined;
 
             return (
               <span key={`phrase-segment-${index}`}>
                 {segment}
                 {index < derivedSlotIds.length && slotId ? (
-                  <BlankSlot
-                    slotId={slotId}
-                    label={slotLabel}
-                    value={slotValue}
-                    disabled={disabled}
-                    onClear={showCorrectAnswers ? undefined : () => clearSlot(slotId)}
-                  />
+                  <Box
+                    onClick={() => assignSelectedOptionToSlot(slotId)}
+                    sx={{ display: 'inline-flex', alignItems: 'center', cursor: selectedOptionId && !disabled && !showCorrectAnswers ? 'pointer' : 'default' }}
+                  >
+                    <BlankSlot
+                      slotId={slotId}
+                      label={slotLabel}
+                      value={slotValue}
+                      disabled={disabled}
+                      onClear={showCorrectAnswers ? undefined : () => clearSlot(slotId)}
+                    />
+                  </Box>
                 ) : null}
               </span>
             );
@@ -215,8 +252,14 @@ export default function MatchPhraseQuestion({
       </Paper>
 
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1.5 }}>
-          {revealedOptions.map((option, index) => (
-            <DraggableOption key={`${option}-${index}`} option={option} index={index} disabled={disabled || showCorrectAnswers} />
+          {revealedOptions.filter((option) => !assignedOptionIds.has(option.id)).map((option) => (
+            <DraggableOption
+              key={option.id}
+              option={option}
+              disabled={disabled || showCorrectAnswers}
+              selected={selectedOptionId === option.id}
+              onSelect={() => setSelectedOptionId((prev) => (prev === option.id ? null : option.id))}
+            />
           ))}
         </Stack>
 
@@ -235,7 +278,7 @@ export default function MatchPhraseQuestion({
 
       {!disabled && !showCorrectAnswers && (
         <Typography variant="caption" color="text.secondary">
-          Drag each word onto a blank. You can move words between blanks before submitting.
+          Drag each word onto a blank, or tap a word then tap a blank on mobile.
         </Typography>
       )}
       </Box>
