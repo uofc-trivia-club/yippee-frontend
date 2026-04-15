@@ -134,8 +134,22 @@ export const isAnswerCorrectFor = (question: QuizQuestion | undefined, submitted
     }
 
     case 'matching': {
-      const correct = question.correctAnswers || [];
-      return sortNormalized(submitted).join('|') === sortNormalized(correct).join('|');
+      const typeAny = type as any;
+      const fromMap = typeAny.correctMatches && typeof typeAny.correctMatches === 'object'
+        ? Object.entries(typeAny.correctMatches as Record<string, string>).map(([left, right]) => `${left}:${right}`)
+        : [];
+      const fromPairs = Array.isArray(typeAny.pairs)
+        ? (typeAny.pairs as Array<{ left?: string; right?: string; leftItem?: string; rightItem?: string }>)
+            .map((pair) => {
+              const left = (pair.left || pair.leftItem || '').trim();
+              const right = (pair.right || pair.rightItem || '').trim();
+              return left && right ? `${left}:${right}` : '';
+            })
+            .filter(Boolean)
+        : [];
+      const legacy = Array.isArray(question.correctAnswers) ? question.correctAnswers : [];
+      const correct = fromMap.length > 0 ? fromMap : (fromPairs.length > 0 ? fromPairs : legacy);
+      return compareAsSets(submitted, correct);
     }
 
     case 'ranking':

@@ -116,9 +116,30 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const matchPhraseCorrectAssign = useMemo(() => {
         if (t?.name !== 'match_the_phrase') return {} as Record<string, string>;
 
-        const fromType = (t as any)?.correctAssign;
+        const typeAny = t as any;
+
+        const fromType = typeAny?.correctAssign;
         if (fromType && typeof fromType === 'object' && !Array.isArray(fromType) && Object.keys(fromType).length > 0) {
             return fromType as Record<string, string>;
+        }
+
+        const slotIds = ((typeAny?.slots || typeAny?.blanks || []) as string[]).map((slot) => String(slot || '').trim()).filter(Boolean);
+        const orderedAnswers = (
+            Array.isArray(typeAny?.correct) ? typeAny.correct
+            : Array.isArray(typeAny?.correctAnswers) ? typeAny.correctAnswers
+            : Array.isArray(q?.correctAnswers) ? q?.correctAnswers
+            : []
+        ) as string[];
+
+        if (slotIds.length > 0 && orderedAnswers.length > 0) {
+            const mapped: Record<string, string> = {};
+            slotIds.forEach((slotId, index) => {
+                const value = String(orderedAnswers[index] || '').trim();
+                if (slotId && value) mapped[slotId] = value;
+            });
+            if (Object.keys(mapped).length > 0) {
+                return mapped;
+            }
         }
 
         const fromQuestion: string[] = Array.isArray(q?.correctAnswers) ? (q?.correctAnswers as string[]) : [];
@@ -501,7 +522,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 return (
                     <MatchPhraseQuestion
                         phrase={(t as any).phrase || q?.question || ''}
-                        slots={((t as any).slots || []) as string[]}
+                        slots={(((t as any).slots || (t as any).blanks || []) as string[])}
                         options={((t as any).options || []) as string[]}
                         disabled={true}
                         showCorrectAnswers={displayCorrectAnswers}
