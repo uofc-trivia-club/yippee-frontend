@@ -428,7 +428,14 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'ranking':
             case 'ordering': {
-                const items = Array.isArray((t as any).items) ? (t as any).items : [];
+                const correctOrder = Array.isArray((t as any).correctOrder) && (t as any).correctOrder.length > 0
+                    ? (t as any).correctOrder
+                    : Array.isArray(q?.correctAnswers) && q.correctAnswers.length > 0
+                        ? q.correctAnswers
+                        : [];
+                const items = correctOrder.length > 0
+                    ? correctOrder
+                    : Array.isArray((t as any).items) ? (t as any).items : [];
                 if (!items.length) {
                     return <Typography color="text.secondary">No ranking items to display.</Typography>;
                 }
@@ -437,9 +444,24 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Items to order</Typography>
                         <Stack spacing={1}>
                             {items.map((item: string, idx: number) => (
-                                <Box key={idx} sx={optionTileSx(false)}>
+                                <Box
+                                    key={idx}
+                                    sx={{
+                                        ...optionTileSx(true),
+                                        borderColor: displayCorrectAnswers ? theme.palette.success.main : theme.palette.divider,
+                                        bgcolor: displayCorrectAnswers
+                                            ? (theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.16)' : 'rgba(76, 175, 80, 0.10)')
+                                            : optionTileSx(false).bgcolor,
+                                    }}
+                                >
                                     <Stack direction="row" spacing={1.25} alignItems="center">
-                                        <Chip label={idx + 1} size="small" variant="outlined" sx={{ minWidth: 34, fontWeight: 700 }} />
+                                        <Chip
+                                            label={idx + 1}
+                                            size="small"
+                                            color={displayCorrectAnswers ? 'success' : 'default'}
+                                            variant={displayCorrectAnswers ? 'filled' : 'outlined'}
+                                            sx={{ minWidth: 34, fontWeight: 700 }}
+                                        />
                                         <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>{item}</Typography>
                                         {resolveMediaUrl(q?.optionImageUrls?.[idx]) ? (
                                             <Box

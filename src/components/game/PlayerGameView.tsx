@@ -19,7 +19,7 @@ import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
 import { resolveMediaUrl } from "../../util/mediaUrl";
-import { QuizQuestion } from "../../stores/types";
+import { PlayerSubmissionSummary, getQuestionTypeTitle, isAnswerCorrectFor } from "./player";
 
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
@@ -38,25 +38,6 @@ export default function PlayerGameView() {
   }, []);
 
   const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
-  const getQuestionTypeTitle = (typeName?: string) => {
-    switch (typeName) {
-      case 'multiple_choice': return 'Multiple-choice question';
-      case 'multi_select': return 'Multi-select question';
-      case 'dropdown': return 'Dropdown question';
-      case 'true_false': return 'True/false question';
-      case 'short_answer': return 'Short-answer question';
-      case 'fill_in_blank': return 'Fill-in-the-blank question';
-      case 'numerical': return 'Numerical question';
-      case 'match_the_phrase': return 'Match-the-phrase question';
-      case 'matching': return 'Matching question';
-      case 'ranking': return 'Ranking question';
-      case 'ordering': return 'Ranking question';
-      case 'image_based': return 'Image-based question';
-      case 'calendar': return 'Calendar question';
-      case 'essay': return 'Essay question';
-      default: return 'Question';
-    }
-  };
 
   useEffect(() => {
     const questionType = game.currentQuestion?.type;
@@ -306,158 +287,15 @@ export default function PlayerGameView() {
     }
   };
 
-  const normalizeText = (value: string) => value.trim().toLowerCase();
-
-  const sortNormalized = (values: string[]) => [...values].map(normalizeText).sort();
-
-  const levenshteinDistance = (left: string, right: string): number => {
-    if (left === right) return 0;
-    if (!left.length) return right.length;
-    if (!right.length) return left.length;
-
-    const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-    const current = new Array(right.length + 1).fill(0);
-
-    for (let i = 1; i <= left.length; i += 1) {
-      current[0] = i;
-      for (let j = 1; j <= right.length; j += 1) {
-        const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
-        current[j] = Math.min(
-          previous[j] + 1,
-          current[j - 1] + 1,
-          previous[j - 1] + substitutionCost,
-        );
-      }
-
-      for (let j = 0; j <= right.length; j += 1) {
-        previous[j] = current[j];
-      }
-    }
-
-    return previous[right.length];
-  };
-
-  // Fuzzy match helper: accepts close spellings like "paicific" for "pacific"
-  const isFuzzyMatch = (submitted: string, accepted: string, threshold: number = 0.85): boolean => {
-    const maxLength = Math.max(submitted.length, accepted.length);
-    if (!maxLength) return true;
-
-    const distance = levenshteinDistance(submitted, accepted);
-    const similarity = 1 - distance / maxLength;
-    return similarity >= threshold;
-  };
-
-  const compareAsSets = (left: string[], right: string[]) => {
-    if (left.length !== right.length) return false;
-    const normalizedLeft = sortNormalized(left);
-    const normalizedRight = sortNormalized(right);
-    return normalizedLeft.every((value, index) => value === normalizedRight[index]);
-  };
-
-  const isAnswerCorrectFor = (question: QuizQuestion | undefined, submitted: string[]) => {
-    const type = question?.type;
-
-    if (!question || !type || submitted.length === 0) return false;
-
-    switch (type.name) {
-      case 'multiple_choice':
-        return submitted[0]
-          ? normalizeText(submitted[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
-          : false;
-
-      case 'multi_select':
-      case 'image_based': {
-        const accepted = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
-        return compareAsSets(submitted, accepted);
-      }
-
-      case 'dropdown':
-      case 'true_false':
-        return submitted[0]
-          ? normalizeText(submitted[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
-          : false;
-
-      case 'short_answer':
-      {
-        const accepted = ((question.correctAnswers || (type as any).correctAnswers || []) as string[]).map(normalizeText);
-        const submittedNormalized = normalizeText(submitted[0] || '');
-        // Check for exact match first, then fuzzy match
-        return accepted.some((answer: string) => 
-          answer === submittedNormalized || isFuzzyMatch(submittedNormalized, answer)
-        );
-      }
-
-      case 'fill_in_blank': {
-        const blankCount = Math.max(1, question.question.split('____').length - 1);
-        const groupedAccepted = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
-        const submittedTrimmed = submitted.slice(0, blankCount).map((s) => normalizeText(s || ''));
-        if (submittedTrimmed.length < blankCount || submittedTrimmed.some((s) => !s)) return false;
-
-        return submittedTrimmed.every((value, index) => {
-          const rawAccepted = groupedAccepted[index] || '';
-          const acceptedValues = rawAccepted
-            .split('|')
-            .map((v) => normalizeText(v))
-            .filter(Boolean);
-          if (!acceptedValues.length) {
-            const fallback = normalizeText(groupedAccepted[index] || '');
-            return fallback ? fallback === value || isFuzzyMatch(value, fallback) : false;
-          }
-          // Check for exact match first, then fuzzy match
-          return acceptedValues.some(accepted => 
-            accepted === value || isFuzzyMatch(value, accepted)
-          );
-        });
-      }
-
-      case 'numerical': {
-        const expected = Number((type as any).correctAnswer);
-        const actual = Number(submitted[0]);
-        return Number.isFinite(expected) && Number.isFinite(actual) && actual === expected;
-      }
-
-      case 'essay':
-        return false;
-
-      case 'match_the_phrase':
-      {
-        const correctMap = (type as any).correctAssign || {};
-        const accepted = Object.entries(correctMap).map(([slotId, value]) => `${slotId}:${value}`);
-        return compareAsSets(submitted, accepted);
-      }
-
-      case 'matching': {
-        const correct = question.correctAnswers || [];
-        return sortNormalized(submitted).join('|') === sortNormalized(correct).join('|');
-      }
-
-      case 'ranking':
-      case 'ordering': {
-        const correctOrder = ((type as any).correctOrder || question.correctAnswers || []) as string[];
-        return submitted.length === correctOrder.length && submitted.every((value, index) => normalizeText(value) === normalizeText(correctOrder[index] || ''));
-      }
-
-      case 'calendar': {
-        const correctDates = (question.correctAnswers || (type as any).correctAnswers || []) as string[];
-        if (submitted.length === 0 || correctDates.length === 0) return false;
-        const submittedNormalized = new Set(submitted.map((d) => d.trim()).sort());
-        const correctNormalized = new Set(correctDates.map((d) => d.trim()).sort());
-        if (submittedNormalized.size !== correctNormalized.size) return false;
-        return Array.from(submittedNormalized).every((date) => correctNormalized.has(date));
-      }
-
-      default:
-        return false;
-    }
-  };
-
-  const isAnswerCorrect = () => {
-    const question = game.lastSubmittedQuestion || game.currentQuestion;
-    return isAnswerCorrectFor(question, game.lastSubmittedAnswers);
-  };
-
   // Get player's current rank and stats
   const getPlayerStats = () => {
+    const safePoints = (value: unknown) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const currentAnonymousRef = ((game.user as typeof game.user & { anonymousRef?: string }).anonymousRef || '').trim().toLowerCase();
+
     const sortedPlayers = Object.values(game.clientsInLobby)
       .filter((user): user is any => 
         user !== null && 
@@ -465,18 +303,26 @@ export default function PlayerGameView() {
         'userRole' in user && 
         user.userRole === 'player'
       )
-      .sort((a, b) => b.points - a.points);
+      .sort((a, b) => safePoints(b.points) - safePoints(a.points) || String(a.userName || '').localeCompare(String(b.userName || '')));
 
     const normalize = (value: string) => (value || '').trim().toLowerCase();
     const currentPlayerName = normalize(game.user.userName);
-    const foundIndex = sortedPlayers.findIndex((p) => normalize(p.userName) === currentPlayerName);
+    const foundIndex = sortedPlayers.findIndex((p) => {
+      const playerName = normalize(p.userName);
+      const playerAnonymousRef = normalize(p.anonymousRef);
+      return (
+        (currentAnonymousRef && playerAnonymousRef === currentAnonymousRef) ||
+        (currentPlayerName && playerName === currentPlayerName)
+      );
+    });
     const currentPlayerIndex = foundIndex >= 0
       ? foundIndex
       : (sortedPlayers.length === 1 ? 0 : -1);
     const currentPlayer = currentPlayerIndex >= 0 ? sortedPlayers[currentPlayerIndex] : undefined;
     const leaderPlayer = sortedPlayers[0];
-    const currentPoints = currentPlayer?.points ?? game.user.points ?? 0;
-    const pointsBehind = leaderPlayer ? Math.max(0, leaderPlayer.points - currentPoints) : 0;
+    const currentPoints = safePoints(currentPlayer?.points ?? game.user.points ?? 0);
+    const leaderPoints = safePoints(leaderPlayer?.points ?? 0);
+    const pointsBehind = leaderPlayer ? Math.max(0, leaderPoints - currentPoints) : 0;
 
     return {
       rank: currentPlayerIndex >= 0 ? currentPlayerIndex + 1 : null,
@@ -486,6 +332,11 @@ export default function PlayerGameView() {
       totalPlayers: sortedPlayers.length,
     };
   };
+
+  const stats = getPlayerStats();
+  const submissionWasCorrect = pointsAtSubmission !== null
+    ? stats.points > pointsAtSubmission
+    : isAnswerCorrectFor(game.lastSubmittedQuestion || game.currentQuestion, game.lastSubmittedAnswers);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -632,75 +483,14 @@ export default function PlayerGameView() {
         </>
       ) : !game.finalQuestionLeaderboard ? (
         <>
-          {(() => {
-            const stats = getPlayerStats();
-            const submissionWasCorrect = pointsAtSubmission !== null
-              ? stats.points > pointsAtSubmission
-              : isAnswerCorrect();
-            const getRankOrdinal = (n: number) => {
-              const s = ['th', 'st', 'nd', 'rd'];
-              const v = n % 100;
-              return n + (s[(v - 20) % 10] || s[v] || s[0]);
-            };
-
-            return (
-              <Box
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  border: '1px solid',
-                  borderColor: submissionWasCorrect ? 'success.main' : 'error.main',
-                  bgcolor: submissionWasCorrect ? 'success.light' : 'error.light',
-                  color: submissionWasCorrect ? 'success.contrastText' : 'error.contrastText',
-                  textAlign: 'center',
-                }}
-              >
-                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-                  {submissionWasCorrect ? '✅ You got it right!' : '❌ Incorrect'}
-                </Typography>
-                
-                {/* Points Display */}
-                <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 2 }}>
-                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5 }}>Current Points</Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                    {stats.points}
-                  </Typography>
-                </Box>
-
-                {/* Rank Message */}
-                <Box sx={{ mb: 1 }}>
-                  {stats.rank && stats.pointsBehind === 0 ? (
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      🏆 You're in {getRankOrdinal(stats.rank)} place!
-                    </Typography>
-                  ) : stats.rank ? (
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      You are {stats.pointsBehind} {stats.pointsBehind === 1 ? 'point' : 'points'} behind {stats.leaderName}!
-                    </Typography>
-                  ) : (
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      Waiting for rank update...
-                    </Typography>
-                  )}
-                </Box>
-
-                <Typography variant="body2" sx={{ opacity: 0.9, mt: 2 }}>
-                  {submissionWasCorrect
-                    ? 'Great job! Keep this up.'
-                    : 'Review the correct answer on the host screen.'}
-                </Typography>
-
-                {game.currentQuestion?.explanation ? (
-                  <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.15)' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
-                      Explanation
-                    </Typography>
-                    <Typography variant="body2">{game.currentQuestion.explanation}</Typography>
-                  </Box>
-                ) : null}
-              </Box>
-            );
-          })()}
+          <PlayerSubmissionSummary
+            submissionWasCorrect={submissionWasCorrect}
+            points={stats.points}
+            rank={stats.rank}
+            pointsBehind={stats.pointsBehind}
+            leaderName={stats.leaderName}
+            explanation={game.currentQuestion?.explanation}
+          />
         </>
       ) : (
         <Leaderboard />

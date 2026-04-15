@@ -6,13 +6,17 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Paper,
   Typography,
   useTheme,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ImageIcon from "@mui/icons-material/Image";
-import { Quiz } from "../../stores/types";
+import { Quiz, QuizItem } from "../../stores/types";
 import QuizQuestionPreview from "./QuizQuestionPreview";
 import { backendUrl } from "../../util/backendConfig";
 import styles from "./SelectQuiz.module.css";
@@ -21,6 +25,23 @@ const MAX_VISIBLE = 5;
 
 const getQuizImageUrl = (imageId: string) =>
   `${backendUrl}/api/images/${imageId}`;
+
+const getQuizTimelineItems = (quiz: Quiz): QuizItem[] => {
+  if (Array.isArray(quiz.quizItems) && quiz.quizItems.length > 0) {
+    return quiz.quizItems;
+  }
+
+  if (Array.isArray(quiz.quizQuestions) && quiz.quizQuestions.length > 0) {
+    return quiz.quizQuestions.map((question) => ({ kind: "question", question }));
+  }
+
+  return [];
+};
+
+const getQuestionItemsFromTimeline = (items: QuizItem[]) =>
+  items.filter((item): item is QuizItem & { kind: "question"; question: NonNullable<QuizItem["question"]> } =>
+    item.kind === "question" && Boolean(item.question)
+  );
 
 interface SelectQuizProps {
   onSelectQuiz: (quiz: Quiz) => void;
@@ -35,7 +56,7 @@ export default function SelectQuiz({
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
-  const [questionPage, setQuestionPage] = useState(0);
+  const [timelinePage, setTimelinePage] = useState(0);
   const [confirmedQuizId, setConfirmedQuizId] = useState<string | null>(null);
   const theme = useTheme();
 
@@ -50,11 +71,20 @@ export default function SelectQuiz({
 
         const data = await response.json();
         const normalised: Quiz[] = Array.isArray(data)
-          ? data.map((q: any) => ({
-              ...q,
-              id: normaliseObjectId(q.id),
-              imageId: normaliseObjectId(q.imageId),
-            }))
+          ? data.map((q: any) => {
+              const legacyQuestions = Array.isArray(q.quizQuestions) ? q.quizQuestions : [];
+              const timelineItems = Array.isArray(q.quizItems) && q.quizItems.length > 0
+                ? q.quizItems
+                : legacyQuestions.map((question: any) => ({ kind: "question", question }));
+
+              return {
+                ...q,
+                id: normaliseObjectId(q.id),
+                imageId: normaliseObjectId(q.imageId),
+                quizItems: timelineItems,
+                quizQuestions: legacyQuestions,
+              };
+            })
           : [];
 
         setQuizzes(normalised);
@@ -73,7 +103,7 @@ export default function SelectQuiz({
 
   const handleCardClick = (quiz: Quiz) => {
     setSelectedQuiz(quiz);
-    setQuestionPage(0);
+    setTimelinePage(0);
   };
 
   const handleConfirmSelection = () => {
@@ -88,13 +118,12 @@ export default function SelectQuiz({
 
   const handleNextQuestion = () => {
     if (!selectedQuiz) return;
-    setQuestionPage((prev) =>
-      Math.min(prev + 1, selectedQuiz.quizQuestions.length - 1)
-    );
+    const timelineItems = getQuizTimelineItems(selectedQuiz);
+    setTimelinePage((prev) => Math.min(prev + 1, timelineItems.length - 1));
   };
 
   const handlePrevQuestion = () => {
-    setQuestionPage((prev) => Math.max(prev - 1, 0));
+    setTimelinePage((prev) => Math.max(prev - 1, 0));
   };
 
   return (
@@ -273,6 +302,15 @@ export default function SelectQuiz({
         PaperProps={{ sx: { bgcolor: theme.palette.background.paper } }}
       >
         {selectedQuiz && (
+          (() => {
+            const timelineItems = getQuizTimelineItems(selectedQuiz);
+            const questionItems = getQuestionItemsFromTimeline(timelineItems);
+            const currentItem = timelineItems[timelinePage];
+            const currentQuestionPosition = timelineItems
+              .slice(0, timelinePage + 1)
+              .filter((item) => item.kind === "question" && Boolean(item.question)).length - 1;
+
+            return (
           <>
             <DialogTitle sx={{ fontWeight: 700, fontSize: 24, pb: 0 }}>
               {selectedQuiz.quizName}
@@ -281,18 +319,75 @@ export default function SelectQuiz({
               <Typography variant="subtitle1" sx={{ mb: 2, color: theme.palette.text.secondary }}>
                 {selectedQuiz.quizDescription}
               </Typography>
-              {selectedQuiz.quizQuestions.length > 0 ? (
+              {timelineItems.length > 0 && currentItem?.kind === "question" && currentItem.question ? (
                 <QuizQuestionPreview
-                  question={selectedQuiz.quizQuestions[questionPage]}
-                  currentIndex={questionPage}
-                  totalQuestions={selectedQuiz.quizQuestions.length}
+                  question={currentItem.question}
+                  currentIndex={Math.max(0, currentQuestionPosition)}
+                  totalQuestions={Math.max(1, questionItems.length)}
                   onNext={handleNextQuestion}
                   onPrevious={handlePrevQuestion}
                   showCorrectAnswers
                 />
+              ) : timelineItems.length > 0 && currentItem?.kind === "slide" && currentItem.slide ? (
+                <Paper
+                  elevation={0}
+                  sx={{ p: 3, borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      mb: 2,
+                    }}
+                  >
+                    <IconButton
+                      onClick={handlePrevQuestion}
+                      disabled={timelinePage === 0}
+                      sx={{
+                        bgcolor: timelinePage > 0
+                          ? (theme.palette.mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)")
+                          : "transparent",
+                      }}
+                    >
+                      <ArrowBackIosNewIcon fontSize="small" />
+                    </IconButton>
+
+                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                      Slide {timelinePage + 1} of {timelineItems.length}
+                    </Typography>
+
+                    <IconButton
+                      onClick={handleNextQuestion}
+                      disabled={timelinePage >= timelineItems.length - 1}
+                      sx={{
+                        bgcolor: timelinePage < timelineItems.length - 1
+                          ? (theme.palette.mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)")
+                          : "transparent",
+                      }}
+                    >
+                      <ArrowForwardIosIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    {currentItem.slide.title || "Untitled Slide"}
+                  </Typography>
+                  {currentItem.slide.imageUrl ? (
+                    <Box
+                      component="img"
+                      src={currentItem.slide.imageUrl}
+                      alt={currentItem.slide.title || "Slide"}
+                      sx={{ width: "100%", maxHeight: 300, objectFit: "contain", borderRadius: 1, mb: 1.5 }}
+                    />
+                  ) : null}
+                  <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap" }}>
+                    {currentItem.slide.content || "No slide content."}
+                  </Typography>
+                </Paper>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  No questions available.
+                  No timeline items available.
                 </Typography>
               )}
             </DialogContent>
@@ -305,6 +400,8 @@ export default function SelectQuiz({
               </Button>
             </DialogActions>
           </>
+            );
+          })()
         )}
       </Dialog>
     </Box>

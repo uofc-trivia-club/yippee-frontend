@@ -2187,7 +2187,7 @@ export default function CreateQuiz() {
       }
     }
 
-    const transformedQuestions = quizItems
+    const questionItemsForUpload = quizItems
       .filter((item): item is QuizItem & { question: QuizQuestion } => item.kind === 'question' && Boolean(item.question))
       .map((item) => item.question);
 
@@ -2195,7 +2195,6 @@ export default function CreateQuiz() {
       quizName,
       quizDescription,
       createdBy: "Test_User",
-      quizQuestions: transformedQuestions,
       quizItems,
     };
 
@@ -2266,10 +2265,10 @@ export default function CreateQuiz() {
               const uploaded = await uploadQuestionImage(quizId, qIndex, q.imageFile);
               uploadCount += 1;
               if (uploaded.imageUrl) {
-                transformedQuestions[qIndex].imageUrl = uploaded.imageUrl;
+                questionItemsForUpload[qIndex].imageUrl = uploaded.imageUrl;
               }
               if (uploaded.imageId) {
-                transformedQuestions[qIndex].imageId = uploaded.imageId;
+                questionItemsForUpload[qIndex].imageId = uploaded.imageId;
               }
             }
 
@@ -2281,17 +2280,17 @@ export default function CreateQuiz() {
               uploadCount += 1;
 
               if (uploaded.imageUrl) {
-                if (!transformedQuestions[qIndex].optionImageUrls) {
-                  transformedQuestions[qIndex].optionImageUrls = q.options.map(() => '');
+                if (!questionItemsForUpload[qIndex].optionImageUrls) {
+                  questionItemsForUpload[qIndex].optionImageUrls = q.options.map(() => '');
                 }
-                transformedQuestions[qIndex].optionImageUrls![oIndex] = uploaded.imageUrl;
+                questionItemsForUpload[qIndex].optionImageUrls![oIndex] = uploaded.imageUrl;
               }
 
               if (uploaded.imageId) {
-                if (!transformedQuestions[qIndex].optionImageIds) {
-                  transformedQuestions[qIndex].optionImageIds = q.options.map(() => '');
+                if (!questionItemsForUpload[qIndex].optionImageIds) {
+                  questionItemsForUpload[qIndex].optionImageIds = q.options.map(() => '');
                 }
-                transformedQuestions[qIndex].optionImageIds![oIndex] = uploaded.imageId;
+                questionItemsForUpload[qIndex].optionImageIds![oIndex] = uploaded.imageId;
               }
             }
           }
