@@ -19,6 +19,7 @@ import { RootState } from "../../stores/store";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
 import { resolveMediaUrl } from "../../util/mediaUrl";
+import { QuizQuestion } from "../../stores/types";
 
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
@@ -28,6 +29,7 @@ export default function PlayerGameView() {
   const [textAnswer, setTextAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pointsAtSubmission, setPointsAtSubmission] = useState<number | null>(null);
   const dispatch = useDispatch();
   
   // Memoize ranking order change callback to prevent RankingComponent state reset
@@ -68,6 +70,12 @@ export default function PlayerGameView() {
     }
   }, [game.currentQuestion?.question, game.currentQuestion?.type]);
 
+  useEffect(() => {
+    if (!game.showLeaderboard) {
+      setPointsAtSubmission(null);
+    }
+  }, [game.currentQuestionIndex, game.showLeaderboard]);
+
   const handleAnswerSelect = (option: string) => {
     if (game.user.submittedAnswer) return;
 
@@ -87,33 +95,37 @@ export default function PlayerGameView() {
   const handleSubmitAnswers = async () => {
     const currentType = game.currentQuestion?.type?.name;
     const allowsEmptySubmission = currentType === 'multi_select';
+    const questionSnapshot = game.currentQuestion;
+    const submittedSnapshot = [...selectedAnswers];
 
-    if (!allowsEmptySubmission && selectedAnswers.length === 0) return;
+    if (!allowsEmptySubmission && submittedSnapshot.length === 0) return;
 
     if (currentType === 'ranking' || currentType === 'ordering') {
-      console.log('[Ranking Submit] Submitted order:', selectedAnswers);
+      console.log('[Ranking Submit] Submitted order:', submittedSnapshot);
     }
 
     setIsSubmitting(true);
     setError(null);
+    setPointsAtSubmission(game.user.points ?? 0);
 
     try {
-      dispatch(gameActions.setLastSubmittedQuestion(game.currentQuestion));
+      dispatch(gameActions.setLastSubmittedQuestion(questionSnapshot));
       await executeWebSocketCommand(
         "submitAnswer",
         {
           roomCode: game.roomCode,
           user: game.user,
-          answer: selectedAnswers
+          answer: submittedSnapshot
         },
         (errorMessage) => setError(errorMessage)
       );
 
-      dispatch(gameActions.setLastSubmittedAnswers(selectedAnswers));
+      dispatch(gameActions.setLastSubmittedAnswers(submittedSnapshot));
       setSelectedAnswers([]);
       dispatch(gameActions.setSubmittedAnswer(true));
     } catch (err) {
       setError('Failed to submit answer. Please try again.');
+      setPointsAtSubmission(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -342,10 +354,8 @@ export default function PlayerGameView() {
     return normalizedLeft.every((value, index) => value === normalizedRight[index]);
   };
 
-  const isAnswerCorrect = () => {
-    const question = game.lastSubmittedQuestion || game.currentQuestion;
+  const isAnswerCorrectFor = (question: QuizQuestion | undefined, submitted: string[]) => {
     const type = question?.type;
-    const submitted = game.lastSubmittedAnswers;
 
     if (!question || !type || submitted.length === 0) return false;
 
@@ -439,6 +449,11 @@ export default function PlayerGameView() {
       default:
         return false;
     }
+  };
+
+  const isAnswerCorrect = () => {
+    const question = game.lastSubmittedQuestion || game.currentQuestion;
+    return isAnswerCorrectFor(question, game.lastSubmittedAnswers);
   };
 
   // Get player's current rank and stats
@@ -619,6 +634,9 @@ export default function PlayerGameView() {
         <>
           {(() => {
             const stats = getPlayerStats();
+            const submissionWasCorrect = pointsAtSubmission !== null
+              ? stats.points > pointsAtSubmission
+              : isAnswerCorrect();
             const getRankOrdinal = (n: number) => {
               const s = ['th', 'st', 'nd', 'rd'];
               const v = n % 100;
@@ -631,14 +649,14 @@ export default function PlayerGameView() {
                   p: 3,
                   borderRadius: 3,
                   border: '1px solid',
-                  borderColor: isAnswerCorrect() ? 'success.main' : 'error.main',
-                  bgcolor: isAnswerCorrect() ? 'success.light' : 'error.light',
-                  color: isAnswerCorrect() ? 'success.contrastText' : 'error.contrastText',
+                  borderColor: submissionWasCorrect ? 'success.main' : 'error.main',
+                  bgcolor: submissionWasCorrect ? 'success.light' : 'error.light',
+                  color: submissionWasCorrect ? 'success.contrastText' : 'error.contrastText',
                   textAlign: 'center',
                 }}
               >
                 <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-                  {isAnswerCorrect() ? '✅ You got it right!' : '❌ Incorrect'}
+                  {submissionWasCorrect ? '✅ You got it right!' : '❌ Incorrect'}
                 </Typography>
                 
                 {/* Points Display */}
@@ -667,7 +685,7 @@ export default function PlayerGameView() {
                 </Box>
 
                 <Typography variant="body2" sx={{ opacity: 0.9, mt: 2 }}>
-                  {isAnswerCorrect()
+                  {submissionWasCorrect
                     ? 'Great job! Keep this up.'
                     : 'Review the correct answer on the host screen.'}
                 </Typography>
