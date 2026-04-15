@@ -48,7 +48,10 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
         }
     };
         const shuffledMatchingRightItems = useMemo(() => {
-            const rightItems = (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
+            const pairs = (((game.currentQuestion?.type as any)?.pairs) || []) as any[];
+            const rightItems = pairs.length > 0 
+              ? pairs.map((p: any) => p.right || p.rightItem || '')
+              : (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
             const nextItems = [...rightItems];
             for (let i = nextItems.length - 1; i > 0; i -= 1) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -83,6 +86,30 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     boxShadow: '0 10px 18px rgba(0,0,0,0.06)',
                 },
             }) as const;
+
+    const matchPhraseCorrectAssign = useMemo(() => {
+        if (t?.name !== 'match_the_phrase') return {} as Record<string, string>;
+
+        const fromType = (t as any)?.correctAssign;
+        if (fromType && typeof fromType === 'object' && !Array.isArray(fromType) && Object.keys(fromType).length > 0) {
+            return fromType as Record<string, string>;
+        }
+
+        const fromQuestion: string[] = Array.isArray(q?.correctAnswers) ? (q?.correctAnswers as string[]) : [];
+        const parsed: Record<string, string> = {};
+        fromQuestion.forEach((entry) => {
+            const raw = String(entry || '').trim();
+            if (!raw) return;
+            const separatorIndex = raw.indexOf(':');
+            if (separatorIndex <= 0) return;
+            const slotKey = raw.slice(0, separatorIndex).trim();
+            const slotValue = raw.slice(separatorIndex + 1).trim();
+            if (slotKey && slotValue) {
+                parsed[slotKey] = slotValue;
+            }
+        });
+        return parsed;
+    }, [q?.correctAnswers, t]);
 
     const answerBreakdown = useMemo(() => {
         const normalizeText = (value: unknown) => String(value ?? '').trim();
@@ -136,13 +163,64 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 case 'multiple_choice':
                 case 'multi_select':
                 case 'dropdown':
-                    return t?.options || [];
+                    return t?.options || q?.options || [];
                 case 'true_false':
                     return ['True', 'False'];
                 default:
                     return [];
             }
         })();
+
+        if (t?.name === 'match_the_phrase') {
+            const slots = (((t as any)?.slots || []) as string[]).map((slot) => String(slot || '').trim()).filter(Boolean);
+            const fallbackSlots = Array.from({ length: Object.keys(matchPhraseCorrectAssign).length }, (_, index) => `blank${index + 1}`);
+            const slotIds = slots.length > 0 ? slots : fallbackSlots;
+
+            const parseSubmittedAssignments = (rawLabel: string) => {
+                const parts = rawLabel
+                    .split('|')
+                    .map((part) => String(part || '').trim())
+                    .filter(Boolean);
+
+                const map = new Map<string, string>();
+                parts.forEach((part) => {
+                    const separatorIndex = part.indexOf(':');
+                    if (separatorIndex <= 0) return;
+                    const key = part.slice(0, separatorIndex).trim();
+                    const value = part.slice(separatorIndex + 1).trim();
+                    if (key) map.set(key, value);
+                });
+                return map;
+            };
+
+            const perBlank = slotIds.map((slotId, index) => {
+                const expected = String(matchPhraseCorrectAssign[slotId] || '').trim();
+                let answeredCount = 0;
+                let correctCount = 0;
+
+                parsedFromAnalytics.forEach((entry) => {
+                    const assignments = parseSubmittedAssignments(entry.label);
+                    const submitted = String(assignments.get(slotId) || '').trim();
+                    if (!submitted) return;
+                    answeredCount += entry.count;
+                    if (expected && submitted.toLowerCase() === expected.toLowerCase()) {
+                        correctCount += entry.count;
+                    }
+                });
+
+                const percent = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+                return {
+                    label: `Blank ${index + 1}${expected ? ` (${expected})` : ''}`,
+                    count: correctCount,
+                    answeredCount,
+                    percent,
+                    isCorrect: true,
+                    index,
+                };
+            });
+
+            return perBlank;
+        }
 
         const countsByLabel = new Map<string, number>();
         parsedFromAnalytics.forEach((entry) => {
@@ -176,7 +254,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             percent: 0,
             isCorrect: false,
         }));
-    }, [game.questionAnalytics, t]);
+    }, [game.questionAnalytics, matchPhraseCorrectAssign, q?.options, t]);
 
     const totalVotes = useMemo(
         () => answerBreakdown.reduce((sum, entry) => sum + entry.count, 0),
@@ -184,6 +262,10 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     );
 
     const chartedAnswerBreakdown = useMemo(() => {
+        if (t?.name === 'match_the_phrase') {
+            return answerBreakdown;
+        }
+
         if (totalVotes <= 0) {
             return answerBreakdown.map((entry) => ({ ...entry, percent: 0 }));
         }
@@ -192,13 +274,13 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             ...entry,
             percent: Math.round((entry.count / totalVotes) * 100),
         }));
-    }, [answerBreakdown, totalVotes]);
+    }, [answerBreakdown, t?.name, totalVotes]);
 
     const renderOptionsView = () => {
         if (!q || !t) return null;
         switch (t.name) {
             case 'multiple_choice': {
-                const options = t.options || [];
+                const options = t.options || q.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
                     const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
@@ -232,7 +314,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 });
             }
             case 'multi_select': {
-                const options = t.options || [];
+                const options = t.options || q.options || [];
                 const correctAnswers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return options.map((option, index) => {
                     const isCorrect = correctAnswers.includes(option);
@@ -267,7 +349,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 });
             }
             case 'dropdown': {
-                const options = t.options || [];
+                const options = t.options || q.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
                     const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
@@ -392,14 +474,66 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                         options={((t as any).options || []) as string[]}
                         disabled={true}
                         showCorrectAnswers={displayCorrectAnswers}
-                        correctAssign={(t as any).correctAssign || {}}
+                        correctAssign={matchPhraseCorrectAssign}
                         onMatchesChange={() => undefined}
                     />
                 );
             }
             case 'matching': {
-                const left = Array.isArray(t.leftItems) ? t.leftItems : [];
-                const right = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
+                const pairs = (((t as any).pairs || []) as Array<{ left?: string; right?: string; leftItem?: string; rightItem?: string }>);
+                const left: string[] = pairs.length > 0
+                    ? pairs.map((p) => p.left || p.leftItem || '')
+                    : (Array.isArray((t as any).leftItems) ? (t as any).leftItems : []);
+                const right: string[] = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
+                const correctMatches = (((t as any).correctMatches || {}) as Record<string, string>);
+                const revealedPairs: Array<{ left: string; right: string }> = pairs.length > 0
+                    ? pairs
+                        .map((p) => ({ left: p.left || p.leftItem || '', right: p.right || p.rightItem || '' }))
+                        .filter((pair) => Boolean(pair.left) && Boolean(pair.right))
+                    : left
+                        .map((leftItem, index) => ({
+                            left: leftItem,
+                            right: correctMatches[leftItem] || (((t as any).rightItems || [])[index] || ''),
+                        }))
+                        .filter((pair) => Boolean(pair.left) && Boolean(pair.right));
+
+                if (displayCorrectAnswers) {
+                    if (!revealedPairs.length) return <Typography>No pairs to display.</Typography>;
+                    return (
+                        <Box>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Correct pairs</Typography>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.25, mb: 1 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Left
+                                </Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Right
+                                </Typography>
+                            </Box>
+                            <Stack spacing={1}>
+                                {revealedPairs.map((pair, idx) => (
+                                    <Box key={`${pair.left}-${pair.right}-${idx}`} sx={{ ...optionTileSx(true), borderColor: theme.palette.success.main }}>
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.25, alignItems: 'center' }}>
+                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                                                <Chip label={idx + 1} size="small" color="success" sx={{ minWidth: 34, fontWeight: 700 }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                                                    {pair.left}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                                                <Chip label={String.fromCharCode(65 + idx)} size="small" color="success" variant="outlined" sx={{ minWidth: 34, fontWeight: 700 }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                                                    {pair.right}
+                                                </Typography>
+                                            </Stack>
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Stack>
+                        </Box>
+                    );
+                }
+
                 if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
                 return (
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
@@ -582,7 +716,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     ) : null}
                 </Box>
 
-                {displayCorrectAnswers && (
+                {displayCorrectAnswers && t?.name !== 'matching' && (
                     <Box
                         sx={{
                             p: 1.5,
@@ -601,7 +735,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
 
                 <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
 
-                {displayCorrectAnswers && (
+                {displayCorrectAnswers && t?.name !== 'matching' && (
                     <Box
                         sx={{
                             p: 1.5,
@@ -629,7 +763,9 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                                     {barLabel}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ fontWeight: 800 }}>
-                                                    {entry.count}
+                                                    {t?.name === 'match_the_phrase'
+                                                        ? `${entry.count}/${(entry as any).answeredCount || 0}`
+                                                        : entry.count}
                                                 </Typography>
                                             </Stack>
                                             <Box sx={{ position: 'relative' }}>

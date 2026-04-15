@@ -55,7 +55,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
       [nextItems[i], nextItems[j]] = [nextItems[j], nextItems[i]];
     }
     setShuffledRightItems(nextItems);
-  }, [leftSignature, rightSignature, rightItems]);
+  }, [leftSignature, rightSignature]);
 
   const handleLeftClick = (item: string) => {
     if (disabled) return;
@@ -117,7 +117,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
 
   return (
     <Box sx={{ position: 'relative', width: '100%', mt: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 1.5, md: 4 } }}>
         {/* Left Column */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, position: 'relative' }}>
           <Typography variant="subtitle2" sx={{ mb: 1, textAlign: 'center' }}>Terms</Typography>
@@ -132,7 +132,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
               elevation={selectedLeft === item ? 4 : 1}
               onClick={() => handleLeftClick(item)}
               sx={{
-                p: 2,
+                p: { xs: 1, md: 2 },
                 cursor: disabled ? 'default' : 'pointer',
                 bgcolor: selectedLeft === item ? 'primary.light' : matched ? 'rgba(0,0,0,0.03)' : 'background.paper',
                 color: selectedLeft === item ? 'white' : 'text.primary',
@@ -143,12 +143,12 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                minHeight: 60,
+                minHeight: { xs: 48, md: 60 },
                 zIndex: 1
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">{item}</Typography>
+                <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' }, lineHeight: 1.2 }}>{item}</Typography>
               </Box>
               {matched && !disabled && (
                 <IconButton 
@@ -180,7 +180,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
                 elevation={isMatched ? 2 : 1}
                 onClick={() => handleRightClick(item)}
                 sx={{
-                  p: 2,
+                    p: { xs: 1, md: 2 },
                   cursor: (disabled || !selectedLeft) ? 'default' : 'pointer',
                   bgcolor: isMatched ? 'rgba(0,0,0,0.03)' : 'background.paper',
                   color: 'text.primary',
@@ -191,13 +191,13 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  minHeight: 60,
+                    minHeight: { xs: 48, md: 60 },
                   zIndex: 1,
                   opacity: (!isMatched && (selectedLeft || selectedRight) && !disabled) ? 0.8 : 1,
                   boxShadow: (!isMatched && (selectedLeft || selectedRight) && !disabled) ? '0 0 10px rgba(25, 118, 210, 0.4)' : 'none'
                 }}
               >
-                <Typography variant="body2">{item}</Typography>
+                  <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' }, lineHeight: 1.2 }}>{item}</Typography>
               </Paper>
             );
           })}
@@ -205,7 +205,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
       </Box>
 
       {/* Drawing wires */}
-      {matchEntries.map(([leftItem, rightItem]) => {
+        {matchEntries.map(([leftItem, rightItem]) => {
         const leftIdx = leftItems.indexOf(leftItem);
         const rightIdx = shuffledRightItems.indexOf(rightItem);
         if (leftIdx === -1 || rightIdx === -1) return null;
@@ -215,11 +215,13 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
             key={`arrow-${leftIdx}-${rightIdx}`}
             start={`left-${leftIdx}`}
             end={`right-${rightIdx}`}
+            startAnchor="right"
+            endAnchor="left"
             color={getConnectionColor(leftIdx)}
-            strokeWidth={5}
-            path="smooth"
+            strokeWidth={4}
+            path="straight"
             headSize={5}
-            curveness={0.7}
+            curveness={0}
             animateDrawing={false}
           />
         );

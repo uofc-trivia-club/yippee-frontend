@@ -105,12 +105,7 @@ export default function HostGameView() {
       );
       return;
     }
-      const hasKnownQuestionCount = Number.isFinite(game.questionCount) && game.questionCount > 0;
-    const isLastQuestion =
-      typeof game.currentQuestionIndex === 'number' &&
-        (hasKnownQuestionCount
-          ? game.currentQuestionIndex === game.questionCount - 1
-          : game.finalQuestionLeaderboard);
+    const isLastQuestion = game.finalQuestionLeaderboard;
     if (isLastQuestion) {
       executeWebSocketCommand(
         "endGame",

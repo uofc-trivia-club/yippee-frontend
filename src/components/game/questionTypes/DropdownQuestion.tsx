@@ -20,7 +20,7 @@ export default function DropdownQuestion({
   const resolvedOptionImageUrls = (optionImageUrls || []).map((url) => resolveMediaUrl(url));
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 720 }}>
+    <Box sx={{ width: '100%' }}>
       <TextField
         select
         fullWidth

@@ -108,8 +108,8 @@ export interface OrderingType {
   correctOrder: string[];
 }
 
-// Matching
-export interface MatchingType {
+// Matching Pairs
+export interface MatchingPairs {
   name: "matching";
   description: string;
   leftItems: string[];
@@ -145,7 +145,7 @@ export type QuestionType =
   | DropdownType
   | RankingType
   | OrderingType
-  | MatchingType
+  | MatchingPairs
   | ImageBasedType
   | CalendarType;
 

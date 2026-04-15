@@ -1,7 +1,8 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import { DndContext, DragEndEvent, PointerSensor, TouchSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useMemo, useState } from "react";
+
+import { CSS } from "@dnd-kit/utilities";
 
 interface MatchPhraseQuestionProps {
   phrase: string;
@@ -116,7 +117,7 @@ export default function MatchPhraseQuestion({
   );
 
   const optionEntries = useMemo<OptionEntry[]>(
-    () => options.map((text, index) => ({ id: `opt-${index}`, text })),
+    () => (Array.isArray(options) ? options : []).map((text, index) => ({ id: `opt-${index}`, text })),
     [options]
   );
   const optionMap = useMemo(() => Object.fromEntries(optionEntries.map((entry) => [entry.id, entry.text])), [optionEntries]);
@@ -141,13 +142,16 @@ export default function MatchPhraseQuestion({
   useEffect(() => {
     if (showCorrectAnswers) return;
 
-    const formattedMatches = Object.entries(assignments)
-      .filter(([, optionId]) => Boolean(optionId))
-      .map(([slotId, optionId]) => `${slotId}:${optionMap[optionId] || ''}`)
-      .filter((entry) => !entry.endsWith(':'));
+    const formattedMatches = derivedSlotIds
+      .map((slotId) => {
+        const optionId = assignments[slotId];
+        const optionText = optionId ? optionMap[optionId] || '' : '';
+        return optionText ? `${slotId}:${optionText}` : null;
+      })
+      .filter((entry): entry is string => Boolean(entry));
 
     onMatchesChange(formattedMatches);
-  }, [assignments, onMatchesChange, optionMap, showCorrectAnswers]);
+  }, [assignments, derivedSlotIds, onMatchesChange, optionMap, showCorrectAnswers]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (disabled || showCorrectAnswers) return;
