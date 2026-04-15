@@ -25,6 +25,10 @@ export default function PlayerSubmissionSummary({
   explanation,
   submittedAnswer,
 }: PlayerSubmissionSummaryProps) {
+  const submittedAnswerText = Array.isArray(submittedAnswer)
+    ? (submittedAnswer.length > 0 ? submittedAnswer.join(', ') : 'No answer')
+    : (submittedAnswer && String(submittedAnswer).trim().length > 0 ? submittedAnswer : 'No answer');
+
   return (
     <Box
       sx={{
@@ -73,7 +77,7 @@ export default function PlayerSubmissionSummary({
 
       {submittedAnswer !== undefined && (
         <Typography variant="body2" sx={{ mt: 1, fontWeight: 600 }}>
-          You submitted: {Array.isArray(submittedAnswer) ? submittedAnswer.join(', ') : submittedAnswer}
+          You submitted: {submittedAnswerText}
         </Typography>
       )}
 

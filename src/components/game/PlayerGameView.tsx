@@ -493,6 +493,7 @@ export default function PlayerGameView() {
             pointsBehind={stats.pointsBehind}
             leaderName={stats.leaderName}
             explanation={game.currentQuestion?.explanation}
+            submittedAnswer={game.lastSubmittedAnswers}
           />
         </>
       ) : (
