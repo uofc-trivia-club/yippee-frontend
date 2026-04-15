@@ -29,20 +29,43 @@ interface RankingQuestionProps {
 
 type RankedItem = { id: string; text: string; imageUrl?: string };
 
+const hashString = (value: string) => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return hash >>> 0;
+};
+
+const createSeededRng = (seed: number) => {
+  let state = seed || 1;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+};
+
+const deterministicShuffle = <T,>(items: T[], seedSource: string): T[] => {
+  const next = [...items];
+  const rand = createSeededRng(hashString(seedSource));
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+};
+
 export default function RankingQuestion({
   items,
   optionImageUrls,
   disabled,
   onOrderChange,
 }: RankingQuestionProps) {
+  const shuffleSeed = `${items.join('\u0001')}::${(optionImageUrls || []).join('\u0001')}`;
   const [orderedItems, setOrderedItems] = useState<RankedItem[]>(() => {
     const initial = items.map((text, index) => ({ id: `${index}-${text}`, text, imageUrl: resolveMediaUrl(optionImageUrls?.[index]) }));
-    const shuffled = [...initial];
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
+    return deterministicShuffle(initial, shuffleSeed);
   });
   const onOrderChangeRef = useRef(onOrderChange);
   const itemsSignature = items.join('\u0001');
@@ -72,17 +95,12 @@ export default function RankingQuestion({
       text,
       imageUrl: resolveMediaUrl(optionImageUrls?.[index]),
     }));
-    
-    // Shuffle the items
-    const shuffled = [...nextItems];
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    
+
+    const shuffled = deterministicShuffle(nextItems, shuffleSeed);
+
     setOrderedItems(shuffled);
     onOrderChangeRef.current(shuffled.map((item: RankedItem) => item.text));
-  }, [itemsSignature, imageUrlsSignature]);
+  }, [itemsSignature, imageUrlsSignature, shuffleSeed]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

@@ -28,6 +28,32 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const q = game.currentQuestion;
     const t = q?.type;
     const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+    const hashString = (value: string) => {
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i += 1) {
+            hash ^= value.charCodeAt(i);
+            hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+        return hash >>> 0;
+    };
+
+    const createSeededRng = (seed: number) => {
+        let state = seed || 1;
+        return () => {
+            state = (state * 1664525 + 1013904223) >>> 0;
+            return state / 4294967296;
+        };
+    };
+
+    const deterministicShuffle = <T,>(items: T[], seedSource: string): T[] => {
+        const next = [...items];
+        const rand = createSeededRng(hashString(seedSource));
+        for (let i = next.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(rand() * (i + 1));
+            [next[i], next[j]] = [next[j], next[i]];
+        }
+        return next;
+    };
     const getQuestionTypeTitle = (typeName?: string) => {
         switch (typeName) {
             case 'multiple_choice': return 'Multiple-choice question';
@@ -570,7 +596,9 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     : Array.isArray(q?.correctAnswers) && q.correctAnswers.length > 0
                         ? q.correctAnswers
                         : [];
-                const displayItems = displayCorrectAnswers && correctOrder.length > 0 ? correctOrder : allItems;
+                const shuffleSeed = `${allItems.join('\u0001')}::${(q?.optionImageUrls || []).join('\u0001')}`;
+                const shuffledItems = deterministicShuffle(allItems, shuffleSeed);
+                const displayItems = displayCorrectAnswers && correctOrder.length > 0 ? correctOrder : shuffledItems;
                 
                 if (!displayItems.length) {
                     return <Typography color="text.secondary">No ranking items to display.</Typography>;
