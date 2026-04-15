@@ -4,8 +4,9 @@ export type Quiz = {
   quizName: string;
   quizDescription: string;
   createdBy: string;
-  quizQuestions: QuizQuestion[];
-  quizItems?: QuizItem[];
+  quizItems: QuizItem[];
+  // Legacy fallback for older payloads; quizItems is canonical.
+  quizQuestions?: QuizQuestion[];
   imageId?: string;
 };
 

@@ -338,23 +338,6 @@ export default function PlayerGameView() {
     ? stats.points > pointsAtSubmission
     : isAnswerCorrectFor(game.lastSubmittedQuestion || game.currentQuestion, game.lastSubmittedAnswers);
 
-  useEffect(() => {
-    if (!game.showLeaderboard) return;
-
-    console.groupCollapsed('[Player verdict debug]');
-    console.log('current user', {
-      userName: game.user.userName,
-      anonymousRef: (game.user as typeof game.user & { anonymousRef?: string }).anonymousRef,
-      points: game.user.points,
-      submittedAnswer: game.user.submittedAnswer,
-    });
-    console.log('last submitted question', game.lastSubmittedQuestion);
-    console.log('last submitted answers', game.lastSubmittedAnswers);
-    console.log('current question', game.currentQuestion);
-    console.log('computed verdict', submissionWasCorrect);
-    console.groupEnd();
-  }, [game.showLeaderboard, game.user.userName, game.user.points, game.user.submittedAnswer, game.lastSubmittedQuestion, game.lastSubmittedAnswers, game.currentQuestion, submissionWasCorrect]);
-
   return (
     <Box sx={{ p: 2 }}>
       {error && (

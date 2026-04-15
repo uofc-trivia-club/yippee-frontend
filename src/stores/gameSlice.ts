@@ -21,7 +21,6 @@ interface GameState {
         answerBuckets?: unknown[];
         optionBreakdown?: unknown[];
     } | undefined;
-    quizQuestions: QuizQuestion[];
     questionCount: number;
 }
 
@@ -46,7 +45,6 @@ const initialState = {
     lastSubmittedAnswers: [],
     lastSubmittedQuestion: undefined,
     questionAnalytics: undefined,
-    quizQuestions: [],
     questionCount: 0,
 } satisfies GameState as GameState
 
@@ -146,9 +144,6 @@ const gameSlice = createSlice({
         setGameStatus: (state, action: PayloadAction<string>) => {
             // console.log('setGameStatus:', { before: state.gameStatus, after: action.payload });
             state.gameStatus = action.payload;
-        },
-        setQuizQuestions: (state, action: PayloadAction<QuizQuestion[]>) => {
-            state.quizQuestions = action.payload;
         },
         resetPlayersSubmittedAnswers: (state) => {
             // Reset submittedAnswer flag for all players in the lobby when a new question starts
