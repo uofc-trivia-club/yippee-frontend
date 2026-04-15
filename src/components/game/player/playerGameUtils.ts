@@ -47,6 +47,34 @@ const compareAsSets = (left: string[], right: string[]) => {
   return normalizedLeft.every((value, index) => value === normalizedRight[index]);
 };
 
+const parseKeyValueEntries = (entries: string[]) => {
+  const map: Record<string, string> = {};
+  entries.forEach((entry) => {
+    const raw = String(entry || '').trim();
+    if (!raw) return;
+
+    const separators = [':', '=', '->'];
+    let splitIndex = -1;
+    let separatorLength = 1;
+    for (const separator of separators) {
+      const index = raw.indexOf(separator);
+      if (index > 0) {
+        splitIndex = index;
+        separatorLength = separator.length;
+        break;
+      }
+    }
+    if (splitIndex <= 0) return;
+
+    const key = normalizeText(raw.slice(0, splitIndex));
+    const value = normalizeText(raw.slice(splitIndex + separatorLength));
+    if (key && value) {
+      map[key] = value;
+    }
+  });
+  return map;
+};
+
 export const getQuestionTypeTitle = (typeName?: string) => {
   switch (typeName) {
     case 'multiple_choice': return 'Multiple-choice question';
@@ -128,9 +156,59 @@ export const isAnswerCorrectFor = (question: QuizQuestion | undefined, submitted
       return false;
 
     case 'match_the_phrase': {
-      const correctMap = (type as any).correctAssign || {};
-      const accepted = Object.entries(correctMap).map(([slotId, value]) => `${slotId}:${value}`);
-      return compareAsSets(submitted, accepted);
+      const typeAny = type as any;
+      const fromMap = typeAny.correctAssign && typeof typeAny.correctAssign === 'object' && !Array.isArray(typeAny.correctAssign)
+        ? Object.entries(typeAny.correctAssign as Record<string, string>).map(([slotId, value]) => `${slotId}:${value}`)
+        : [];
+
+      const slotIds = ((typeAny.slots || typeAny.blanks || []) as string[])
+        .map((slot) => String(slot || '').trim())
+        .filter(Boolean);
+      const orderedAnswers = (
+        Array.isArray(typeAny.correct) ? typeAny.correct
+        : Array.isArray(typeAny.correctAnswers) ? typeAny.correctAnswers
+        : Array.isArray(question.correctAnswers) ? question.correctAnswers
+        : []
+      ) as string[];
+
+      const fromOrdered = slotIds.length > 0 && orderedAnswers.length > 0
+        ? slotIds
+            .map((slotId, index) => {
+              const value = String(orderedAnswers[index] || '').trim();
+              return slotId && value ? `${slotId}:${value}` : '';
+            })
+            .filter(Boolean)
+        : [];
+
+      const fromLegacyPairs = (Array.isArray(question.correctAnswers) ? question.correctAnswers : [])
+        .map((entry) => String(entry || '').trim())
+        .filter((entry) => entry.includes(':'));
+
+      const accepted = fromMap.length > 0
+        ? fromMap
+        : (fromOrdered.length > 0 ? fromOrdered : fromLegacyPairs);
+
+      const expectedMap = parseKeyValueEntries(accepted);
+      const submittedMapFromPairs = parseKeyValueEntries(submitted);
+
+      const submittedMap = Object.keys(submittedMapFromPairs).length > 0
+        ? submittedMapFromPairs
+        : (slotIds.length > 0
+            ? Object.fromEntries(
+                submitted
+                  .slice(0, slotIds.length)
+                  .map((value, index) => [normalizeText(slotIds[index] || ''), normalizeText(String(value || ''))])
+                  .filter(([key, value]) => Boolean(key) && Boolean(value))
+              )
+            : {});
+
+      const expectedKeys = Object.keys(expectedMap);
+      if (expectedKeys.length === 0) {
+        return compareAsSets(submitted, accepted);
+      }
+
+      if (Object.keys(submittedMap).length !== expectedKeys.length) return false;
+      return expectedKeys.every((key) => submittedMap[key] === expectedMap[key]);
     }
 
     case 'matching': {

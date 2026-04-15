@@ -123,8 +123,15 @@ export default function PlayerGameView() {
     const allowsEmptySubmission = currentType === 'multi_select';
     const questionSnapshot = game.currentQuestion;
     const submittedSnapshot = [...selectedAnswers];
+    const normalizedSubmittedAnswers = currentType === 'match_the_phrase'
+      ? submittedSnapshot.map((entry) => {
+          const raw = String(entry || '').trim();
+          const separatorIndex = raw.indexOf(':');
+          return separatorIndex > 0 ? raw.slice(separatorIndex + 1).trim() : raw;
+        }).filter((value) => value.length > 0)
+      : submittedSnapshot;
 
-    if (!allowsEmptySubmission && submittedSnapshot.length === 0) return;
+    if (!allowsEmptySubmission && normalizedSubmittedAnswers.length === 0) return;
 
     if (currentType === 'ranking' || currentType === 'ordering') {
       console.log('[Ranking Submit] Submitted order:', submittedSnapshot);
@@ -141,12 +148,12 @@ export default function PlayerGameView() {
         {
           roomCode: game.roomCode,
           user: game.user,
-          answer: submittedSnapshot
+          answer: normalizedSubmittedAnswers
         },
         (errorMessage) => setError(errorMessage)
       );
 
-      dispatch(gameActions.setLastSubmittedAnswers(submittedSnapshot));
+      dispatch(gameActions.setLastSubmittedAnswers(normalizedSubmittedAnswers));
       setSelectedAnswers([]);
       dispatch(gameActions.setSubmittedAnswer(true));
     } catch (err) {
@@ -382,9 +389,12 @@ export default function PlayerGameView() {
   };
 
   const stats = getPlayerStats();
-  const submissionWasCorrect = pointsAtSubmission !== null
-    ? stats.points > pointsAtSubmission
-    : isAnswerCorrectFor(game.lastSubmittedQuestion || game.currentQuestion, game.lastSubmittedAnswers);
+  const isSubmittedAnswerCorrect = isAnswerCorrectFor(
+    game.lastSubmittedQuestion || game.currentQuestion,
+    game.lastSubmittedAnswers,
+  );
+  const gainedPointsAfterSubmit = pointsAtSubmission !== null && stats.points > pointsAtSubmission;
+  const submissionWasCorrect = isSubmittedAnswerCorrect || gainedPointsAfterSubmit;
 
   return (
     <Box sx={{ p: { xs: 0.5, sm: 1, md: 2 } }}>
