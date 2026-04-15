@@ -598,7 +598,8 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                         : [];
                 const shuffleSeed = `${allItems.join('\u0001')}::${(q?.optionImageUrls || []).join('\u0001')}`;
                 const shuffledItems = deterministicShuffle(allItems, shuffleSeed);
-                const displayItems = displayCorrectAnswers && correctOrder.length > 0 ? correctOrder : shuffledItems;
+                const hasCompleteCorrectOrder = correctOrder.length > 0 && correctOrder.length === allItems.length;
+                const displayItems = displayCorrectAnswers && hasCompleteCorrectOrder ? correctOrder : shuffledItems;
                 
                 if (!displayItems.length) {
                     return <Typography color="text.secondary">No ranking items to display.</Typography>;
@@ -750,7 +751,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     ) : null}
                 </Box>
 
-                {displayCorrectAnswers && t?.name !== 'matching' && (
+                {displayCorrectAnswers && t?.name !== 'matching' && t?.name !== 'ranking' && t?.name !== 'ordering' && (
                     <Box
                         sx={{
                             p: 1.5,
@@ -769,7 +770,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
 
                 <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
 
-                {displayCorrectAnswers && t?.name !== 'matching' && (
+                {displayCorrectAnswers && t?.name !== 'matching' && t?.name !== 'ranking' && t?.name !== 'ordering' && (
                     <Box
                         sx={{
                             p: 1.5,
@@ -786,15 +787,11 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                         {chartedAnswerBreakdown.length > 0 ? (
                             <Stack spacing={1.25}>
                                 {chartedAnswerBreakdown.map((entry, index) => {
-                                    const barLabel = t?.name === 'ranking' || t?.name === 'ordering'
-                                        ? `${index + 1}. ${entry.label}`
-                                        : entry.label;
-
                                     return (
                                         <Box key={`${entry.label}-${index}`} sx={{ display: 'grid', gap: 0.75 }}>
                                             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
                                                 <Typography variant="body2" sx={{ fontWeight: 700, minWidth: 0, flex: 1 }} noWrap>
-                                                    {barLabel}
+                                                    {entry.label}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ fontWeight: 800 }}>
                                                     {t?.name === 'match_the_phrase'
