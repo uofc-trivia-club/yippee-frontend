@@ -460,12 +460,17 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'numerical': {
+                const numericalAnswer =
+                    (t as any).correctAnswer ??
+                    ((t as any).correctAnswers && Array.isArray((t as any).correctAnswers) ? (t as any).correctAnswers[0] : undefined) ??
+                    (q as any)?.correctAnswer ??
+                    (Array.isArray(q?.correctAnswers) ? q.correctAnswers[0] : undefined);
                 return displayCorrectAnswers ? (
                     <Stack spacing={1}>
                         <Typography color="success.main" fontWeight="bold">
                             Correct Numerical Answer
                         </Typography>
-                        <Chip label={`${t.correctAnswer}`} color="success" variant="outlined" sx={{ width: 'fit-content' }} />
+                        <Chip label={`${numericalAnswer ?? 'N/A'}`} color="success" variant="outlined" sx={{ width: 'fit-content' }} />
                     </Stack>
                 ) : (
                     <Typography fontStyle="italic" color="text.secondary">

@@ -7,6 +7,7 @@ interface PlayerSubmissionSummaryProps {
   pointsBehind: number;
   leaderName?: string;
   explanation?: string;
+  submittedAnswer?: string | string[];
 }
 
 const getRankOrdinal = (n: number) => {
@@ -22,6 +23,7 @@ export default function PlayerSubmissionSummary({
   pointsBehind,
   leaderName,
   explanation,
+  submittedAnswer,
 }: PlayerSubmissionSummaryProps) {
   return (
     <Box
@@ -62,11 +64,18 @@ export default function PlayerSubmissionSummary({
         )}
       </Box>
 
+
       <Typography variant="body2" sx={{ opacity: 0.9, mt: 2 }}>
         {submissionWasCorrect
           ? 'Great job! Keep this up.'
           : 'Review the correct answer on the host screen.'}
       </Typography>
+
+      {submittedAnswer !== undefined && (
+        <Typography variant="body2" sx={{ mt: 1, fontWeight: 600 }}>
+          You submitted: {Array.isArray(submittedAnswer) ? submittedAnswer.join(', ') : submittedAnswer}
+        </Typography>
+      )}
 
       {explanation ? (
         <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.15)' }}>
