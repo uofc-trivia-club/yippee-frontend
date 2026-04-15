@@ -1,5 +1,5 @@
 import { Box, IconButton, Paper, Typography } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import DeleteIcon from '@mui/icons-material/Delete';
 import Xarrow from 'react-xarrows';
@@ -16,6 +16,7 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
   const [selectedRight, setSelectedRight] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [shuffledRightItems, setShuffledRightItems] = useState<string[]>(rightItems);
+  const rightItemsRef = useRef<string[]>(rightItems);
   const matchEntries = Object.entries(matches) as Array<[string, string]>;
   const leftSignature = leftItems.join('\u0001');
   const rightSignature = rightItems.join('\u0001');
@@ -45,11 +46,15 @@ export default function MatchingComponent({ leftItems, rightItems, disabled, onM
   }, [matches, onMatchesChange]);
 
   useEffect(() => {
+    rightItemsRef.current = rightItems;
+  }, [rightItems]);
+
+  useEffect(() => {
     // Reset selection/matches and shuffle right-side options once per question payload.
     setSelectedLeft(null);
     setSelectedRight(null);
     setMatches({});
-    const nextItems = [...rightItems];
+    const nextItems = [...rightItemsRef.current];
     for (let i = nextItems.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [nextItems[i], nextItems[j]] = [nextItems[j], nextItems[i]];
