@@ -562,24 +562,29 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'ranking':
             case 'ordering': {
+                const allItems = Array.isArray((t as any).items) ? (t as any).items
+                    : Array.isArray(q?.options) ? q.options
+                    : [];
                 const correctOrder = Array.isArray((t as any).correctOrder) && (t as any).correctOrder.length > 0
                     ? (t as any).correctOrder
                     : Array.isArray(q?.correctAnswers) && q.correctAnswers.length > 0
                         ? q.correctAnswers
                         : [];
-                const items = correctOrder.length > 0
-                    ? correctOrder
-                    : Array.isArray((t as any).items) ? (t as any).items : [];
-                if (!items.length) {
+                const displayItems = displayCorrectAnswers && correctOrder.length > 0 ? correctOrder : allItems;
+                
+                if (!displayItems.length) {
                     return <Typography color="text.secondary">No ranking items to display.</Typography>;
                 }
                 return (
                     <Box>
                         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Items to order</Typography>
                         <Stack spacing={1}>
-                            {items.map((item: string, idx: number) => (
-                                <Box
-                                    key={idx}
+                            {displayItems.map((item: string, displayIdx: number) => {
+                                const originalIdx = allItems.indexOf(item);
+                                const imageUrl = resolveMediaUrl(q?.optionImageUrls?.[originalIdx >= 0 ? originalIdx : displayIdx]);
+                                return (
+                                  <Box
+                                    key={displayIdx}
                                     sx={{
                                         ...optionTileSx(true),
                                         borderColor: displayCorrectAnswers ? theme.palette.success.main : theme.palette.divider,
@@ -590,24 +595,25 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 >
                                     <Stack direction="row" spacing={1.25} alignItems="center">
                                         <Chip
-                                            label={idx + 1}
+                                            label={displayIdx + 1}
                                             size="small"
                                             color={displayCorrectAnswers ? 'success' : 'default'}
                                             variant={displayCorrectAnswers ? 'filled' : 'outlined'}
                                             sx={{ minWidth: 34, fontWeight: 700 }}
                                         />
                                         <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>{item}</Typography>
-                                        {resolveMediaUrl(q?.optionImageUrls?.[idx]) ? (
+                                        {imageUrl ? (
                                             <Box
                                                 component="img"
-                                                src={resolveMediaUrl(q?.optionImageUrls?.[idx])}
-                                                alt={`Ranking item ${idx + 1}`}
+                                                src={imageUrl}
+                                                alt={`Ranking item ${displayIdx + 1}`}
                                                 sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
                                             />
                                         ) : null}
                                     </Stack>
                                 </Box>
-                            ))}
+                                );
+                            })}
                         </Stack>
                     </Box>
                 );

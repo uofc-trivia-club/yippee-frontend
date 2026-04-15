@@ -244,7 +244,7 @@ export default function PlayerGameView() {
       }
       case 'ranking':
       case 'ordering': {
-        const items = (((t as any).items || []) as string[]);
+        const items = (((t as any).items || q?.options || []) as string[]);
         return (
           <RankingQuestion
             items={items}
