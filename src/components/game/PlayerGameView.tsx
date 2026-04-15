@@ -363,15 +363,15 @@ export default function PlayerGameView() {
                 boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
               }}
             >
-              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                <Stack spacing={1.5}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>
+                <Stack spacing={1}>
                   <Chip
                     label="Slide"
                     color="primary"
                     variant="outlined"
-                    sx={{ width: 'fit-content', fontWeight: 700 }}
+                    sx={{ width: 'fit-content', fontWeight: 700, fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' } }}
                   />
-                  <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+                  <Typography sx={{ fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', fontSize: { xs: '1.1rem', sm: '1.5rem', md: '2.125rem' } }}>
                     {currentSlide?.title || 'Presentation Slide'}
                   </Typography>
                   {currentSlide?.imageUrl ? (
@@ -390,7 +390,7 @@ export default function PlayerGameView() {
                       }}
                     />
                   ) : null}
-                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: { xs: '0.875rem', md: '1rem' } }}>
                     {currentSlide?.content || 'No slide content provided.'}
                   </Typography>
                   <Alert severity="info" sx={{ mt: 1 }}>
@@ -412,24 +412,24 @@ export default function PlayerGameView() {
               boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
             }}
           >
-            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-              <Stack spacing={1.5}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>
+              <Stack spacing={1}>
                 <Chip
                   label={`Question ${questionNumber}`}
                   color="primary"
                   variant="outlined"
-                  sx={{ width: 'fit-content', fontWeight: 700 }}
+                  sx={{ width: 'fit-content', fontWeight: 700, fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' } }}
                 />
-                <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: { xs: '0.65rem', md: '0.75rem' } }}>
                   {getQuestionTypeTitle(game.currentQuestion?.type?.name)}
                 </Typography>
                 <Typography
-                  variant="h4"
                   sx={{
                     fontWeight: 800,
-                    lineHeight: 1.15,
+                    lineHeight: 1.2,
                     letterSpacing: '-0.02em',
                     wordBreak: 'break-word',
+                    fontSize: { xs: '1.1rem', sm: '1.5rem', md: '2.125rem' },
                   }}
                 >
                   {game.currentQuestion?.question}
@@ -460,7 +460,7 @@ export default function PlayerGameView() {
               Answer Submitted Successfully
             </Typography>
           ) : !isSlideItem ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 } }}>
               {renderQuestionInput()}
               
               <Button
@@ -472,7 +472,7 @@ export default function PlayerGameView() {
                   (game.currentQuestion?.type?.name !== 'multi_select' && selectedAnswers.length === 0) ||
                   (game.currentQuestion?.type?.name === 'fill_in_blank' && selectedAnswers.some((answer) => !answer?.trim()))
                 }
-                sx={{ mt: 2 }}
+                sx={{ mt: { xs: 1, md: 2 } }}
               >
                 {isSubmitting ? (
                   <CircularProgress size={24} color="inherit" />

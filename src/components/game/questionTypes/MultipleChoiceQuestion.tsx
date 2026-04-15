@@ -23,13 +23,22 @@ export default function MultipleChoiceQuestion({
   const normalizedOptions = Array.isArray(options) ? options : [];
 
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 1.25 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(200px, 1fr))' }, gap: { xs: 1, md: 1.25 } }}>
       {normalizedOptions.map((option, index) => (
         <Button
           key={option}
           onClick={() => onAnswerSelect(option)}
           variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
-          sx={{ width: '100%', minHeight: 96, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, p: 1.25 }}
+          sx={{ 
+            width: '100%', 
+            minHeight: { xs: 70, md: 96 }, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'flex-start', 
+            gap: 1, 
+            p: { xs: 1, md: 1.25 },
+            fontSize: { xs: '0.875rem', md: '1rem' }
+          }}
           disabled={disabled}
         >
           {resolvedOptionImageUrls?.[index] ? (
