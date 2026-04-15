@@ -188,6 +188,7 @@ export type User = {
   userRole: string;
   points: number;
   submittedAnswer: boolean;
+  submittedAnswers?: string[];
 };
 
 export type Lobby = {
@@ -200,6 +201,11 @@ export type Lobby = {
   currentQuestionIndex: number;
   currentQuestion: QuizQuestion;
   timeRemaining: number;
+  questionAnalytics?: {
+    anonymousResponses?: unknown[];
+    answerBuckets?: unknown[];
+    optionBreakdown?: unknown[];
+  };
 };
 
 export type MessageRequest = {

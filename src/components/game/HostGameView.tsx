@@ -298,7 +298,7 @@ export default function HostGameView() {
             </Box>
           )}
 
-          {!isSlideItem && game.gameSettings?.questionTime && game.gameSettings.questionTime > 0 && (
+          {!isSlideItem && (game.gameSettings?.questionTime ?? 0) > 0 && (
             <Paper
               elevation={0}
               sx={{

@@ -11,6 +11,10 @@ const syncLobbyTimelineState = (store: any, data: MessageResponse) => {
     const lobby = data.lobby;
     if (!lobby) return;
 
+    if ('questionAnalytics' in lobby) {
+        store.dispatch(gameActions.setQuestionAnalytics(lobby.questionAnalytics ?? undefined));
+    }
+
     if (typeof lobby.currentItemIndex === "number") {
         store.dispatch(gameActions.setCurrentItemIndex(lobby.currentItemIndex));
     }
@@ -132,15 +136,23 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             break;
 
                         case "Show leaderboard":
+                        case "Viewing the leaderboard":
                             if (data.clientsInLobby) {
                                 store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
+                            }
+                            if (data.lobby?.questionAnalytics) {
+                                store.dispatch(gameActions.setQuestionAnalytics(data.lobby.questionAnalytics));
                             }
                             store.dispatch(gameActions.setShowLeaderboard(true));
                             break;
 
                         case "Show leaderboard - Final Question":
+                        case "Viewing the leaderboard - Final Question":
                             if (data.clientsInLobby) {
                                 store.dispatch(gameActions.upsertClientsInLobby(data.clientsInLobby));
+                            }
+                            if (data.lobby?.questionAnalytics) {
+                                store.dispatch(gameActions.setQuestionAnalytics(data.lobby.questionAnalytics));
                             }
                             store.dispatch(gameActions.setShowLeaderboard(true));
                             store.dispatch(gameActions.setFinalQuestionLeaderboard(true));
@@ -161,6 +173,8 @@ export const websocketMiddleware: Middleware = (store) => (next) => (action) => 
                             // reset the submittedAnswer back to false for user
                             store.dispatch(gameActions.setSubmittedAnswer(false))
                             store.dispatch(gameActions.setLastSubmittedAnswers([]))
+                            store.dispatch(gameActions.setLastSubmittedQuestion(undefined))
+                            store.dispatch(gameActions.setQuestionAnalytics(undefined))
                             store.dispatch(gameActions.setShowLeaderboard(false))
                                 // Reset all players' submittedAnswer flags for the new question
                                 store.dispatch(gameActions.resetPlayersSubmittedAnswers());

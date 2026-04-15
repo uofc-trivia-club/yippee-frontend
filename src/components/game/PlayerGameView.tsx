@@ -72,7 +72,7 @@ export default function PlayerGameView() {
     if (game.user.submittedAnswer) return;
 
     const typeName = game.currentQuestion?.type?.name;
-    if (typeName === 'multiple_choice') {
+    if (typeName === 'multiple_choice' || typeName === 'true_false') {
       setSelectedAnswers([option]);
       return;
     }
@@ -98,6 +98,7 @@ export default function PlayerGameView() {
     setError(null);
 
     try {
+      dispatch(gameActions.setLastSubmittedQuestion(game.currentQuestion));
       await executeWebSocketCommand(
         "submitAnswer",
         {
@@ -342,7 +343,7 @@ export default function PlayerGameView() {
   };
 
   const isAnswerCorrect = () => {
-    const question = game.currentQuestion;
+    const question = game.lastSubmittedQuestion || game.currentQuestion;
     const type = question?.type;
     const submitted = game.lastSubmittedAnswers;
 
@@ -350,8 +351,8 @@ export default function PlayerGameView() {
 
     switch (type.name) {
       case 'multiple_choice':
-        return selectedAnswers[0]
-          ? normalizeText(selectedAnswers[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
+        return submitted[0]
+          ? normalizeText(submitted[0]) === normalizeText((type as any).correctAnswer || question.correctAnswers?.[0] || '')
           : false;
 
       case 'multi_select':
@@ -451,14 +452,20 @@ export default function PlayerGameView() {
       )
       .sort((a, b) => b.points - a.points);
 
-    const currentPlayerIndex = sortedPlayers.findIndex(p => p.userName === game.user.userName);
-    const currentPlayer = sortedPlayers[currentPlayerIndex];
+    const normalize = (value: string) => (value || '').trim().toLowerCase();
+    const currentPlayerName = normalize(game.user.userName);
+    const foundIndex = sortedPlayers.findIndex((p) => normalize(p.userName) === currentPlayerName);
+    const currentPlayerIndex = foundIndex >= 0
+      ? foundIndex
+      : (sortedPlayers.length === 1 ? 0 : -1);
+    const currentPlayer = currentPlayerIndex >= 0 ? sortedPlayers[currentPlayerIndex] : undefined;
     const leaderPlayer = sortedPlayers[0];
-    const pointsBehind = leaderPlayer && currentPlayer ? leaderPlayer.points - currentPlayer.points : 0;
+    const currentPoints = currentPlayer?.points ?? game.user.points ?? 0;
+    const pointsBehind = leaderPlayer ? Math.max(0, leaderPlayer.points - currentPoints) : 0;
 
     return {
-      rank: currentPlayerIndex + 1,
-      points: currentPlayer?.points || 0,
+      rank: currentPlayerIndex >= 0 ? currentPlayerIndex + 1 : null,
+      points: currentPoints,
       pointsBehind,
       leaderName: leaderPlayer?.userName,
       totalPlayers: sortedPlayers.length,
@@ -644,13 +651,17 @@ export default function PlayerGameView() {
 
                 {/* Rank Message */}
                 <Box sx={{ mb: 1 }}>
-                  {stats.pointsBehind === 0 ? (
+                  {stats.rank && stats.pointsBehind === 0 ? (
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>
                       🏆 You're in {getRankOrdinal(stats.rank)} place!
                     </Typography>
-                  ) : (
+                  ) : stats.rank ? (
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>
                       You are {stats.pointsBehind} {stats.pointsBehind === 1 ? 'point' : 'points'} behind {stats.leaderName}!
+                    </Typography>
+                  ) : (
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      Waiting for rank update...
                     </Typography>
                   )}
                 </Box>

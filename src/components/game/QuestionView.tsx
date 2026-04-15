@@ -5,6 +5,7 @@
 import {
     Box,
     Chip,
+    LinearProgress,
     Paper,
     Stack,
     Typography,
@@ -83,6 +84,168 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 },
             }) as const;
 
+    const anonymousResponses = useMemo(() => {
+        const normalizeAnswers = (value: unknown) => {
+            if (Array.isArray(value)) {
+                return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
+            }
+
+            if (value === null || value === undefined || value === '') {
+                return [];
+            }
+
+            return [String(value).trim()].filter(Boolean);
+        };
+
+        const analyticsResponses = (game.questionAnalytics as any)?.anonymousResponses;
+        if (Array.isArray(analyticsResponses) && analyticsResponses.length > 0) {
+            return analyticsResponses
+                .map((entry) => {
+                    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+                        const payload = entry as any;
+                        return normalizeAnswers(
+                            payload.submittedAnswers ??
+                            payload.lastSubmittedAnswers ??
+                            payload.answer ??
+                            payload.responses ??
+                            payload.values
+                        );
+                    }
+
+                    return normalizeAnswers(entry);
+                })
+                .filter((answers) => answers.length > 0);
+        }
+
+        const pickAnswerPayload = (payload: any) => {
+            const candidates = [payload.submittedAnswers, payload.lastSubmittedAnswers, payload.answer];
+
+            for (const candidate of candidates) {
+                const normalized = normalizeAnswers(candidate);
+                if (normalized.length > 0) {
+                    return normalized;
+                }
+            }
+
+            return [];
+        };
+
+        return (game.clientsInLobby || [])
+            .filter((user) => user?.userRole === 'player')
+            .map((user) => pickAnswerPayload(user as any))
+            .filter((answers) => answers.length > 0);
+    }, [game.clientsInLobby, game.questionAnalytics]);
+
+    const answerBreakdown = useMemo(() => {
+        const normalizeText = (value: unknown) => String(value ?? '').trim();
+
+        const extractCount = (payload: any) => {
+            const candidates = [payload.count, payload.votes, payload.voteCount, payload.total, payload.value, payload.responseCount];
+            for (const candidate of candidates) {
+                const parsed = Number(candidate);
+                if (Number.isFinite(parsed)) {
+                    return Math.max(0, parsed);
+                }
+            }
+            return 0;
+        };
+
+        const extractLabel = (payload: any, fallbackIndex: number) => {
+            const candidates = [payload.label, payload.answer, payload.option, payload.text, payload.value, payload.name, payload.response];
+            for (const candidate of candidates) {
+                const label = normalizeText(candidate);
+                if (label) {
+                    return label;
+                }
+            }
+            return `Option ${fallbackIndex + 1}`;
+        };
+
+        const rawBreakdown =
+            (game.questionAnalytics as any)?.answerBuckets ||
+            (game.questionAnalytics as any)?.optionBreakdown ||
+            [];
+
+        const parsedFromAnalytics = Array.isArray(rawBreakdown)
+            ? rawBreakdown.map((entry, index) => {
+                if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+                    const payload = entry as any;
+                    return {
+                        label: extractLabel(payload, index),
+                        count: extractCount(payload),
+                    };
+                }
+
+                return {
+                    label: extractLabel({ label: entry }, index),
+                    count: extractCount({ count: entry }),
+                };
+            })
+            : [];
+
+        const questionOptions = (() => {
+            switch (t?.name) {
+                case 'multiple_choice':
+                case 'multi_select':
+                case 'dropdown':
+                    return t?.options || [];
+                case 'true_false':
+                    return ['True', 'False'];
+                default:
+                    return [];
+            }
+        })();
+
+        const countsByLabel = new Map<string, number>();
+        parsedFromAnalytics.forEach((entry) => {
+            const key = normalizeText(entry.label).toLowerCase();
+            countsByLabel.set(key, (countsByLabel.get(key) || 0) + entry.count);
+        });
+
+        if (questionOptions.length > 0) {
+            const optionEntries = questionOptions.map((option, index) => {
+                const normalizedOption = normalizeText(option).toLowerCase();
+                const count = countsByLabel.get(normalizedOption) || 0;
+                const isCorrect =
+                    t?.name === 'multiple_choice' ? (t as any).correctAnswer === option :
+                    t?.name === 'multi_select' ? Array.isArray((t as any).correctAnswers) && (t as any).correctAnswers.includes(option) :
+                    t?.name === 'dropdown' ? (t as any).correctAnswer === option :
+                    t?.name === 'true_false' ? (t as any).correctAnswer === option :
+                    false;
+
+                return { label: option, count, isCorrect, index };
+            });
+
+            return optionEntries.map((entry) => ({
+                ...entry,
+                percent: 0,
+            }));
+        }
+
+        return parsedFromAnalytics.map((entry, index) => ({
+            ...entry,
+            index,
+            percent: 0,
+            isCorrect: false,
+        }));
+    }, [game.questionAnalytics, t]);
+
+    const totalVotes = useMemo(
+        () => answerBreakdown.reduce((sum, entry) => sum + entry.count, 0),
+        [answerBreakdown]
+    );
+
+    const chartedAnswerBreakdown = useMemo(() => {
+        if (totalVotes <= 0) {
+            return answerBreakdown.map((entry) => ({ ...entry, percent: 0 }));
+        }
+
+        return answerBreakdown.map((entry) => ({
+            ...entry,
+            percent: Math.round((entry.count / totalVotes) * 100),
+        }));
+    }, [answerBreakdown, totalVotes]);
+
     const renderOptionsView = () => {
         if (!q || !t) return null;
         switch (t.name) {
@@ -122,8 +285,9 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'multi_select': {
                 const options = t.options || [];
+                const correctAnswers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return options.map((option, index) => {
-                    const isCorrect = t.correctAnswers.includes(option);
+                    const isCorrect = correctAnswers.includes(option);
                     const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
                     return (
                         <Box key={index} sx={optionTileSx(isCorrect)}>
@@ -215,17 +379,23 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'short_answer':
             case 'fill_in_blank': {
-                const acceptedAnswers = t.correctAnswers;
+                const acceptedAnswers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return displayCorrectAnswers ? (
                     <Stack spacing={1}>
                         <Typography color="success.main" fontWeight="bold">
                             Accepted Answers
                         </Typography>
-                        <Stack direction="row" flexWrap="wrap" gap={1}>
-                            {acceptedAnswers.map((ans, i) => (
-                                <Chip key={i} label={ans} color="success" variant="outlined" />
-                            ))}
-                        </Stack>
+                        {acceptedAnswers.length > 0 ? (
+                            <Stack direction="row" flexWrap="wrap" gap={1}>
+                                {acceptedAnswers.map((ans, i) => (
+                                    <Chip key={i} label={ans} color="success" variant="outlined" />
+                                ))}
+                            </Stack>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                No accepted answers were provided for this question.
+                            </Typography>
+                        )}
                     </Stack>
                 ) : (
                     <Typography fontStyle="italic" color="text.secondary">
@@ -280,8 +450,8 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'matching': {
-                const left = t.leftItems;
-                const right = shuffledMatchingRightItems;
+                const left = Array.isArray(t.leftItems) ? t.leftItems : [];
+                const right = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
                 if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
                 return (
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
@@ -310,7 +480,10 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'ranking':
             case 'ordering': {
-                const items = (t as any).items;
+                const items = Array.isArray((t as any).items) ? (t as any).items : [];
+                if (!items.length) {
+                    return <Typography color="text.secondary">No ranking items to display.</Typography>;
+                }
                 return (
                     <Box>
                         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Items to order</Typography>
@@ -337,7 +510,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'image_based': {
                 const imgUrl = resolveMediaUrl(t.imageUrl);
-                const answers = t.correctAnswers;
+                const answers = Array.isArray(t.correctAnswers) ? t.correctAnswers : [];
                 return (
                     <Box sx={{ display: 'grid', gap: 2 }}>
                         {imgUrl && (
@@ -358,11 +531,17 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                         {displayCorrectAnswers && (
                             <Box>
                                 <Typography color="success.main" fontWeight="bold" sx={{ mb: 1 }}>Correct Answers</Typography>
-                                <Stack direction="row" flexWrap="wrap" gap={1}>
-                                    {answers.map((ans, i) => (
-                                        <Chip key={i} label={ans} color="success" variant="outlined" />
-                                    ))}
-                                </Stack>
+                                {answers.length > 0 ? (
+                                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                                        {answers.map((ans, i) => (
+                                            <Chip key={i} label={ans} color="success" variant="outlined" />
+                                        ))}
+                                    </Stack>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                        No accepted answers were provided for this image question.
+                                    </Typography>
+                                )}
                             </Box>
                         )}
                     </Box>
@@ -451,6 +630,81 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 )}
 
                 <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
+
+                {displayCorrectAnswers && (
+                    <Box
+                        sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: theme.palette.mode === 'dark'
+                                ? 'rgba(255,255,255,0.04)'
+                                : 'rgba(0,0,0,0.02)',
+                            border: `1px solid ${theme.palette.divider}`,
+                        }}
+                    >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.75 }}>
+                            Answer Breakdown
+                        </Typography>
+                        {chartedAnswerBreakdown.length > 0 ? (
+                            <Stack spacing={1.25}>
+                                {chartedAnswerBreakdown.map((entry, index) => {
+                                    const barLabel = t?.name === 'ranking' || t?.name === 'ordering'
+                                        ? `${index + 1}. ${entry.label}`
+                                        : entry.label;
+
+                                    return (
+                                        <Box key={`${entry.label}-${index}`} sx={{ display: 'grid', gap: 0.75 }}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+                                                <Typography variant="body2" sx={{ fontWeight: 700, minWidth: 0, flex: 1 }} noWrap>
+                                                    {barLabel}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                                                    {entry.count}
+                                                </Typography>
+                                            </Stack>
+                                            <Box sx={{ position: 'relative' }}>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={entry.percent}
+                                                    sx={{
+                                                        height: 14,
+                                                        borderRadius: 999,
+                                                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                                                        '& .MuiLinearProgress-bar': {
+                                                            borderRadius: 999,
+                                                            bgcolor: entry.isCorrect ? theme.palette.success.main : theme.palette.primary.main,
+                                                        },
+                                                    }}
+                                                />
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        inset: 0,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontWeight: 800,
+                                                        color: theme.palette.text.primary,
+                                                    }}
+                                                >
+                                                    {entry.percent}%
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    {totalVotes} vote{totalVotes === 1 ? '' : 's'} total
+                                </Typography>
+                            </Stack>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                Vote breakdown is not available in the current lobby payload.
+                            </Typography>
+                        )}
+                    </Box>
+                )}
 
                 {displayCorrectAnswers && q?.explanation ? (
                     <Box
