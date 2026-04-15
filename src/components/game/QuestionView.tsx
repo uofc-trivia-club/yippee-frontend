@@ -28,6 +28,32 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const q = game.currentQuestion;
     const t = q?.type;
     const questionNumber = (game.currentQuestionIndex ?? 0) + 1;
+    const hashString = (value: string) => {
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i += 1) {
+            hash ^= value.charCodeAt(i);
+            hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+        return hash >>> 0;
+    };
+
+    const createSeededRng = (seed: number) => {
+        let state = seed || 1;
+        return () => {
+            state = (state * 1664525 + 1013904223) >>> 0;
+            return state / 4294967296;
+        };
+    };
+
+    const deterministicShuffle = <T,>(items: T[], seedSource: string): T[] => {
+        const next = [...items];
+        const rand = createSeededRng(hashString(seedSource));
+        for (let i = next.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(rand() * (i + 1));
+            [next[i], next[j]] = [next[j], next[i]];
+        }
+        return next;
+    };
     const getQuestionTypeTitle = (typeName?: string) => {
         switch (typeName) {
             case 'multiple_choice': return 'Multiple-choice question';
@@ -90,9 +116,30 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     const matchPhraseCorrectAssign = useMemo(() => {
         if (t?.name !== 'match_the_phrase') return {} as Record<string, string>;
 
-        const fromType = (t as any)?.correctAssign;
+        const typeAny = t as any;
+
+        const fromType = typeAny?.correctAssign;
         if (fromType && typeof fromType === 'object' && !Array.isArray(fromType) && Object.keys(fromType).length > 0) {
             return fromType as Record<string, string>;
+        }
+
+        const slotIds = ((typeAny?.slots || typeAny?.blanks || []) as string[]).map((slot) => String(slot || '').trim()).filter(Boolean);
+        const orderedAnswers = (
+            Array.isArray(typeAny?.correct) ? typeAny.correct
+            : Array.isArray(typeAny?.correctAnswers) ? typeAny.correctAnswers
+            : Array.isArray(q?.correctAnswers) ? q?.correctAnswers
+            : []
+        ) as string[];
+
+        if (slotIds.length > 0 && orderedAnswers.length > 0) {
+            const mapped: Record<string, string> = {};
+            slotIds.forEach((slotId, index) => {
+                const value = String(orderedAnswers[index] || '').trim();
+                if (slotId && value) mapped[slotId] = value;
+            });
+            if (Object.keys(mapped).length > 0) {
+                return mapped;
+            }
         }
 
         const fromQuestion: string[] = Array.isArray(q?.correctAnswers) ? (q?.correctAnswers as string[]) : [];
@@ -434,12 +481,17 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'numerical': {
+                const numericalAnswer =
+                    (t as any).correctAnswer ??
+                    ((t as any).correctAnswers && Array.isArray((t as any).correctAnswers) ? (t as any).correctAnswers[0] : undefined) ??
+                    (q as any)?.correctAnswer ??
+                    (Array.isArray(q?.correctAnswers) ? q.correctAnswers[0] : undefined);
                 return displayCorrectAnswers ? (
                     <Stack spacing={1}>
                         <Typography color="success.main" fontWeight="bold">
                             Correct Numerical Answer
                         </Typography>
-                        <Chip label={`${t.correctAnswer}`} color="success" variant="outlined" sx={{ width: 'fit-content' }} />
+                        <Chip label={`${numericalAnswer ?? 'N/A'}`} color="success" variant="outlined" sx={{ width: 'fit-content' }} />
                     </Stack>
                 ) : (
                     <Typography fontStyle="italic" color="text.secondary">
@@ -470,7 +522,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 return (
                     <MatchPhraseQuestion
                         phrase={(t as any).phrase || q?.question || ''}
-                        slots={((t as any).slots || []) as string[]}
+                        slots={(((t as any).slots || (t as any).blanks || []) as string[])}
                         options={((t as any).options || []) as string[]}
                         disabled={true}
                         showCorrectAnswers={displayCorrectAnswers}
@@ -562,24 +614,32 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
             case 'ranking':
             case 'ordering': {
+                const allItems = Array.isArray((t as any).items) ? (t as any).items
+                    : Array.isArray(q?.options) ? q.options
+                    : [];
                 const correctOrder = Array.isArray((t as any).correctOrder) && (t as any).correctOrder.length > 0
                     ? (t as any).correctOrder
                     : Array.isArray(q?.correctAnswers) && q.correctAnswers.length > 0
                         ? q.correctAnswers
                         : [];
-                const items = correctOrder.length > 0
-                    ? correctOrder
-                    : Array.isArray((t as any).items) ? (t as any).items : [];
-                if (!items.length) {
+                const shuffleSeed = `${allItems.join('\u0001')}::${(q?.optionImageUrls || []).join('\u0001')}`;
+                const shuffledItems = deterministicShuffle(allItems, shuffleSeed);
+                const hasCompleteCorrectOrder = correctOrder.length > 0 && correctOrder.length === allItems.length;
+                const displayItems = displayCorrectAnswers && hasCompleteCorrectOrder ? correctOrder : shuffledItems;
+                
+                if (!displayItems.length) {
                     return <Typography color="text.secondary">No ranking items to display.</Typography>;
                 }
                 return (
                     <Box>
                         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Items to order</Typography>
                         <Stack spacing={1}>
-                            {items.map((item: string, idx: number) => (
-                                <Box
-                                    key={idx}
+                            {displayItems.map((item: string, displayIdx: number) => {
+                                const originalIdx = allItems.indexOf(item);
+                                const imageUrl = resolveMediaUrl(q?.optionImageUrls?.[originalIdx >= 0 ? originalIdx : displayIdx]);
+                                return (
+                                  <Box
+                                    key={displayIdx}
                                     sx={{
                                         ...optionTileSx(true),
                                         borderColor: displayCorrectAnswers ? theme.palette.success.main : theme.palette.divider,
@@ -590,24 +650,25 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                 >
                                     <Stack direction="row" spacing={1.25} alignItems="center">
                                         <Chip
-                                            label={idx + 1}
+                                            label={displayIdx + 1}
                                             size="small"
                                             color={displayCorrectAnswers ? 'success' : 'default'}
                                             variant={displayCorrectAnswers ? 'filled' : 'outlined'}
                                             sx={{ minWidth: 34, fontWeight: 700 }}
                                         />
                                         <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>{item}</Typography>
-                                        {resolveMediaUrl(q?.optionImageUrls?.[idx]) ? (
+                                        {imageUrl ? (
                                             <Box
                                                 component="img"
-                                                src={resolveMediaUrl(q?.optionImageUrls?.[idx])}
-                                                alt={`Ranking item ${idx + 1}`}
+                                                src={imageUrl}
+                                                alt={`Ranking item ${displayIdx + 1}`}
                                                 sx={{ width: { xs: 96, md: 120 }, height: { xs: 64, md: 80 }, objectFit: 'contain', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
                                             />
                                         ) : null}
                                     </Stack>
                                 </Box>
-                            ))}
+                                );
+                            })}
                         </Stack>
                     </Box>
                 );
@@ -716,7 +777,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     ) : null}
                 </Box>
 
-                {displayCorrectAnswers && t?.name !== 'matching' && (
+                {displayCorrectAnswers && t?.name !== 'matching' && t?.name !== 'ranking' && t?.name !== 'ordering' && (
                     <Box
                         sx={{
                             p: 1.5,
@@ -735,7 +796,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
 
                 <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
 
-                {displayCorrectAnswers && t?.name !== 'matching' && (
+                {displayCorrectAnswers && t?.name !== 'matching' && t?.name !== 'ranking' && t?.name !== 'ordering' && (
                     <Box
                         sx={{
                             p: 1.5,
@@ -752,15 +813,11 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                         {chartedAnswerBreakdown.length > 0 ? (
                             <Stack spacing={1.25}>
                                 {chartedAnswerBreakdown.map((entry, index) => {
-                                    const barLabel = t?.name === 'ranking' || t?.name === 'ordering'
-                                        ? `${index + 1}. ${entry.label}`
-                                        : entry.label;
-
                                     return (
                                         <Box key={`${entry.label}-${index}`} sx={{ display: 'grid', gap: 0.75 }}>
                                             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
                                                 <Typography variant="body2" sx={{ fontWeight: 700, minWidth: 0, flex: 1 }} noWrap>
-                                                    {barLabel}
+                                                    {entry.label}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ fontWeight: 800 }}>
                                                     {t?.name === 'match_the_phrase'

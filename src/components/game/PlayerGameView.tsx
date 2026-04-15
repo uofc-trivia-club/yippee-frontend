@@ -12,7 +12,7 @@ import {
   TrueFalseQuestion,
 } from "./questionTypes";
 import { PlayerSubmissionSummary, getQuestionTypeTitle, isAnswerCorrectFor } from "./player";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import Leaderboard from "./Leaderboard";
@@ -31,6 +31,51 @@ export default function PlayerGameView() {
   const [error, setError] = useState<string | null>(null);
   const [pointsAtSubmission, setPointsAtSubmission] = useState<number | null>(null);
   const dispatch = useDispatch();
+
+  const matchPhraseRevealData = useMemo(() => {
+    const q = game.currentQuestion;
+    const t = q?.type as any;
+    if (!q || !t || t.name !== 'match_the_phrase') return null;
+
+    const slots = ((t.slots || t.blanks || []) as string[]).map((slot) => String(slot || '').trim()).filter(Boolean);
+    const orderedAnswers = (
+      Array.isArray(t.correct) ? t.correct
+      : Array.isArray(t.correctAnswers) ? t.correctAnswers
+      : Array.isArray(q.correctAnswers) ? q.correctAnswers
+      : []
+    ) as string[];
+
+    const correctAssign: Record<string, string> = {};
+    if (slots.length > 0 && orderedAnswers.length > 0) {
+      slots.forEach((slotId, index) => {
+        const value = String(orderedAnswers[index] || '').trim();
+        if (slotId && value) {
+          correctAssign[slotId] = value;
+        }
+      });
+    }
+
+    if (Object.keys(correctAssign).length === 0) {
+      const keyValueAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+      keyValueAnswers.forEach((entry) => {
+        const raw = String(entry || '').trim();
+        const separatorIndex = raw.indexOf(':');
+        if (separatorIndex <= 0) return;
+        const key = raw.slice(0, separatorIndex).trim();
+        const value = raw.slice(separatorIndex + 1).trim();
+        if (key && value) {
+          correctAssign[key] = value;
+        }
+      });
+    }
+
+    return {
+      phrase: t.phrase || q.question || '',
+      slots,
+      options: ((t.options || []) as string[]),
+      correctAssign,
+    };
+  }, [game.currentQuestion]);
   
   // Memoize ranking order change callback to prevent RankingComponent state reset
   const handleRankingOrderChange = useCallback((ordered: string[]) => {
@@ -78,8 +123,15 @@ export default function PlayerGameView() {
     const allowsEmptySubmission = currentType === 'multi_select';
     const questionSnapshot = game.currentQuestion;
     const submittedSnapshot = [...selectedAnswers];
+    const normalizedSubmittedAnswers = currentType === 'match_the_phrase'
+      ? submittedSnapshot.map((entry) => {
+          const raw = String(entry || '').trim();
+          const separatorIndex = raw.indexOf(':');
+          return separatorIndex > 0 ? raw.slice(separatorIndex + 1).trim() : raw;
+        }).filter((value) => value.length > 0)
+      : submittedSnapshot;
 
-    if (!allowsEmptySubmission && submittedSnapshot.length === 0) return;
+    if (!allowsEmptySubmission && normalizedSubmittedAnswers.length === 0) return;
 
     if (currentType === 'ranking' || currentType === 'ordering') {
       console.log('[Ranking Submit] Submitted order:', submittedSnapshot);
@@ -96,12 +148,12 @@ export default function PlayerGameView() {
         {
           roomCode: game.roomCode,
           user: game.user,
-          answer: submittedSnapshot
+          answer: normalizedSubmittedAnswers
         },
         (errorMessage) => setError(errorMessage)
       );
 
-      dispatch(gameActions.setLastSubmittedAnswers(submittedSnapshot));
+      dispatch(gameActions.setLastSubmittedAnswers(normalizedSubmittedAnswers));
       setSelectedAnswers([]);
       dispatch(gameActions.setSubmittedAnswer(true));
     } catch (err) {
@@ -215,7 +267,7 @@ export default function PlayerGameView() {
       }
       case 'match_the_phrase': {
         const phrase = (t as any).phrase || q.question || '';
-        const slots = ((t as any).slots || []) as string[];
+        const slots = (((t as any).slots || (t as any).blanks || []) as string[]);
         const options = ((t as any).options || []) as string[];
         return (
           <MatchPhraseQuestion
@@ -244,7 +296,7 @@ export default function PlayerGameView() {
       }
       case 'ranking':
       case 'ordering': {
-        const items = (((t as any).items || []) as string[]);
+        const items = (((t as any).items || q?.options || []) as string[]);
         return (
           <RankingQuestion
             items={items}
@@ -337,9 +389,12 @@ export default function PlayerGameView() {
   };
 
   const stats = getPlayerStats();
-  const submissionWasCorrect = pointsAtSubmission !== null
-    ? stats.points > pointsAtSubmission
-    : isAnswerCorrectFor(game.lastSubmittedQuestion || game.currentQuestion, game.lastSubmittedAnswers);
+  const isSubmittedAnswerCorrect = isAnswerCorrectFor(
+    game.lastSubmittedQuestion || game.currentQuestion,
+    game.lastSubmittedAnswers,
+  );
+  const gainedPointsAfterSubmit = pointsAtSubmission !== null && stats.points > pointsAtSubmission;
+  const submissionWasCorrect = isSubmittedAnswerCorrect || gainedPointsAfterSubmit;
 
   return (
     <Box sx={{ p: { xs: 0.5, sm: 1, md: 2 } }}>
@@ -486,6 +541,33 @@ export default function PlayerGameView() {
         </>
       ) : !game.finalQuestionLeaderboard ? (
         <>
+          {game.currentQuestion?.type?.name === 'match_the_phrase' && matchPhraseRevealData ? (
+            <Card
+              elevation={0}
+              sx={{
+                mb: { xs: 1, md: 2 },
+                borderRadius: 3,
+                border: (theme) => `1px solid ${theme.palette.divider}`,
+                background: (theme) => theme.palette.mode === 'dark'
+                  ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
+                  : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
+                boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+              }}
+            >
+              <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>
+                <MatchPhraseQuestion
+                  phrase={matchPhraseRevealData.phrase}
+                  slots={matchPhraseRevealData.slots}
+                  options={matchPhraseRevealData.options}
+                  disabled={true}
+                  showCorrectAnswers={true}
+                  correctAssign={matchPhraseRevealData.correctAssign}
+                  onMatchesChange={() => undefined}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+
           <PlayerSubmissionSummary
             submissionWasCorrect={submissionWasCorrect}
             points={stats.points}
@@ -493,6 +575,7 @@ export default function PlayerGameView() {
             pointsBehind={stats.pointsBehind}
             leaderName={stats.leaderName}
             explanation={game.currentQuestion?.explanation}
+            submittedAnswer={game.lastSubmittedAnswers}
           />
         </>
       ) : (
