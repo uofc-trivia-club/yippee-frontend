@@ -68,6 +68,8 @@ export default function RankingQuestion({
     return deterministicShuffle(initial, shuffleSeed);
   });
   const onOrderChangeRef = useRef(onOrderChange);
+  const itemsRef = useRef(items);
+  const optionImageUrlsRef = useRef(optionImageUrls);
   const itemsSignature = items.join('\u0001');
   const imageUrlsSignature = (optionImageUrls || []).join('\u0001');
 
@@ -90,10 +92,18 @@ export default function RankingQuestion({
   }, [onOrderChange]);
 
   useEffect(() => {
-    const nextItems = items.map((text, index) => ({
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    optionImageUrlsRef.current = optionImageUrls;
+  }, [optionImageUrls]);
+
+  useEffect(() => {
+    const nextItems = itemsRef.current.map((text, index) => ({
       id: `${index}-${text}`,
       text,
-      imageUrl: resolveMediaUrl(optionImageUrls?.[index]),
+      imageUrl: resolveMediaUrl(optionImageUrlsRef.current?.[index]),
     }));
 
     const shuffled = deterministicShuffle(nextItems, shuffleSeed);
