@@ -87,6 +87,30 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 },
             }) as const;
 
+    const matchPhraseCorrectAssign = useMemo(() => {
+        if (t?.name !== 'match_the_phrase') return {} as Record<string, string>;
+
+        const fromType = (t as any)?.correctAssign;
+        if (fromType && typeof fromType === 'object' && !Array.isArray(fromType) && Object.keys(fromType).length > 0) {
+            return fromType as Record<string, string>;
+        }
+
+        const fromQuestion: string[] = Array.isArray(q?.correctAnswers) ? (q?.correctAnswers as string[]) : [];
+        const parsed: Record<string, string> = {};
+        fromQuestion.forEach((entry) => {
+            const raw = String(entry || '').trim();
+            if (!raw) return;
+            const separatorIndex = raw.indexOf(':');
+            if (separatorIndex <= 0) return;
+            const slotKey = raw.slice(0, separatorIndex).trim();
+            const slotValue = raw.slice(separatorIndex + 1).trim();
+            if (slotKey && slotValue) {
+                parsed[slotKey] = slotValue;
+            }
+        });
+        return parsed;
+    }, [q?.correctAnswers, t]);
+
     const answerBreakdown = useMemo(() => {
         const normalizeText = (value: unknown) => String(value ?? '').trim();
 
@@ -147,6 +171,57 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             }
         })();
 
+        if (t?.name === 'match_the_phrase') {
+            const slots = (((t as any)?.slots || []) as string[]).map((slot) => String(slot || '').trim()).filter(Boolean);
+            const fallbackSlots = Array.from({ length: Object.keys(matchPhraseCorrectAssign).length }, (_, index) => `blank${index + 1}`);
+            const slotIds = slots.length > 0 ? slots : fallbackSlots;
+
+            const parseSubmittedAssignments = (rawLabel: string) => {
+                const parts = rawLabel
+                    .split('|')
+                    .map((part) => String(part || '').trim())
+                    .filter(Boolean);
+
+                const map = new Map<string, string>();
+                parts.forEach((part) => {
+                    const separatorIndex = part.indexOf(':');
+                    if (separatorIndex <= 0) return;
+                    const key = part.slice(0, separatorIndex).trim();
+                    const value = part.slice(separatorIndex + 1).trim();
+                    if (key) map.set(key, value);
+                });
+                return map;
+            };
+
+            const perBlank = slotIds.map((slotId, index) => {
+                const expected = String(matchPhraseCorrectAssign[slotId] || '').trim();
+                let answeredCount = 0;
+                let correctCount = 0;
+
+                parsedFromAnalytics.forEach((entry) => {
+                    const assignments = parseSubmittedAssignments(entry.label);
+                    const submitted = String(assignments.get(slotId) || '').trim();
+                    if (!submitted) return;
+                    answeredCount += entry.count;
+                    if (expected && submitted.toLowerCase() === expected.toLowerCase()) {
+                        correctCount += entry.count;
+                    }
+                });
+
+                const percent = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+                return {
+                    label: `Blank ${index + 1}${expected ? ` (${expected})` : ''}`,
+                    count: correctCount,
+                    answeredCount,
+                    percent,
+                    isCorrect: true,
+                    index,
+                };
+            });
+
+            return perBlank;
+        }
+
         const countsByLabel = new Map<string, number>();
         parsedFromAnalytics.forEach((entry) => {
             const key = normalizeText(entry.label).toLowerCase();
@@ -179,7 +254,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             percent: 0,
             isCorrect: false,
         }));
-    }, [game.questionAnalytics, t]);
+    }, [game.questionAnalytics, matchPhraseCorrectAssign, q?.options, t]);
 
     const totalVotes = useMemo(
         () => answerBreakdown.reduce((sum, entry) => sum + entry.count, 0),
@@ -187,6 +262,10 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
     );
 
     const chartedAnswerBreakdown = useMemo(() => {
+        if (t?.name === 'match_the_phrase') {
+            return answerBreakdown;
+        }
+
         if (totalVotes <= 0) {
             return answerBreakdown.map((entry) => ({ ...entry, percent: 0 }));
         }
@@ -195,7 +274,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
             ...entry,
             percent: Math.round((entry.count / totalVotes) * 100),
         }));
-    }, [answerBreakdown, totalVotes]);
+    }, [answerBreakdown, t?.name, totalVotes]);
 
     const renderOptionsView = () => {
         if (!q || !t) return null;
@@ -395,7 +474,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                         options={((t as any).options || []) as string[]}
                         disabled={true}
                         showCorrectAnswers={displayCorrectAnswers}
-                        correctAssign={(t as any).correctAssign || {}}
+                        correctAssign={matchPhraseCorrectAssign}
                         onMatchesChange={() => undefined}
                     />
                 );
@@ -684,7 +763,9 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                                                     {barLabel}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ fontWeight: 800 }}>
-                                                    {entry.count}
+                                                    {t?.name === 'match_the_phrase'
+                                                        ? `${entry.count}/${(entry as any).answeredCount || 0}`
+                                                        : entry.count}
                                                 </Typography>
                                             </Stack>
                                             <Box sx={{ position: 'relative' }}>
