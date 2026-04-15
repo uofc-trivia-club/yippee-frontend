@@ -24,6 +24,7 @@ export default function QuizQuestionPreview({
   showCorrectAnswers = false
 }: QuizQuestionPreviewProps) {
   const theme = useTheme();
+  const asStringArray = (value: unknown): string[] => Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
   
   // Type-safe extraction of options and answers based on question type
   let options: string[] = [];
@@ -35,19 +36,19 @@ export default function QuizQuestionPreview({
   switch (question.type.name) {
     case "multiple_choice": {
       const t = question.type;
-      options = t.options;
+      options = asStringArray((t as any).options ?? question.options);
       correctAnswer = t.correctAnswer;
       break;
     }
     case "multi_select": {
       const t = question.type;
-      options = t.options;
-      correctAnswers = t.correctAnswers;
+      options = asStringArray((t as any).options ?? question.options);
+      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
       break;
     }
     case "dropdown": {
       const t = question.type;
-      options = t.options;
+      options = asStringArray((t as any).options ?? question.options);
       correctAnswer = t.correctAnswer;
       break;
     }
@@ -59,12 +60,12 @@ export default function QuizQuestionPreview({
     }
     case "short_answer": {
       const t = question.type;
-      correctAnswers = t.correctAnswers;
+      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
       break;
     }
     case "fill_in_blank": {
       const t = question.type;
-      correctAnswers = t.correctAnswers;
+      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
       break;
     }
     case "numerical": {
@@ -74,13 +75,19 @@ export default function QuizQuestionPreview({
     }
     case "match_the_phrase": {
       const t = question.type;
-      options = t.options || [];
+      options = asStringArray((t as any).options ?? question.options);
       break;
     }
     case "matching": {
-      const t = question.type;
-      leftItems = t.leftItems;
-      rightItems = t.rightItems;
+      const t = question.type as any;
+      const pairs = Array.isArray(t.pairs) ? t.pairs : [];
+      if (pairs.length > 0) {
+        leftItems = pairs.map((p: any) => String(p?.left ?? p?.leftItem ?? '')).filter(Boolean);
+        rightItems = pairs.map((p: any) => String(p?.right ?? p?.rightItem ?? '')).filter(Boolean);
+      } else {
+        leftItems = asStringArray(t.leftItems);
+        rightItems = asStringArray(t.rightItems);
+      }
       break;
     }
     case "ranking":
@@ -91,7 +98,7 @@ export default function QuizQuestionPreview({
     }
     case "image_based": {
       const t = question.type;
-      correctAnswers = t.correctAnswers;
+      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
       break;
     }
     default:

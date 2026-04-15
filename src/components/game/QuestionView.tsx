@@ -401,11 +401,60 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'matching': {
-                const pairs = (t as any).pairs || [];
-                                const left: string[] = pairs.length > 0 
-                                    ? pairs.map((p: any) => p.left || p.leftItem || '')
-                                    : (Array.isArray(t.leftItems) ? t.leftItems : []);
-                                const right: string[] = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
+                const pairs = (((t as any).pairs || []) as Array<{ left?: string; right?: string; leftItem?: string; rightItem?: string }>);
+                const left: string[] = pairs.length > 0
+                    ? pairs.map((p) => p.left || p.leftItem || '')
+                    : (Array.isArray((t as any).leftItems) ? (t as any).leftItems : []);
+                const right: string[] = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
+                const correctMatches = (((t as any).correctMatches || {}) as Record<string, string>);
+                const revealedPairs: Array<{ left: string; right: string }> = pairs.length > 0
+                    ? pairs
+                        .map((p) => ({ left: p.left || p.leftItem || '', right: p.right || p.rightItem || '' }))
+                        .filter((pair) => Boolean(pair.left) && Boolean(pair.right))
+                    : left
+                        .map((leftItem, index) => ({
+                            left: leftItem,
+                            right: correctMatches[leftItem] || (((t as any).rightItems || [])[index] || ''),
+                        }))
+                        .filter((pair) => Boolean(pair.left) && Boolean(pair.right));
+
+                if (displayCorrectAnswers) {
+                    if (!revealedPairs.length) return <Typography>No pairs to display.</Typography>;
+                    return (
+                        <Box>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Correct pairs</Typography>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.25, mb: 1 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Left
+                                </Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Right
+                                </Typography>
+                            </Box>
+                            <Stack spacing={1}>
+                                {revealedPairs.map((pair, idx) => (
+                                    <Box key={`${pair.left}-${pair.right}-${idx}`} sx={{ ...optionTileSx(true), borderColor: theme.palette.success.main }}>
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.25, alignItems: 'center' }}>
+                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                                                <Chip label={idx + 1} size="small" color="success" sx={{ minWidth: 34, fontWeight: 700 }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                                                    {pair.left}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                                                <Chip label={String.fromCharCode(65 + idx)} size="small" color="success" variant="outlined" sx={{ minWidth: 34, fontWeight: 700 }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                                                    {pair.right}
+                                                </Typography>
+                                            </Stack>
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Stack>
+                        </Box>
+                    );
+                }
+
                 if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
                 return (
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
@@ -588,7 +637,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                     ) : null}
                 </Box>
 
-                {displayCorrectAnswers && (
+                {displayCorrectAnswers && t?.name !== 'matching' && (
                     <Box
                         sx={{
                             p: 1.5,
@@ -607,7 +656,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
 
                 <Box sx={{ mt: 1 }}>{renderOptionsView()}</Box>
 
-                {displayCorrectAnswers && (
+                {displayCorrectAnswers && t?.name !== 'matching' && (
                     <Box
                         sx={{
                             p: 1.5,
