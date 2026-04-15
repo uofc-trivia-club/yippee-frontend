@@ -1,153 +1,40 @@
 import { Alert, Autocomplete, Badge, Box, Button, Card, CardContent, Checkbox, Chip, Collapse, Divider, IconButton, MenuItem, Radio, Snackbar, TextField, Typography, useTheme } from "@mui/material";
 import {
-  DndContext,
   DragEndEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Quiz, QuizItem, QuizQuestion } from "../../stores/types";
 import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+  PREDEFINED_CATEGORIES,
+  QUESTION_TYPE_OPTIONS,
+  QUESTIONS_PER_PAGE,
+  PresentationSlideForm,
+  QuizQuestionForm,
+  TimelineItemRef,
+  TimelinePreviewItem,
+  createInitialQuestion,
+  createInitialSlide,
+  createMatchingPairs,
+} from "./createQuizTypes";
+import { arrayMove, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
 
 import AddIcon from '@mui/icons-material/Add';
 import { CSS } from '@dnd-kit/utilities';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import { DifficultySlider } from '../../components/common/DifficultySlider';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import EditIcon from '@mui/icons-material/Edit';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import type { DragEvent as ReactDragEvent } from "react";
 import StarIcon from '@mui/icons-material/Star';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import { backendUrl } from '../../util/backendConfig';
+import QuizPreviewDialog from "./components/QuizPreviewDialog";
+import QuizTimelineEditor from "./components/QuizTimelineEditor";
 import styles from './CreateQuiz.module.css';
-
-type QuizQuestionForm = {
-  id: string;
-  question: string;
-  points: number;
-  difficulty: number;
-  hint: string;
-  imageUrl: string;
-  imageId?: string;
-  imageFile: File | null;
-  explanation: string;
-  type: string;
-  acceptedAnswers: string[];
-  acceptedAnswerInput: string;
-  category: string[];
-  matchingPairs: Array<{
-    left: string;
-    right: string;
-    leftImageUrl?: string;
-    leftImageId?: string;
-    leftImageFile: File | null;
-    rightImageUrl?: string;
-    rightImageId?: string;
-    rightImageFile: File | null;
-  }>;
-  options: Array<{
-    text: string;
-    isCorrect: boolean;
-    imageUrl?: string;
-    imageId?: string;
-    imageFile: File | null;
-  }>;
-};
-
-type PresentationSlideForm = {
-  id: string;
-  title: string;
-  content: string;
-  imageUrl: string;
-};
-
-type TimelineItemRef = {
-  id: string;
-  kind: "slide" | "question";
-  refId: string;
-};
-
-const createMatchingPairs = () => ([
-  { left: "", right: "", leftImageUrl: "", leftImageId: "", leftImageFile: null, rightImageUrl: "", rightImageId: "", rightImageFile: null },
-  { left: "", right: "", leftImageUrl: "", leftImageId: "", leftImageFile: null, rightImageUrl: "", rightImageId: "", rightImageFile: null },
-]);
-
-const createInitialQuestion = (): QuizQuestionForm => ({
-  id: `question-${Date.now()}-${Math.random()}`,
-  question: "",
-  points: 1,
-  difficulty: 1,
-  hint: "",
-  imageUrl: "",
-  imageId: "",
-  imageFile: null,
-  explanation: "",
-  type: "multiple",
-  acceptedAnswers: [],
-  acceptedAnswerInput: "",
-  category: [],
-  matchingPairs: createMatchingPairs(),
-  options: [
-    { text: "", isCorrect: true, imageUrl: "", imageId: "", imageFile: null },
-    { text: "", isCorrect: false, imageUrl: "", imageId: "", imageFile: null },
-  ],
-});
-
-const createInitialSlide = (): PresentationSlideForm => ({
-  id: `slide-${Date.now()}-${Math.random()}`,
-  title: "",
-  content: "",
-  imageUrl: "",
-});
-
-const QUESTIONS_PER_PAGE = 5;
-
-// Add predefined categories (can be loaded from backend)
-const PREDEFINED_CATEGORIES = [
-  'Math',
-  'Science',
-  'History',
-  'Geography',
-  'Literature',
-  'Sports',
-  'Technology',
-  'Art',
-  'Music',
-  'General Knowledge',
-];
-
-const QUESTION_TYPE_OPTIONS = [
-  { value: 'multiple', label: 'Multiple Choice (Single Answer)' },
-  { value: 'multi_select', label: 'Multi-Select (Multiple Answers)' },
-  { value: 'dropdown', label: 'Dropdown' },
-  { value: 'true_false', label: 'True / False' },
-  { value: 'short_answer', label: 'Short Answer' },
-  { value: 'fill_in_blank', label: 'Fill in the Blank' },
-  { value: 'numerical', label: 'Numerical' },
-  { value: 'essay', label: 'Essay' },
-  { value: 'ranking', label: 'Ranking' },
-  { value: 'match_the_phrase', label: 'Match the Phrase' },
-  { value: 'matching', label: 'Matching' },
-  { value: 'image_based', label: 'Image Based' },
-  { value: 'calendar', label: 'Calendar' },
-] as const;
 
 // Sortable Question Card Component
 function SortableQuestionCard({
@@ -1521,8 +1408,6 @@ export default function CreateQuiz() {
     Boolean(option.text.trim()) || Boolean(option.imageFile) || Boolean((option.imageUrl || '').trim()) || Boolean((option.imageId || '').trim());
   const hasMatchingSideContent = (text: string, imageFile: File | null, imageUrl?: string, imageId?: string) =>
     Boolean(text.trim()) || Boolean(imageFile) || Boolean((imageUrl || '').trim()) || Boolean((imageId || '').trim());
-  const getMatchingPreviewImageSrc = (file: File | null, url?: string) =>
-    file ? URL.createObjectURL(file) : (url || '');
 
   useEffect(() => {
     if (timelineItems.length === 0 && questions.length > 0) {
@@ -2459,20 +2344,6 @@ export default function CreateQuiz() {
     setPreviewOpen(false);
   };
 
-  const getDifficultyLabel = (difficulty: number): string => {
-    if (difficulty <= 2) return "Easy";
-    if (difficulty <= 4) return "Medium";
-    if (difficulty <= 6) return "Hard";
-    return "Expert";
-  };
-
-  const getDifficultyColor = (difficulty: number) => {
-    if (difficulty <= 2) return theme.palette.success.main;
-    if (difficulty <= 4) return theme.palette.warning.main;
-    if (difficulty <= 6) return theme.palette.error.main;
-    return theme.palette.error.dark;
-  };
-
   const expandAll = () => {
     setExpandedQuestions(new Set(paginatedQuestions.map(q => q.id)));
   };
@@ -2480,6 +2351,93 @@ export default function CreateQuiz() {
   const collapseAll = () => {
     setExpandedQuestions(new Set());
   };
+
+  const handleSelectTimelineItem = (item: TimelinePreviewItem) => {
+    setSelectedTimelineId(item.timelineId);
+    if (item.kind === 'question') {
+      setExpandedQuestions(new Set([item.question.id]));
+    }
+  };
+
+  const renderSlideTimelineCard = (item: Extract<TimelinePreviewItem, { kind: 'slide' }>, listIndex: number) => (
+    <Card
+      key={item.timelineId}
+      variant="outlined"
+      sx={{
+        borderColor: selectedTimelineId === item.timelineId ? 'info.main' : 'divider',
+        bgcolor: theme.palette.mode === 'dark' ? 'rgba(3,169,244,0.08)' : 'rgba(3,169,244,0.05)',
+      }}
+    >
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+            #{listIndex + 1} • Slide {item.slideIndex + 1}
+          </Typography>
+          <IconButton size="small" onClick={() => deleteSlide(item.slide.id)} sx={{ color: 'error.main' }}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <TextField
+          label="Slide Title"
+          fullWidth
+          size="small"
+          sx={{ mb: 1.25 }}
+          value={item.slide.title}
+          onChange={(e) => updateSlide(item.slide.id, 'title', e.target.value)}
+        />
+        <TextField
+          label="Slide Content"
+          fullWidth
+          size="small"
+          multiline
+          rows={3}
+          sx={{ mb: 1.25 }}
+          value={item.slide.content}
+          onChange={(e) => updateSlide(item.slide.id, 'content', e.target.value)}
+        />
+        <TextField
+          label="Slide Image URL (Optional)"
+          fullWidth
+          size="small"
+          value={item.slide.imageUrl}
+          onChange={(e) => updateSlide(item.slide.id, 'imageUrl', e.target.value)}
+        />
+      </CardContent>
+    </Card>
+  );
+
+  const renderQuestionTimelineCard = (item: Extract<TimelinePreviewItem, { kind: 'question' }>) => (
+    <SortableQuestionCard
+      key={item.timelineId}
+      sortableId={item.timelineId}
+      question={item.question}
+      index={item.questionIndex}
+      globalIndex={item.questionIndex}
+      expanded={expandedQuestions.has(item.question.id)}
+      onToggle={() => {
+        setSelectedTimelineId(item.timelineId);
+        toggleExpanded(item.question.id);
+      }}
+      onDelete={() => deleteQuestion(item.questionIndex)}
+      onChange={(field, value) => handleQuestionChange(item.questionIndex, field, value)}
+      onOptionChange={(optionIndex, field, value) =>
+        handleOptionChange(item.questionIndex, optionIndex, field, value)
+      }
+      onAddOption={() => addOption(item.questionIndex)}
+      onDeleteOption={(optionIndex) => deleteOption(item.questionIndex, optionIndex)}
+      onAddAcceptedAnswer={() => addAcceptedAnswer(item.questionIndex)}
+      onRemoveAcceptedAnswer={(answerIndex) => removeAcceptedAnswer(item.questionIndex, answerIndex)}
+      onAddMatchingPair={() => addMatchingPair(item.questionIndex)}
+      onRemoveMatchingPair={(pairIndex) => removeMatchingPair(item.questionIndex, pairIndex)}
+      onUpdateMatchingPair={(pairIndex, field, value) =>
+        updateMatchingPair(item.questionIndex, pairIndex, field, value)
+      }
+      onUpdateMatchingPairImage={(pairIndex, side, file) =>
+        updateMatchingPairImage(item.questionIndex, pairIndex, side, file)
+      }
+      totalQuestions={questions.length}
+    />
+  );
 
   return (
     <div className={styles.container}>
@@ -2533,169 +2491,20 @@ export default function CreateQuiz() {
             </CardContent>
           </Card>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '260px minmax(0, 1fr)' }, gap: 2, mb: 3 }}>
-            <Card
-              sx={{
-                height: 'fit-content',
-                position: { lg: 'sticky' },
-                top: { lg: 12 },
-                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#fafafa',
-                boxShadow: 'none',
-                border: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              <CardContent>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.25 }}>
-                  Sequence Preview
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
-                  Click an item to jump and edit.
-                </Typography>
-                <Box sx={{ display: 'grid', gap: 1, maxHeight: 560, overflowY: 'auto', pr: 0.5 }}>
-                  {timelinePreviewItems.map((item) => (
-                    <Box
-                      key={item.timelineId}
-                      onClick={() => {
-                        setSelectedTimelineId(item.timelineId);
-                        if (item.kind === 'question') {
-                          setExpandedQuestions(new Set([item.question.id]));
-                        }
-                      }}
-                      sx={{
-                        border: '1px solid',
-                        borderColor: selectedTimelineId === item.timelineId
-                          ? (item.kind === 'slide' ? 'info.main' : 'secondary.main')
-                          : 'divider',
-                        borderRadius: 1.5,
-                        p: 1,
-                        cursor: 'pointer',
-                        bgcolor: selectedTimelineId === item.timelineId
-                          ? (item.kind === 'slide' ? 'rgba(3,169,244,0.10)' : 'rgba(255,107,149,0.10)')
-                          : 'transparent',
-                      }}
-                    >
-                      <Typography variant="caption" sx={{ fontWeight: 800, display: 'block' }}>
-                        #{item.timelineIndex + 1} • {item.kind === 'slide' ? `Slide ${item.slideIndex + 1}` : `Question ${item.questionIndex + 1}`}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {item.kind === 'slide'
-                          ? (item.slide.title || item.slide.content || 'Untitled slide')
-                          : (item.question.question || 'Untitled question')}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              </CardContent>
-            </Card>
-
-            <Card
-              sx={{
-                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#fafafa',
-                boxShadow: 'none',
-                border: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                  <Typography variant="h6" fontWeight="700">Unified Timeline</Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Button size="small" onClick={expandAll}>Expand All</Button>
-                    <Button size="small" onClick={collapseAll}>Collapse All</Button>
-                    <Chip size="small" color="secondary" label={`${timelinePreviewItems.length} items`} />
-                  </Box>
-                </Box>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-                  Slides and questions live in one sequence. Drag to reorder.
-                </Typography>
-
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={timelinePreviewItems.map((item) => item.timelineId)} strategy={verticalListSortingStrategy}>
-                    <Box sx={{ display: 'grid', gap: 2 }}>
-                      {timelinePreviewItems.map((item, listIndex) => (
-                        item.kind === 'slide' ? (
-                          <Card
-                            key={item.timelineId}
-                            variant="outlined"
-                            sx={{
-                              borderColor: selectedTimelineId === item.timelineId ? 'info.main' : 'divider',
-                              bgcolor: theme.palette.mode === 'dark' ? 'rgba(3,169,244,0.08)' : 'rgba(3,169,244,0.05)',
-                            }}
-                          >
-                            <CardContent>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                                  #{listIndex + 1} • Slide {item.slideIndex + 1}
-                                </Typography>
-                                <IconButton size="small" onClick={() => deleteSlide(item.slide.id)} sx={{ color: 'error.main' }}>
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Box>
-                              <TextField
-                                label="Slide Title"
-                                fullWidth
-                                size="small"
-                                sx={{ mb: 1.25 }}
-                                value={item.slide.title}
-                                onChange={(e) => updateSlide(item.slide.id, 'title', e.target.value)}
-                              />
-                              <TextField
-                                label="Slide Content"
-                                fullWidth
-                                size="small"
-                                multiline
-                                rows={3}
-                                sx={{ mb: 1.25 }}
-                                value={item.slide.content}
-                                onChange={(e) => updateSlide(item.slide.id, 'content', e.target.value)}
-                              />
-                              <TextField
-                                label="Slide Image URL (Optional)"
-                                fullWidth
-                                size="small"
-                                value={item.slide.imageUrl}
-                                onChange={(e) => updateSlide(item.slide.id, 'imageUrl', e.target.value)}
-                              />
-                            </CardContent>
-                          </Card>
-                        ) : (
-                          <SortableQuestionCard
-                            key={item.timelineId}
-                            sortableId={item.timelineId}
-                            question={item.question}
-                            index={item.questionIndex}
-                            globalIndex={item.questionIndex}
-                            expanded={expandedQuestions.has(item.question.id)}
-                            onToggle={() => {
-                              setSelectedTimelineId(item.timelineId);
-                              toggleExpanded(item.question.id);
-                            }}
-                            onDelete={() => deleteQuestion(item.questionIndex)}
-                            onChange={(field, value) => handleQuestionChange(item.questionIndex, field, value)}
-                            onOptionChange={(optionIndex, field, value) =>
-                              handleOptionChange(item.questionIndex, optionIndex, field, value)
-                            }
-                            onAddOption={() => addOption(item.questionIndex)}
-                            onDeleteOption={(optionIndex) => deleteOption(item.questionIndex, optionIndex)}
-                            onAddAcceptedAnswer={() => addAcceptedAnswer(item.questionIndex)}
-                            onRemoveAcceptedAnswer={(answerIndex) => removeAcceptedAnswer(item.questionIndex, answerIndex)}
-                            onAddMatchingPair={() => addMatchingPair(item.questionIndex)}
-                            onRemoveMatchingPair={(pairIndex) => removeMatchingPair(item.questionIndex, pairIndex)}
-                            onUpdateMatchingPair={(pairIndex, field, value) =>
-                              updateMatchingPair(item.questionIndex, pairIndex, field, value)
-                            }
-                            onUpdateMatchingPairImage={(pairIndex, side, file) =>
-                              updateMatchingPairImage(item.questionIndex, pairIndex, side, file)
-                            }
-                            totalQuestions={questions.length}
-                          />
-                        )
-                      ))}
-                    </Box>
-                  </SortableContext>
-                </DndContext>
-              </CardContent>
-            </Card>
-          </Box>
+          <QuizTimelineEditor
+            timelinePreviewItems={timelinePreviewItems}
+            selectedTimelineId={selectedTimelineId}
+            expandedQuestions={expandedQuestions}
+            sensors={sensors}
+            onDragEnd={handleDragEnd}
+            onSelectItem={handleSelectTimelineItem}
+            onExpandQuestion={(questionId) => setExpandedQuestions(new Set([questionId]))}
+            onExpandAll={expandAll}
+            onCollapseAll={collapseAll}
+            onDeleteSlide={deleteSlide}
+            renderSlideCard={renderSlideTimelineCard}
+            renderQuestionCard={renderQuestionTimelineCard}
+          />
 
           <Box sx={{ height: 72 }} />
         </Box>
@@ -2726,7 +2535,6 @@ export default function CreateQuiz() {
             variant="contained"
             color="secondary"
             onClick={handlePreviewOpen}
-            startIcon={<VisibilityIcon />}
             sx={{ fontWeight: 800 }}
           >
             Preview & Submit Quiz
@@ -2734,343 +2542,28 @@ export default function CreateQuiz() {
         </Box>
       </Box>
 
-      {/* Preview Dialog */}
-      <Dialog 
-        open={previewOpen} 
+      <QuizPreviewDialog
+        open={previewOpen}
+        quizName={quizName}
+        quizDescription={quizDescription}
+        slides={slides}
+        questions={questions}
         onClose={handlePreviewClose}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: theme.palette.background.paper,
-            minHeight: '80vh',
-          }
+        onSubmit={handleSubmit}
+        getDifficultyLabel={(difficulty) => {
+          if (difficulty <= 2) return 'Easy';
+          if (difficulty <= 4) return 'Medium';
+          if (difficulty <= 6) return 'Hard';
+          return 'Expert';
         }}
-      >
-        <DialogTitle sx={{ borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
-          <Typography variant="h5" fontWeight="bold">
-            Quiz Preview
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Review your quiz before creating it
-          </Typography>
-        </DialogTitle>
-        
-        <DialogContent sx={{ mt: 2 }}>
-          {/* Quiz Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
-              {quizName}
-            </Typography>
-            {quizDescription && (
-              <Typography variant="body1" color="text.secondary">
-                {quizDescription}
-              </Typography>
-            )}
-            <Box sx={{ mt: 2 }}>
-              <Chip 
-                label={`${questions.length} Question${questions.length !== 1 ? 's' : ''}`} 
-                size="small" 
-                sx={{ mr: 1 }}
-              />
-              <Chip
-                label={`${slides.length} Slide${slides.length !== 1 ? 's' : ''}`}
-                size="small"
-                sx={{ mr: 1 }}
-                variant="outlined"
-              />
-              <Chip 
-                label={`${questions.reduce((sum, q) => sum + q.points, 0)} Total Points`} 
-                size="small"
-                color="primary"
-              />
-            </Box>
-          </Box>
-
-          <Divider sx={{ mb: 3 }} />
-
-          {/* Slides Preview */}
-          {slides.length > 0 && (
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-                Presentation Slides
-              </Typography>
-              {slides.map((slide, slideIndex) => (
-                <Card
-                  key={slide.id}
-                  sx={{
-                    mb: 2,
-                    border: `1px solid ${theme.palette.divider}`,
-                  }}
-                >
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                      Slide {slideIndex + 1}
-                    </Typography>
-                    {slide.title && (
-                      <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
-                        {slide.title}
-                      </Typography>
-                    )}
-                    {slide.content && (
-                      <Typography variant="body1" sx={{ mb: slide.imageUrl ? 1.5 : 0 }}>
-                        {slide.content}
-                      </Typography>
-                    )}
-                    {slide.imageUrl && (
-                      <Box
-                        component="img"
-                        src={slide.imageUrl}
-                        alt={`Slide ${slideIndex + 1}`}
-                        sx={{
-                          width: '100%',
-                          maxWidth: 520,
-                          borderRadius: 2,
-                          border: `1px solid ${theme.palette.divider}`,
-                          boxShadow: '0 8px 18px rgba(0,0,0,0.10)',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-              <Divider sx={{ mt: 1, mb: 3 }} />
-            </Box>
-          )}
-
-          {/* Questions Preview */}
-          {questions.map((q, qIndex) => (
-            <Card 
-              key={q.id}
-              sx={{ 
-                mb: 3,
-                border: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" fontWeight="600" gutterBottom>
-                      {qIndex + 1}. {q.question}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-                    <Chip 
-                      label={`${q.points} pts`} 
-                      size="small" 
-                      color="primary"
-                    />
-                    <Chip 
-                      label={getDifficultyLabel(q.difficulty)} 
-                      size="small"
-                      sx={{ 
-                        bgcolor: getDifficultyColor(q.difficulty),
-                        color: '#fff',
-                      }}
-                    />
-                  </Box>
-                </Box>
-
-                {q.hint && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
-                    💡 Hint: {q.hint}
-                  </Typography>
-                )}
-
-                {q.category.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    {q.category.map((cat, idx) => (
-                      <Chip 
-                        key={idx}
-                        label={cat} 
-                        size="small" 
-                        variant="outlined"
-                        sx={{ mr: 0.5, mb: 0.5 }}
-                      />
-                    ))}
-                  </Box>
-                )}
-
-                <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1 }}>
-                  {q.type === 'short_answer' || q.type === 'fill_in_blank'
-                    ? 'Accepted Answers:'
-                    : q.type === 'calendar'
-                      ? 'Correct Date(s):'
-                    : q.type === 'numerical'
-                      ? 'Correct Number:'
-                      : q.type === 'match_the_phrase'
-                        ? 'Phrase Match:'
-                      : 'Answer Options:'}
-                </Typography>
-
-                {(q.type === 'short_answer' || q.type === 'fill_in_blank' || q.type === 'calendar') ? (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {q.acceptedAnswers.length > 0 ? q.acceptedAnswers.map((ans, ansIdx) => (
-                      <Chip
-                        key={`${ans}-${ansIdx}`}
-                        icon={<CheckCircleIcon />}
-                        label={ans}
-                        color="success"
-                        variant="outlined"
-                      />
-                    )) : (
-                      <Typography variant="body2" color="text.secondary">(No answer set)</Typography>
-                    )}
-                  </Box>
-                  ) : q.type === 'match_the_phrase' ? (
-                    <Box sx={{ display: 'grid', gap: 1.5 }}>
-                      <Box sx={{ p: 1.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)' }}>
-                        <Typography variant="body2" sx={{ lineHeight: 2 }}>
-                          {q.question.split(/_{3,}/).map((segment, segmentIndex, segmentArray) => (
-                            <span key={`preview-segment-${segmentIndex}`}>
-                              {segment}
-                              {segmentIndex < segmentArray.length - 1 && (
-                                <Chip
-                                  label={q.acceptedAnswers[segmentIndex] || `blank ${segmentIndex + 1}`}
-                                  color="primary"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ mx: 0.5, height: 24 }}
-                                />
-                              )}
-                            </span>
-                          ))}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                        {q.options.map((option, idx) => (
-                          <Chip key={`bank-${idx}`} label={option.text} variant="outlined" />
-                        ))}
-                      </Box>
-                    </Box>
-                ) : q.type === 'matching' ? (
-                  <Box sx={{ display: 'grid', gap: 1.25 }}>
-                    {q.matchingPairs.map((pair, pairIdx) => (
-                      <Box
-                        key={`preview-match-${pairIdx}`}
-                        sx={{
-                          p: 1.25,
-                          border: `1px solid ${theme.palette.divider}`,
-                          borderRadius: 1.5,
-                          display: 'grid',
-                          gridTemplateColumns: { xs: '1fr', sm: '1fr auto 1fr' },
-                          gap: 1,
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Box sx={{ display: 'grid', gap: 0.5 }}>
-                          {(pair.leftImageFile || pair.leftImageUrl) ? (
-                            <Box
-                              component="img"
-                              src={getMatchingPreviewImageSrc(pair.leftImageFile, pair.leftImageUrl)}
-                              alt={`Matching left ${pairIdx + 1}`}
-                              sx={{ width: 88, height: 56, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
-                            />
-                          ) : null}
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {pair.left || `Left item ${pairIdx + 1}`}
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-                          matches
-                        </Typography>
-                        <Box sx={{ display: 'grid', gap: 0.5 }}>
-                          {(pair.rightImageFile || pair.rightImageUrl) ? (
-                            <Box
-                              component="img"
-                              src={getMatchingPreviewImageSrc(pair.rightImageFile, pair.rightImageUrl)}
-                              alt={`Matching right ${pairIdx + 1}`}
-                              sx={{ width: 88, height: 56, objectFit: 'cover', borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}
-                            />
-                          ) : null}
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {pair.right || `Right item ${pairIdx + 1}`}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-                ) : q.type === 'numerical' ? (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {(q.acceptedAnswers[0] || '').trim() ? (
-                      <Chip
-                        icon={<CheckCircleIcon />}
-                        label={q.acceptedAnswers[0]}
-                        color="success"
-                        variant="outlined"
-                      />
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">(No number set)</Typography>
-                    )}
-                  </Box>
-                ) : (
-                  q.options.map((option, oIndex) => (
-                    <Box 
-                      key={oIndex}
-                      sx={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        p: 1.5,
-                        mb: 1,
-                        borderRadius: 1,
-                        border: `2px solid ${option.isCorrect ? theme.palette.success.main : theme.palette.divider}`,
-                        backgroundColor: option.isCorrect 
-                          ? theme.palette.mode === 'dark'
-                            ? 'rgba(76, 175, 80, 0.1)'
-                            : 'rgba(76, 175, 80, 0.05)'
-                          : 'transparent',
-                      }}
-                    >
-                      {option.isCorrect ? (
-                        <CheckCircleIcon sx={{ color: theme.palette.success.main, mr: 1 }} />
-                      ) : (
-                        <RadioButtonUncheckedIcon sx={{ color: theme.palette.text.disabled, mr: 1 }} />
-                      )}
-                      <Typography 
-                        variant="body1"
-                        sx={{ 
-                          fontWeight: option.isCorrect ? 600 : 400,
-                        }}
-                      >
-                        {option.text}
-                      </Typography>
-                    </Box>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </DialogContent>
-        
-        <DialogActions sx={{ borderTop: `1px solid ${theme.palette.divider}`, p: 2 }}>
-          <Button 
-            onClick={handlePreviewClose} 
-            variant="outlined"
-            startIcon={<EditIcon />}
-            size="large"
-          >
-            Edit Quiz
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            variant="contained"
-            color="secondary"
-            size="large"
-            startIcon={<CheckCircleIcon />}
-            sx={{ 
-              bgcolor: theme.palette.secondary.main,
-              color: '#ffffff',
-              fontWeight: 'bold',
-              '&:hover': {
-                bgcolor: theme.palette.secondary.dark,
-              }
-            }}
-          >
-            Create Quiz
-          </Button>
-        </DialogActions>
-      </Dialog>
+        getDifficultyColor={(difficulty) => {
+          if (difficulty <= 2) return theme.palette.success.main;
+          if (difficulty <= 4) return theme.palette.warning.main;
+          if (difficulty <= 6) return theme.palette.error.main;
+          return theme.palette.error.dark;
+        }}
+        getMatchingPreviewImageSrc={(file, url) => file ? URL.createObjectURL(file) : (url || '')}
+      />
 
       {/* Success/Error Snackbar */}
       <Snackbar 
