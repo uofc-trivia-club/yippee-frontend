@@ -48,7 +48,10 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
         }
     };
         const shuffledMatchingRightItems = useMemo(() => {
-            const rightItems = (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
+            const pairs = (((game.currentQuestion?.type as any)?.pairs) || []) as any[];
+            const rightItems = pairs.length > 0 
+              ? pairs.map((p: any) => p.right || p.rightItem || '')
+              : (((game.currentQuestion?.type as any)?.rightItems || []) as string[]);
             const nextItems = [...rightItems];
             for (let i = nextItems.length - 1; i > 0; i -= 1) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -267,7 +270,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 });
             }
             case 'dropdown': {
-                const options = t.options || [];
+                const options = t.options || q.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
                     const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);
@@ -398,8 +401,11 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
                 );
             }
             case 'matching': {
-                const left = Array.isArray(t.leftItems) ? t.leftItems : [];
-                const right = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
+                const pairs = (t as any).pairs || [];
+                                const left: string[] = pairs.length > 0 
+                                    ? pairs.map((p: any) => p.left || p.leftItem || '')
+                                    : (Array.isArray(t.leftItems) ? t.leftItems : []);
+                                const right: string[] = Array.isArray(shuffledMatchingRightItems) ? shuffledMatchingRightItems : [];
                 if (!left.length || !right.length) return <Typography>No pairs to display.</Typography>;
                 return (
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>

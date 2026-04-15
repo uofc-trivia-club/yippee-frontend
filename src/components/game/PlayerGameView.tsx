@@ -228,8 +228,9 @@ export default function PlayerGameView() {
         );
       }
       case 'matching': {
-        const left = t.leftItems || [];
-        const right = t.rightItems || [];
+        const pairs = (t as any).pairs || [];
+        const left = pairs.length > 0 ? pairs.map((p: any) => p.left || p.leftItem || '') : (t.leftItems || []);
+        const right = pairs.length > 0 ? pairs.map((p: any) => p.right || p.rightItem || '') : (t.rightItems || []);
         return (
           <MatchingQuestion
             leftItems={left}
@@ -341,9 +342,9 @@ export default function PlayerGameView() {
     : isAnswerCorrectFor(game.lastSubmittedQuestion || game.currentQuestion, game.lastSubmittedAnswers);
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: { xs: 0.5, sm: 1, md: 2 } }}>
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: { xs: 1, md: 2 } }}>
           {error}
         </Alert>
       )}
@@ -354,7 +355,7 @@ export default function PlayerGameView() {
             <Card
               elevation={0}
               sx={{
-                mb: 2,
+                mb: { xs: 1, md: 2 },
                 borderRadius: 3,
                 border: (theme) => `1px solid ${theme.palette.divider}`,
                 background: (theme) => theme.palette.mode === 'dark'
@@ -403,7 +404,7 @@ export default function PlayerGameView() {
           <Card
             elevation={0}
             sx={{
-              mb: 2,
+              mb: { xs: 1, md: 2 },
               borderRadius: 3,
               border: (theme) => `1px solid ${theme.palette.divider}`,
               background: (theme) => theme.palette.mode === 'dark'
