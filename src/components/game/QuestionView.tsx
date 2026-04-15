@@ -198,7 +198,7 @@ export default function QuestionView({ displayCorrectAnswers }: QuestionViewProp
         if (!q || !t) return null;
         switch (t.name) {
             case 'multiple_choice': {
-                const options = t.options || [];
+                const options = t.options || q.options || [];
                 return options.map((option, index) => {
                     const isCorrect = t.correctAnswer === option;
                     const optionImageUrl = resolveMediaUrl(q?.optionImageUrls?.[index]);

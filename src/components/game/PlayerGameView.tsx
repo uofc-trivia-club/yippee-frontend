@@ -125,9 +125,10 @@ export default function PlayerGameView() {
 
     switch (t.name) {
       case 'multiple_choice': {
+        const options = (t.options || q.options || []) as string[];
         return (
           <MultipleChoiceQuestion
-            options={t.options}
+            options={options}
             optionImageUrls={q.optionImageUrls}
             selectedAnswers={selectedAnswers}
             onAnswerSelect={handleAnswerSelect}
