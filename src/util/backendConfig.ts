@@ -19,12 +19,10 @@ export const backendUrl = isProductionTarget
       "REACT_APP_BACKEND_URL_LOCAL"
     );
 
-export const wsUrl = isProductionTarget
-  ? requireEnv(
-      process.env.REACT_APP_WS_URL_PRODUCTION || process.env.REACT_APP_WS_URL,
-      "REACT_APP_WS_URL_PRODUCTION"
-    )
-  : requireEnv(
-      process.env.REACT_APP_WS_URL_LOCAL || process.env.REACT_APP_WS_URL,
-      "REACT_APP_WS_URL_LOCAL"
-    );
+const deriveWsUrl = (httpUrl: string): string => {
+  const wsProtocol = httpUrl.startsWith("https") ? "wss" : "ws";
+  const base = httpUrl.replace(/^https?:\/\//, "");
+  return `${wsProtocol}://${base}/ws`;
+};
+
+export const wsUrl = deriveWsUrl(backendUrl);
