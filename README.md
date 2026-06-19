@@ -209,6 +209,10 @@ PlayerCard.tsx – Player display component
 
 ---
 
+## Backend
+
+The backend repository can be found here: https://github.com/uofc-trivia-club/yippee-backend
+
 ## Development Notes
 
 You can find the Figma design here: https://www.figma.com/proto/f1RXPSz3CNBC5YP8O5pd7o/Yippee-?node-id=0-1&t=nFPsW2rWygzW3IUr-1
