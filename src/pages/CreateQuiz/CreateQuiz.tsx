@@ -7,7 +7,9 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import { Quiz, QuizItem, QuizQuestion } from "../../stores/types";
+import { RootState } from "../../stores/store";
 import {
   PREDEFINED_CATEGORIES,
   QUESTION_TYPE_OPTIONS,
@@ -1392,6 +1394,7 @@ function SortableQuestionCard({
 
 export default function CreateQuiz() {
   const theme = useTheme();
+  const userName = useSelector((state: RootState) => state.auth.user?.name ?? "Anonymous");
   const [quizName, setQuizName] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
   const [slides, setSlides] = useState<PresentationSlideForm[]>([]);
@@ -2194,7 +2197,7 @@ export default function CreateQuiz() {
     const quiz: Quiz = {
       quizName,
       quizDescription,
-      createdBy: "Test_User",
+      createdBy: userName,
       quizItems,
     };
 

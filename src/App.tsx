@@ -1,8 +1,11 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material";
 import type { Dispatch, SetStateAction } from 'react';
+import { useDispatch, useSelector } from "react-redux";
 import { SignIn, SignUp } from "./components/user";
+import { useEffect, useState } from "react";
 
+import { authApi } from "./util/authApi";
 import { BubbleBackground } from "./components/common";
 import CreateQuiz from "./pages/CreateQuiz/CreateQuiz";
 import Home from "./pages/Home";
@@ -10,9 +13,11 @@ import HostGame from "./pages/HostGame";
 import JoinGame from "./pages/JoinGame";
 import LobbyRoom from "./pages/Game";
 import { Navbar } from "./components/layout";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Resources from "./pages/Resources";
+import { RootState } from "./stores/store";
+import { setCredentials, setLoading } from "./stores/authSlice";
 import styles from './App.module.css';
-import { useState } from "react";
 
 const themes = {
   pink: createTheme({
@@ -72,6 +77,25 @@ const themes = {
       },
     },
   }),
+  ucalgary: createTheme({
+    palette: {
+      primary: { main: '#d6001c', light: '#ff4d4d', dark: '#a00015' },
+      secondary: { main: '#ffcd00', light: '#ffe033', dark: '#cca700' },
+      success: { main: '#47a67c', light: '#6bc49a', dark: '#2d7a58' },
+      error: { main: '#ff671f', light: '#ff8f4d', dark: '#cc4a00' },
+      warning: { main: '#ffa300', light: '#ffbe33', dark: '#cc8200' },
+      info: { main: '#d6001c', light: '#ff4d4d', dark: '#a00015' },
+      background: {
+        default: '#FFF8F0',
+        paper: '#FFFFFF',
+      },
+      text: {
+        primary: '#2C1810',
+        secondary: '#5C4033',
+        disabled: '#999999',
+      },
+    },
+  }),
   dark: createTheme({
     palette: {
       mode: 'dark',
@@ -94,7 +118,7 @@ const themes = {
   }),
 };
 
-type ThemeName = 'pink' | 'blue' | 'purple' | 'dark';
+type ThemeName = 'pink' | 'blue' | 'purple' | 'ucalgary' | 'dark';
 function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<SetStateAction<ThemeName>> }) {
   return (
     <div className="App">
@@ -105,7 +129,7 @@ function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<S
       <div className={styles.contentContainer}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/create-quiz" element={<CreateQuiz />} />
+          <Route path="/create-quiz" element={<ProtectedRoute><CreateQuiz /></ProtectedRoute>} />
           <Route path="/host" element={<HostGame />} />
           <Route path="/join" element={<JoinGame />} />
           <Route path="/resources" element={<Resources />} />
@@ -119,7 +143,30 @@ function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<S
 }
 
 function App() {
-  const [theme, setTheme] = useState<ThemeName>('pink');
+  const dispatch = useDispatch();
+  const { loading } = useSelector((state: RootState) => state.auth);
+  const [theme, setTheme] = useState<ThemeName>('ucalgary');
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      dispatch(setLoading(false));
+      return;
+    }
+    authApi.getMe()
+      .then((user) => {
+        dispatch(setCredentials({ user, token }));
+      })
+      .catch(() => {
+        localStorage.removeItem("token");
+      })
+      .finally(() => {
+        dispatch(setLoading(false));
+      });
+  }, [dispatch]);
+
+  if (loading) return null;
+
   return (
     <ThemeProvider theme={themes[theme]}>
       <BrowserRouter>
