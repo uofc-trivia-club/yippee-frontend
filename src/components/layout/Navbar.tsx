@@ -61,7 +61,7 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
     <AppBar position="static" sx={{ backgroundColor: getNavbarBackground(), zIndex: 1100 }}>
       <Container maxWidth="xl" sx={{ position: 'relative' }}>
         <Toolbar disableGutters>
-          <Box sx={{ display: 'flex', alignItems: 'center', width: '15%', justifyContent: 'flex-start' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 'fit-content', justifyContent: 'flex-start' }}>
             <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
               <IconButton
                 size="large"
@@ -83,20 +83,9 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
                 onClose={handleCloseNavMenu}
                 sx={{ display: { xs: 'block', md: 'none' } }}
               >
-                {user ? (
-                  <MenuItem onClick={() => handleNavigate('/')}>
-                    <Typography textAlign="center">Home</Typography>
-                  </MenuItem>
-                ) : (
-                  [
-                    { title: 'Sign Up', path: '/sign-up' },
-                    { title: 'Sign In', path: '/sign-in' },
-                  ].map((page) => (
-                    <MenuItem key={page.path} onClick={() => handleNavigate(page.path)} selected={location.pathname === page.path}>
-                      <Typography textAlign="center">{page.title}</Typography>
-                    </MenuItem>
-                  ))
-                )}
+                <MenuItem onClick={() => handleNavigate('/')}>
+                  <Typography textAlign="center">Home</Typography>
+                </MenuItem>
               </Menu>
             </Box>
           </Box>
@@ -113,38 +102,47 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto', justifyContent: 'flex-end', width: '15%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto', justifyContent: 'flex-end', minWidth: 'fit-content' }}>
             {user ? (
               <>
-                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Button
                     sx={{ color: 'white', textTransform: 'none', display: 'flex', alignItems: 'center', gap: 1, cursor: 'default' }}
                   >
                     <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', fontWeight: 700 }}>
-                      {user.name.charAt(0).toUpperCase()}
+                      {(user.name + " " + user.lastName).trim().charAt(0).toUpperCase()}
                     </Avatar>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{user.name}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
+                      {user.name}{user.lastName ? ` ${user.lastName}` : ''}
+                    </Typography>
                   </Button>
                 </Box>
-                <IconButton onClick={handleSignOut} sx={{ color: 'white', ml: 1 }} title="Sign out">
+                <IconButton onClick={handleSignOut} sx={{ color: 'white', ml: 0.5 }} title="Sign out">
                   <LogoutIcon />
                 </IconButton>
               </>
             ) : (
-              <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-                {[
-                  { title: 'Sign Up', path: '/sign-up' },
-                  { title: 'Sign In', path: '/sign-in' },
-                ].map((page) => (
-                  <Button
-                    key={page.path}
-                    onClick={() => handleNavigate(page.path)}
-                    sx={{ color: 'white', display: 'block', fontWeight: location.pathname === page.path ? 'bold' : 'normal', borderBottom: location.pathname === page.path ? '2px solid white' : 'none' }}
-                  >
-                    {page.title}
-                  </Button>
-                ))}
-              </Box>
+              [
+                { title: 'Sign Up', path: '/sign-up' },
+                { title: 'Sign In', path: '/sign-in' },
+              ].map((page) => (
+                <Button
+                  key={page.path}
+                  onClick={() => handleNavigate(page.path)}
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    display: 'block',
+                    fontWeight: location.pathname === page.path ? 'bold' : 'normal',
+                    borderBottom: location.pathname === page.path ? '2px solid white' : 'none',
+                    ml: 0.5,
+                    whiteSpace: 'nowrap',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  }}
+                >
+                  {page.title}
+                </Button>
+              ))
             )}
 
             <Select
