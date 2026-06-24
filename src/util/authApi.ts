@@ -39,8 +39,8 @@ export const authApi = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Sign up failed" }));
-      throw new Error(err.error || "Sign up failed");
+      const err = await res.text().catch(() => "Sign up failed");
+      throw new Error(err || "Sign up failed");
     }
     return res.json();
   },
@@ -52,8 +52,8 @@ export const authApi = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Sign in failed" }));
-      throw new Error(err.error || "Sign in failed");
+      const err = await res.text().catch(() => "Sign in failed");
+      throw new Error(err || "Sign in failed");
     }
     return res.json();
   },
@@ -63,15 +63,20 @@ export const authApi = {
       headers: getAuthHeaders(),
     });
     if (!res.ok) {
-      throw new Error("Not authenticated");
+      const err = await res.text().catch(() => "Not authenticated");
+      throw new Error(err || "Not authenticated");
     }
     return res.json();
   },
 
   logout: async (): Promise<void> => {
-    await fetch(`${backendUrl}/api/auth/logout`, {
+    const res = await fetch(`${backendUrl}/api/auth/logout`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
+    if (!res.ok) {
+      const err = await res.text().catch(() => "Logout failed");
+      throw new Error(err || "Logout failed");
+    }
   },
 };
