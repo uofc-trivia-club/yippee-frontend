@@ -46,11 +46,13 @@ const getQuestionItemsFromTimeline = (items: QuizItem[]) =>
 interface SelectQuizProps {
   onSelectQuiz: (quiz: Quiz) => void;
   compact?: boolean;
+  publicOnly?: boolean;
 }
 
 export default function SelectQuiz({
   onSelectQuiz,
   compact = false,
+  publicOnly = false,
 }: SelectQuizProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,13 @@ export default function SelectQuiz({
 
     const fetchQuizzes = async () => {
       try {
-        const response = await fetch(`${backendUrl}/api/get-quizzes`);
+        const params = publicOnly ? "?publicOnly=true" : "";
+        const headers: Record<string, string> = {};
+        const token = localStorage.getItem("token");
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        const response = await fetch(`${backendUrl}/api/get-quizzes${params}`, { headers });
         if (!response.ok) throw new Error("Failed to fetch quizzes");
 
         const data = await response.json();
@@ -241,6 +249,8 @@ export default function SelectQuiz({
             </Button>
           )}
         </Box>
+      ) : publicOnly ? (
+        <Typography>No public quizzes available.</Typography>
       ) : (
         <Typography>No quizzes available.</Typography>
       )}
