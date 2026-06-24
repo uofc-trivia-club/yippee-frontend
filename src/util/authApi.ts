@@ -16,7 +16,6 @@ export interface AuthResponse {
   user: {
     id: string;
     name: string;
-    lastName?: string;
     email: string;
   };
   token: string;

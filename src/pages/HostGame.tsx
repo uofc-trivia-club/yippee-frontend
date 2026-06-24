@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Link, TextField, Typography, useTheme } from "@mui/material";
+import { Box, Button, TextField, Typography, useTheme } from "@mui/material";
 import { executeWebSocketCommand, useCheckConnection } from "../util/websocketUtil";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
@@ -21,8 +21,6 @@ export default function HostGame() {
   // get necessary states from Redux
   const roomCode = useSelector((state: RootState) => state.game.roomCode);
   const gameStatus = useSelector((state: RootState) => state.game.gameStatus);
-  const user = useSelector((state: RootState) => state.auth.user);
-  const isAuthenticated = Boolean(user);
 
   useCheckConnection();
 
@@ -39,10 +37,9 @@ export default function HostGame() {
 
   const handleHostGame = async () => {
     const errors: string[] = [];
-    const effectiveHostName = hostName.trim() || (user?.name ?? "");
     
     // input host name
-    if (!effectiveHostName) {
+    if (!hostName.trim()) {
       errors.push("Host name cannot be empty!");
     }
     
@@ -57,11 +54,12 @@ export default function HostGame() {
       return;
     }
     // update redux state
-    dispatch(gameActions.setUserName(effectiveHostName));
+    dispatch(gameActions.setUserName(hostName));
     dispatch(gameActions.setRole("host"));
 
-    const lobbyUser = {
-      userName: effectiveHostName,
+    // TODO: figure out how to use the updated state instead of creating an object to pass 
+    const user = {
+      userName: hostName,
       userRole: "host",
       userMessage: "",
       points: 0,
@@ -71,7 +69,7 @@ export default function HostGame() {
 
     executeWebSocketCommand(
       "createLobby",
-      { quiz: selectedQuiz, user: lobbyUser },
+      { quiz: selectedQuiz, user: user },
       (errorMessage) => setError(errorMessage)
     );
   };
@@ -90,17 +88,15 @@ export default function HostGame() {
         <Typography variant="h4" gutterBottom className={styles.title}>
           Host a Game
         </Typography>
-
-        {!isAuthenticated && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            You're hosting as a guest.{' '}
-            <Link href="/sign-in" sx={{ fontWeight: 600 }}>Sign in</Link> to host all quizzes and create your own.
-          </Alert>
-        )}
-
+        {/* <IconButton 
+          onClick={handleModifyLobbySettings}
+          edge="end"
+        >
+          <SettingsIcon />
+        </IconButton> */}
         <TextField
           id="host-name"
-          label={isAuthenticated ? "Display Name (optional)" : "Enter Your Name"}
+          label="Enter Your Name"
           variant="outlined"
           fullWidth
           value={hostName}
@@ -110,10 +106,10 @@ export default function HostGame() {
             }
           }}
           inputProps={{ maxLength: 20 }}
-          helperText={isAuthenticated ? "Will default to your account name if left empty" : `${hostName.length}/20 characters`}
+          helperText={`${hostName.length}/20 characters`}
           sx={{ marginBottom: 2 }}
         />
-        <SelectQuiz onSelectQuiz={handleSelectQuiz} publicOnly={!isAuthenticated} />
+        <SelectQuiz onSelectQuiz={handleSelectQuiz} />
         {selectedQuiz && (
           <Typography variant="h6" gutterBottom className={styles.selectQuizTitle}>
             Selected Quiz: {selectedQuiz.quizName}
