@@ -1394,7 +1394,9 @@ function SortableQuestionCard({
 
 export default function CreateQuiz() {
   const theme = useTheme();
-  const userName = useSelector((state: RootState) => state.auth.user?.name ?? "Anonymous");
+  const user = useSelector((state: RootState) => state.auth.user);
+  const userId = user?.id ?? null;
+  const userName = user?.name ?? "Anonymous";
   const [quizName, setQuizName] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
   const [slides, setSlides] = useState<PresentationSlideForm[]>([]);
@@ -2194,10 +2196,11 @@ export default function CreateQuiz() {
       .filter((item): item is QuizItem & { question: QuizQuestion } => item.kind === 'question' && Boolean(item.question))
       .map((item) => item.question);
 
-    const quiz: Quiz = {
+    const quiz: Quiz & { authorId?: string } = {
       quizName,
       quizDescription,
       createdBy: userName,
+      authorId: userId ?? undefined,
       quizItems,
     };
 
