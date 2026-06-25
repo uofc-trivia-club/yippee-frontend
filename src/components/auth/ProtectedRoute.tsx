@@ -1,11 +1,18 @@
-import { Navigate, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { RootState } from "../../stores/store";
-import { Box, CircularProgress } from "@mui/material";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
+import { supabase } from "../../util/supabase";
+import type { User } from "@supabase/supabase-js";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, token, loading } = useSelector((state: RootState) => state.auth);
-  const location = useLocation();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -15,8 +22,15 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     );
   }
 
-  if (!user || !token) {
-    return <Navigate to="/sign-in" state={{ from: location }} replace />;
+  if (!user) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '50vh', gap: 2 }}>
+        <Typography variant="h6">Sign in to access this page</Typography>
+        <Button variant="contained" href="/sign-in">
+          Sign In
+        </Button>
+      </Box>
+    );
   }
 
   return <>{children}</>;

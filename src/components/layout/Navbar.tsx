@@ -1,14 +1,13 @@
 import { AppBar, Avatar, Box, Button, Container, IconButton, Menu, Toolbar, Typography } from '@mui/material';
-import { Dispatch, MouseEvent, SetStateAction, useState } from 'react';
+import { Dispatch, MouseEvent, SetStateAction, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import { RootState } from '../../stores/store';
 import { Select } from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../../stores/authSlice';
+import { supabase } from '../../util/supabase';
+import type { User } from '@supabase/supabase-js';
 
 const themeOptions = [
   { label: 'UCalgary', value: 'ucalgary' },
@@ -22,10 +21,22 @@ type ThemeName = 'pink' | 'blue' | 'purple' | 'ucalgary' | 'dark';
 export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<SetStateAction<ThemeName>> }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
-  const game = useSelector((state: RootState) => state.game);
-  const { user } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleOpenNavMenu = (event: MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -40,8 +51,8 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
     navigate(path);
   };
 
-  const handleSignOut = () => {
-    dispatch(logout());
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     navigate('/', { replace: true });
   };
 
@@ -53,9 +64,7 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
     return '#FF6B95';
   };
 
-  if (game.roomCode && game.gameStatus !== "") {
-    return null;
-  }
+  if (loading) return null;
 
   return (
     <AppBar position="static" sx={{ backgroundColor: getNavbarBackground(), zIndex: 1100 }}>
@@ -110,10 +119,10 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
                     sx={{ color: 'white', textTransform: 'none', display: 'flex', alignItems: 'center', gap: 1, cursor: 'default' }}
                   >
                     <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', fontWeight: 700 }}>
-                      {(user.name + " " + user.lastName).trim().charAt(0).toUpperCase()}
+                      {(user.email ?? '?').charAt(0).toUpperCase()}
                     </Avatar>
                     <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
-                      {user.name}{user.lastName ? ` ${user.lastName}` : ''}
+                      {user.email ?? ''}
                     </Typography>
                   </Button>
                 </Box>

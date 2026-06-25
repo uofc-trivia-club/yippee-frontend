@@ -3,108 +3,85 @@ import { useTheme } from '@mui/material/styles';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import CircularProgress from '@mui/material/CircularProgress';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import Grid from '@mui/material/Grid';
 import Link from '@mui/material/Link';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { authApi } from '../../util/authApi';
-import { setCredentials } from '../../stores/authSlice';
+import { supabase } from '../../util/supabase';
 
 export default function SignUp() {
   const theme = useTheme();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [emailError, setEmailError] = useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = useState('');
-  const [passwordError, setPasswordError] = useState(false);
-  const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
-  const [nameError, setNameError] = useState(false);
-  const [nameErrorMessage, setNameErrorMessage] = useState('');
-  const [lastNameError, setLastNameError] = useState(false);
-  const [lastNameErrorMessage, setLastNameErrorMessage] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState('');
+  const [success, setSuccess] = useState(false);
 
-  const validateInputs = () => {
-    const email = document.getElementById('email') as HTMLInputElement;
-    const password = document.getElementById('password') as HTMLInputElement;
-    const name = document.getElementById('name') as HTMLInputElement;
-    const lastName = document.getElementById('lastName') as HTMLInputElement;
-
-    let isValid = true;
-
-    if (!email.value || !/\S+@\S+\.\S+/.test(email.value)) {
-      setEmailError(true);
-      setEmailErrorMessage('Please enter a valid email address.');
-      isValid = false;
-    } else {
-      setEmailError(false);
-      setEmailErrorMessage('');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
     }
-
-    if (!password.value || password.value.length < 6) {
-      setPasswordError(true);
-      setPasswordErrorMessage('Password must be at least 6 characters long.');
-      isValid = false;
-    } else {
-      setPasswordError(false);
-      setPasswordErrorMessage('');
-    }
-
-    if (!name.value || name.value.length < 1) {
-      setNameError(true);
-      setNameErrorMessage('First name is required.');
-      isValid = false;
-    } else {
-      setNameError(false);
-      setNameErrorMessage('');
-    }
-
-    if (!lastName.value || lastName.value.length < 1) {
-      setLastNameError(true);
-      setLastNameErrorMessage('Last name is required.');
-      isValid = false;
-    } else {
-      setLastNameError(false);
-      setLastNameErrorMessage('');
-    }
-
-    return isValid;
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validateInputs()) return;
-
-    const data = new FormData(event.currentTarget);
-    const name = data.get('name') as string;
-    const lastName = data.get('lastName') as string;
-    const email = data.get('email') as string;
-    const password = data.get('password') as string;
-
+    setError('');
     setLoading(true);
-    setApiError('');
 
-    try {
-      const result = await authApi.signup({ name, lastName, email, password });
-      dispatch(setCredentials({ user: result.user, token: result.token }));
-      navigate('/', { replace: true });
-    } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Sign up failed');
-    } finally {
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: fullName,
+          lastName: lastName,
+        },
+      },
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
       setLoading(false);
+      return;
     }
+
+    setSuccess(true);
+    setLoading(false);
   };
 
   const isUcalgary = theme.palette.primary.main === '#d6001c';
+
+  if (success) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 80px)', px: 2, py: 4 }}>
+        <Card elevation={8} sx={{ width: '100%', maxWidth: 480, borderRadius: 3, overflow: 'hidden' }}>
+          <Box sx={{ height: 6, background: isUcalgary ? 'linear-gradient(90deg, #d6001c 0%, #ffcd00 50%, #ff671f 100%)' : `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})` }} />
+          <CardContent sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+              Check your email
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              We sent a confirmation link to <strong>{email}</strong>.
+              Click the link to activate your account, then sign in.
+            </Typography>
+            <Button variant="contained" href="/sign-in" sx={{ textTransform: 'none' }}>
+              Go to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{
@@ -148,116 +125,81 @@ export default function SignUp() {
             </Typography>
           </Box>
 
-          {apiError && (
+          {error && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-              {apiError}
+              {error}
             </Alert>
           )}
 
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
-          >
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <FormLabel htmlFor="name" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    First Name
-                  </FormLabel>
+                  <FormLabel htmlFor="firstName" sx={{ fontWeight: 600, mb: 0.5 }}>First Name</FormLabel>
                   <TextField
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Jon"
                     autoComplete="given-name"
-                    name="name"
                     required
                     fullWidth
-                    id="name"
-                    placeholder="Jon"
-                    error={nameError}
-                    helperText={nameErrorMessage}
                     variant="outlined"
                     size="medium"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                      },
-                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' } }}
                   />
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <FormLabel htmlFor="lastName" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    Last Name
-                  </FormLabel>
+                  <FormLabel htmlFor="lastName" sx={{ fontWeight: 600, mb: 0.5 }}>Last Name</FormLabel>
                   <TextField
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Snow"
                     autoComplete="family-name"
-                    name="lastName"
                     required
                     fullWidth
-                    id="lastName"
-                    placeholder="Snow"
-                    error={lastNameError}
-                    helperText={lastNameErrorMessage}
                     variant="outlined"
                     size="medium"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                      },
-                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' } }}
                   />
                 </FormControl>
               </Grid>
             </Grid>
 
             <FormControl>
-              <FormLabel htmlFor="email" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Email
-              </FormLabel>
+              <FormLabel htmlFor="email" sx={{ fontWeight: 600, mb: 0.5 }}>Email</FormLabel>
               <TextField
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                autoComplete="email"
                 required
                 fullWidth
-                id="email"
-                placeholder="your@email.com"
-                name="email"
-                autoComplete="email"
                 variant="outlined"
                 size="medium"
-                error={emailError}
-                helperText={emailErrorMessage}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                  },
-                }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' } }}
               />
             </FormControl>
 
             <FormControl>
-              <FormLabel htmlFor="password" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Password
-              </FormLabel>
+              <FormLabel htmlFor="password" sx={{ fontWeight: 600, mb: 0.5 }}>Password</FormLabel>
               <TextField
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a password (min. 6 characters)"
+                autoComplete="new-password"
                 required
                 fullWidth
-                name="password"
-                placeholder="Create a password (min. 6 characters)"
-                type="password"
-                id="password"
-                autoComplete="new-password"
                 variant="outlined"
                 size="medium"
-                error={passwordError}
-                helperText={passwordErrorMessage}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                  },
-                }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' } }}
               />
             </FormControl>
 
@@ -275,9 +217,7 @@ export default function SignUp() {
                 fontSize: '1rem',
                 textTransform: 'none',
                 bgcolor: theme.palette.primary.main,
-                '&:hover': {
-                  bgcolor: theme.palette.primary.dark,
-                },
+                '&:hover': { bgcolor: theme.palette.primary.dark },
               }}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
@@ -287,15 +227,7 @@ export default function SignUp() {
           <Box sx={{ mt: 3, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
               Already have an account?{' '}
-              <Link
-                href="/sign-in"
-                underline="hover"
-                sx={{
-                  fontWeight: 600,
-                  color: theme.palette.primary.main,
-                  cursor: 'pointer',
-                }}
-              >
+              <Link href="/sign-in" underline="hover" sx={{ fontWeight: 600, color: theme.palette.primary.main, cursor: 'pointer' }}>
                 Sign in
               </Link>
             </Typography>

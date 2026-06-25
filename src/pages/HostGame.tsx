@@ -8,12 +8,14 @@ import { RootState } from "../stores/store";
 import { SelectQuiz } from "../components/quiz";
 import { gameActions } from "../stores/gameSlice";
 import styles from './HostGame.module.css';
+import { supabase } from "../util/supabase";
 import { useNavigate } from "react-router-dom";
 
 export default function HostGame() {
   const [hostName, setHostName] = useState<string>(""); // host name input
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -21,8 +23,13 @@ export default function HostGame() {
   // get necessary states from Redux
   const roomCode = useSelector((state: RootState) => state.game.roomCode);
   const gameStatus = useSelector((state: RootState) => state.game.gameStatus);
-  const user = useSelector((state: RootState) => state.auth.user);
   const isAuthenticated = Boolean(user);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+  }, []);
 
   useCheckConnection();
 
@@ -39,7 +46,7 @@ export default function HostGame() {
 
   const handleHostGame = async () => {
     const errors: string[] = [];
-    const effectiveHostName = hostName.trim() || (user?.name ?? "");
+    const effectiveHostName = hostName.trim() || (user?.email ?? "");
     
     // input host name
     if (!effectiveHostName) {

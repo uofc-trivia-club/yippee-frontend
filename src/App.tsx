@@ -1,11 +1,9 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material";
 import type { Dispatch, SetStateAction } from 'react';
-import { useDispatch, useSelector } from "react-redux";
 import { SignIn, SignUp } from "./components/user";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { authApi } from "./util/authApi";
 import { BubbleBackground } from "./components/common";
 import CreateQuiz from "./pages/CreateQuiz/CreateQuiz";
 import Home from "./pages/Home";
@@ -15,8 +13,6 @@ import LobbyRoom from "./pages/Game";
 import { Navbar } from "./components/layout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Resources from "./pages/Resources";
-import { RootState } from "./stores/store";
-import { setCredentials, setLoading } from "./stores/authSlice";
 import styles from './App.module.css';
 
 const themes = {
@@ -143,29 +139,7 @@ function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<S
 }
 
 function App() {
-  const dispatch = useDispatch();
-  const { loading } = useSelector((state: RootState) => state.auth);
   const [theme, setTheme] = useState<ThemeName>('ucalgary');
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      dispatch(setLoading(false));
-      return;
-    }
-    authApi.getMe()
-      .then((user) => {
-        dispatch(setCredentials({ user, token }));
-      })
-      .catch(() => {
-        localStorage.removeItem("token");
-      })
-      .finally(() => {
-        dispatch(setLoading(false));
-      });
-  }, [dispatch]);
-
-  if (loading) return null;
 
   return (
     <ThemeProvider theme={themes[theme]}>
