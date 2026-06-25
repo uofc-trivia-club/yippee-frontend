@@ -13,12 +13,16 @@ import { useTheme } from '@mui/material/styles';
 
 import { supabase } from '../util/supabase';
 import type { User } from '@supabase/supabase-js';
+import { backendUrl } from '../util/backendConfig';
+import type { Quiz } from '../stores/types';
 
 export default function Profile() {
   const theme = useTheme();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [quizzesLoading, setQuizzesLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,6 +30,40 @@ export default function Profile() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUserQuizzes = async () => {
+      setQuizzesLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set('authorId', user.id);
+        const response = await fetch(`${backendUrl}/api/get-quizzes?${params.toString()}`);
+        if (response.ok) {
+          const data = await response.json();
+          const normalised: Quiz[] = Array.isArray(data)
+            ? data.map((q: any) => ({
+                ...q,
+                id: typeof q.id === 'string' ? q.id : undefined,
+                quizItems: Array.isArray(q.quizItems) && q.quizItems.length > 0
+                  ? q.quizItems
+                  : Array.isArray(q.quizQuestions)
+                    ? q.quizQuestions.map((question: any) => ({ kind: 'question', question }))
+                    : [],
+              }))
+            : [];
+          setQuizzes(normalised);
+        }
+      } catch (error) {
+        console.error('Error fetching user quizzes:', error);
+      } finally {
+        setQuizzesLoading(false);
+      }
+    };
+
+    fetchUserQuizzes();
+  }, [user]);
 
   if (loading) {
     return (
@@ -53,7 +91,7 @@ export default function Profile() {
   const provider = user.app_metadata?.provider ?? 'email';
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 80px)', px: 2, py: 4 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 'calc(100vh - 80px)', px: 2, py: 4, gap: 4 }}>
       <Card
         elevation={8}
         sx={{ width: '100%', maxWidth: 460, borderRadius: 3, overflow: 'hidden', position: 'relative' }}
@@ -124,6 +162,46 @@ export default function Profile() {
           </Button>
         </CardContent>
       </Card>
+
+      <Box sx={{ width: '100%', maxWidth: 460 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+          My Quizzes
+        </Typography>
+
+        {quizzesLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : quizzes.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+            No quizzes yet. Create your first quiz!
+          </Typography>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {quizzes.map((quiz, index) => (
+              <Card
+                key={quiz.id ?? index}
+                variant="outlined"
+                sx={{ borderRadius: 2 }}
+              >
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {quiz.quizName}
+                  </Typography>
+                  {quiz.quizDescription && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      {quiz.quizDescription}
+                    </Typography>
+                  )}
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    {quiz.quizItems.filter(i => i.kind === 'question').length} question{quiz.quizItems.filter(i => i.kind === 'question').length !== 1 ? 's' : ''}
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
