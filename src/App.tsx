@@ -11,6 +11,7 @@ import HostGame from "./pages/HostGame";
 import JoinGame from "./pages/JoinGame";
 import LobbyRoom from "./pages/Game";
 import { Navbar } from "./components/layout";
+import Profile from "./pages/Profile";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Resources from "./pages/Resources";
 import { ResetPassword } from "./components/user";
@@ -134,6 +135,7 @@ function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<S
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/sign-up" element={<SignUp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         </Routes>
       </div>
     </div>

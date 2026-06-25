@@ -115,16 +115,15 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
             {user ? (
               <>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Button
-                    sx={{ color: 'white', textTransform: 'none', display: 'flex', alignItems: 'center', gap: 1, cursor: 'default' }}
+                  <IconButton
+                    onClick={() => navigate('/profile')}
+                    sx={{ color: 'white', p: 0.5 }}
+                    title="Profile"
                   >
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', fontWeight: 700 }}>
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '0.9rem', fontWeight: 700 }}>
                       {(user.email ?? '?').charAt(0).toUpperCase()}
                     </Avatar>
-                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
-                      {user.email ?? ''}
-                    </Typography>
-                  </Button>
+                  </IconButton>
                 </Box>
                 <IconButton onClick={handleSignOut} sx={{ color: 'white', ml: 0.5 }} title="Sign out">
                   <LogoutIcon />
