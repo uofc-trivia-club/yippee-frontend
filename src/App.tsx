@@ -13,6 +13,7 @@ import LobbyRoom from "./pages/Game";
 import { Navbar } from "./components/layout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Resources from "./pages/Resources";
+import { ResetPassword } from "./components/user";
 import styles from './App.module.css';
 
 const themes = {
@@ -132,6 +133,7 @@ function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<S
           <Route path="/:roomCode" element={<LobbyRoom />} />
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/sign-up" element={<SignUp />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </div>
     </div>

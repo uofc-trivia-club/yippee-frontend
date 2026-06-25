@@ -13,6 +13,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+
+import ForgotPassword from './ForgotPassword';
 import { supabase } from '../../util/supabase';
 
 export default function SignIn() {
@@ -22,6 +24,7 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +128,18 @@ export default function SignIn() {
               />
             </FormControl>
 
+            <Box sx={{ textAlign: 'right', mt: -1 }}>
+              <Link
+                component="button"
+                type="button"
+                onClick={() => setForgotOpen(true)}
+                underline="hover"
+                sx={{ fontWeight: 600, fontSize: '0.875rem', color: theme.palette.primary.main, cursor: 'pointer' }}
+              >
+                Forgot password?
+              </Link>
+            </Box>
+
             <Button
               type="submit"
               fullWidth
@@ -154,6 +169,8 @@ export default function SignIn() {
               </Link>
             </Typography>
           </Box>
+
+          <ForgotPassword open={forgotOpen} handleClose={() => setForgotOpen(false)} />
         </CardContent>
       </Card>
     </Box>
