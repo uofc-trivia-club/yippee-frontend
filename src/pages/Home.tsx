@@ -1,15 +1,19 @@
-import { Box, Button, Typography, useTheme } from "@mui/material";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import styles from './Home.module.css';
 import { useNavigate } from "react-router-dom";
 import { gameActions } from "../stores/gameSlice";
 
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Grid from '@mui/material/Grid';
+import { useTheme } from "@mui/material";
+
 const buttons = [
-  { label: "Host Game", path: "/host", desc: "Start a quiz game and invite players" },
-  { label: "Join Game", path: "/join", desc: "Join a game with a room code" },
-  { label: "Create Quiz", path: "/create-quiz", desc: "Build your own custom quiz" },
-  { label: "Resources", path: "/resources", desc: "Tips, guides, and study materials" },
+  { label: "HOST", path: "/host", desc: "Start a quiz game and invite players" },
+  { label: "JOIN", path: "/join", desc: "Join a game with a room code" },
+  { label: "CREATE", path: "/create-quiz", desc: "Build your own custom quiz" },
+  { label: "LEARN", path: "/resources", desc: "Tips, guides, and study materials" },
 ];
 
 export default function HomePage() {
@@ -22,22 +26,27 @@ export default function HomePage() {
     dispatch(gameActions.setGameStatus(""));
   }, [dispatch]);
 
-  const isUcalgary = theme.palette.primary.main === '#d6001c';
-
   return (
-    <Box className={styles.buttonContainer}>
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
+    <Box sx={{
+      height: '100%',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 5,
+      p: 4,
+      boxSizing: 'border-box',
+    }}>
+      <Box sx={{ textAlign: 'center' }}>
         <Typography
-          variant="h2"
+          variant="h1"
           sx={{
             fontWeight: 900,
-            letterSpacing: '.3rem',
-            background: isUcalgary
-              ? 'linear-gradient(135deg, #d6001c, #ffcd00, #ff671f)'
-              : `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4rem' },
+            letterSpacing: '.4rem',
+            fontSize: { xs: '3rem', sm: '4.5rem', md: '5.5rem' },
+            color: theme.palette.primary.main,
+            lineHeight: 1.1,
           }}
         >
           YIPPEE
@@ -45,68 +54,61 @@ export default function HomePage() {
         <Typography
           variant="h6"
           color="text.secondary"
-          sx={{
-            mt: 1,
-            fontWeight: 500,
-            fontSize: { xs: '1rem', sm: '1.2rem' },
-            opacity: 0.8,
-          }}
+          sx={{ mt: 0.5, fontWeight: 500, fontSize: { xs: '1rem', sm: '1.15rem' }, opacity: 0.75 }}
         >
           Create, host, and play live trivia games with friends
         </Typography>
       </Box>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, width: '100%', maxWidth: 420 }}>
+      <Grid container spacing={3} sx={{ maxWidth: 640, width: '100%' }}>
         {buttons.map((btn) => (
-          <Button
-            key={btn.path}
-            variant="contained"
-            onClick={() => navigate(btn.path)}
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              py: 2.5,
-              px: 4,
-              borderRadius: 3,
-              fontWeight: 800,
-              fontSize: '1.25rem',
-              textTransform: 'none',
-              letterSpacing: '.05rem',
-              width: '100%',
-              background: theme.palette.mode === 'dark'
-                ? `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`
-                : `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-              color: '#fff',
-              boxShadow: theme.palette.mode === 'dark'
-                ? `0 4px 20px ${theme.palette.primary.dark}60`
-                : `0 4px 20px ${theme.palette.primary.main}40`,
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'scale(1.03)',
-                boxShadow: `0 6px 28px ${theme.palette.primary.main}60`,
-                background: theme.palette.mode === 'dark'
-                  ? `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`
-                  : `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
-              },
-            }}
-          >
-            <span style={{ lineHeight: 1.4 }}>{btn.label}</span>
-            <Typography
-              variant="caption"
+          <Grid item xs={12} sm={6} key={btn.path}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => navigate(btn.path)}
               sx={{
-                mt: 0.3,
-                fontWeight: 400,
-                opacity: 0.85,
-                fontSize: '0.8rem',
-                lineHeight: 1.2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.5,
+                py: 4,
+                px: 3,
+                borderRadius: 4,
+                fontWeight: 900,
+                fontSize: '1.6rem',
+                letterSpacing: '.15rem',
+                textTransform: 'none',
+                bgcolor: theme.palette.primary.main,
+                color: '#fff',
+                minHeight: 140,
+                boxShadow: `0 6px 24px ${theme.palette.primary.main}60`,
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'scale(1.04)',
+                  bgcolor: theme.palette.primary.dark,
+                  boxShadow: `0 8px 32px ${theme.palette.primary.main}80`,
+                },
               }}
             >
-              {btn.desc}
-            </Typography>
-          </Button>
+              {btn.label}
+              <Typography
+                sx={{
+                  fontWeight: 400,
+                  fontSize: '0.8rem',
+                  letterSpacing: '.02rem',
+                  opacity: 0.85,
+                  lineHeight: 1.3,
+                  textAlign: 'center',
+                }}
+              >
+                {btn.desc}
+              </Typography>
+            </Button>
+          </Grid>
         ))}
-      </Box>
+      </Grid>
     </Box>
   );
 }

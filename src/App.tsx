@@ -75,7 +75,7 @@ const themes = {
       },
     },
   }),
-  ucalgary: createTheme({
+  red: createTheme({
     palette: {
       primary: { main: '#d6001c', light: '#ff4d4d', dark: '#a00015' },
       secondary: { main: '#ffcd00', light: '#ffe033', dark: '#cca700' },
@@ -116,7 +116,7 @@ const themes = {
   }),
 };
 
-type ThemeName = 'pink' | 'blue' | 'purple' | 'ucalgary' | 'dark';
+type ThemeName = 'pink' | 'blue' | 'purple' | 'red' | 'dark';
 function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<SetStateAction<ThemeName>> }) {
   return (
     <div className="App">
@@ -143,7 +143,7 @@ function AppRoutes({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<S
 }
 
 function App() {
-  const [theme, setTheme] = useState<ThemeName>('ucalgary');
+  const [theme, setTheme] = useState<ThemeName>('red');
 
   return (
     <ThemeProvider theme={themes[theme]}>
