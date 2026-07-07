@@ -104,7 +104,7 @@ export default function SelectQuiz({
     };
 
     fetchQuizzes();
-  }, []);
+  }, [publicOnly]);
 
   const visibleQuizzes = useMemo(() => quizzes.slice(0, MAX_VISIBLE), [quizzes]);
   const moreQuizzes = useMemo(() => quizzes.slice(MAX_VISIBLE), [quizzes]);
