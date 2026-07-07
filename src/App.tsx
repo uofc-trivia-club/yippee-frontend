@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material";
+import { Analytics } from "@vercel/analytics/react";
 import type { Dispatch, SetStateAction } from 'react';
 import { SignIn, SignUp } from "./components/user";
 import { useState } from "react";
@@ -149,6 +150,7 @@ function App() {
     <ThemeProvider theme={themes[theme]}>
       <BrowserRouter>
         <AppRoutes theme={theme} setTheme={setTheme} />
+        <Analytics />
       </BrowserRouter>
     </ThemeProvider>
   );
