@@ -4,6 +4,8 @@ export type Quiz = {
   quizName: string;
   quizDescription: string;
   createdBy: string;
+  authorId?: string;
+  publicTemplate?: boolean;
   quizItems: QuizItem[];
   // Legacy fallback for older payloads; quizItems is canonical.
   quizQuestions?: QuizQuestion[];
@@ -172,6 +174,7 @@ export type QuizMeta = {
   quizName?: string;
   quizDescription?: string;
   createdBy?: string;
+  authorId?: string;
   imageId?: string;
   questionCount?: number;
 };

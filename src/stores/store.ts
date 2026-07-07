@@ -1,12 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "./authSlice";
 import gameReducer from "./gameSlice";
 import { websocketMiddleware } from "../util/websocketMiddleware";
 import websocketReducer from "./websocketSlice";
 
 const store = configureStore({
   reducer: {
-    auth: authReducer,
     websocket: websocketReducer,
     game: gameReducer,
   },

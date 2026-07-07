@@ -1,4 +1,4 @@
-import { Box, Button, TextField, Typography, useTheme } from "@mui/material";
+import { Alert, Box, Button, Link, TextField, Typography, useTheme } from "@mui/material";
 import { executeWebSocketCommand, useCheckConnection } from "../util/websocketUtil";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
@@ -8,12 +8,14 @@ import { RootState } from "../stores/store";
 import { SelectQuiz } from "../components/quiz";
 import { gameActions } from "../stores/gameSlice";
 import styles from './HostGame.module.css';
+import { supabase } from "../util/supabase";
 import { useNavigate } from "react-router-dom";
 
 export default function HostGame() {
   const [hostName, setHostName] = useState<string>(""); // host name input
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -21,6 +23,13 @@ export default function HostGame() {
   // get necessary states from Redux
   const roomCode = useSelector((state: RootState) => state.game.roomCode);
   const gameStatus = useSelector((state: RootState) => state.game.gameStatus);
+  const isAuthenticated = Boolean(user);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+  }, []);
 
   useCheckConnection();
 
@@ -37,9 +46,10 @@ export default function HostGame() {
 
   const handleHostGame = async () => {
     const errors: string[] = [];
+    const effectiveHostName = hostName.trim() || (user?.email ?? "");
     
     // input host name
-    if (!hostName.trim()) {
+    if (!effectiveHostName) {
       errors.push("Host name cannot be empty!");
     }
     
@@ -54,12 +64,11 @@ export default function HostGame() {
       return;
     }
     // update redux state
-    dispatch(gameActions.setUserName(hostName));
+    dispatch(gameActions.setUserName(effectiveHostName));
     dispatch(gameActions.setRole("host"));
 
-    // TODO: figure out how to use the updated state instead of creating an object to pass 
-    const user = {
-      userName: hostName,
+    const lobbyUser = {
+      userName: effectiveHostName,
       userRole: "host",
       userMessage: "",
       points: 0,
@@ -69,7 +78,7 @@ export default function HostGame() {
 
     executeWebSocketCommand(
       "createLobby",
-      { quiz: selectedQuiz, user: user },
+      { quiz: selectedQuiz, user: lobbyUser },
       (errorMessage) => setError(errorMessage)
     );
   };
@@ -88,15 +97,17 @@ export default function HostGame() {
         <Typography variant="h4" gutterBottom className={styles.title}>
           Host a Game
         </Typography>
-        {/* <IconButton 
-          onClick={handleModifyLobbySettings}
-          edge="end"
-        >
-          <SettingsIcon />
-        </IconButton> */}
+
+        {!isAuthenticated && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            You're hosting as a guest.{' '}
+            <Link href="/sign-in" sx={{ fontWeight: 600 }}>Sign in</Link> to host all quizzes and create your own.
+          </Alert>
+        )}
+
         <TextField
           id="host-name"
-          label="Enter Your Name"
+          label={isAuthenticated ? "Display Name (optional)" : "Enter Your Name"}
           variant="outlined"
           fullWidth
           value={hostName}
@@ -106,10 +117,10 @@ export default function HostGame() {
             }
           }}
           inputProps={{ maxLength: 20 }}
-          helperText={`${hostName.length}/20 characters`}
+          helperText={isAuthenticated ? "Will default to your account name if left empty" : `${hostName.length}/20 characters`}
           sx={{ marginBottom: 2 }}
         />
-        <SelectQuiz onSelectQuiz={handleSelectQuiz} />
+        <SelectQuiz onSelectQuiz={handleSelectQuiz} publicOnly={!isAuthenticated} />
         {selectedQuiz && (
           <Typography variant="h6" gutterBottom className={styles.selectQuizTitle}>
             Selected Quiz: {selectedQuiz.quizName}

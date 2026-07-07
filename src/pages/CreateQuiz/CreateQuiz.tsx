@@ -7,9 +7,8 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import { supabase, getAuthToken } from "../../util/supabase";
 import { Quiz, QuizItem, QuizQuestion } from "../../stores/types";
-import { RootState } from "../../stores/store";
 import {
   PREDEFINED_CATEGORIES,
   QUESTION_TYPE_OPTIONS,
@@ -1394,7 +1393,16 @@ function SortableQuestionCard({
 
 export default function CreateQuiz() {
   const theme = useTheme();
-  const userName = useSelector((state: RootState) => state.auth.user?.name ?? "Anonymous");
+  const [supabaseUser, setSupabaseUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSupabaseUser(session?.user ?? null);
+    });
+  }, []);
+
+  const userId = supabaseUser?.id ?? null;
+  const userName = supabaseUser?.user_metadata?.name ?? supabaseUser?.email ?? "Anonymous";
   const [quizName, setQuizName] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
   const [slides, setSlides] = useState<PresentationSlideForm[]>([]);
@@ -2194,10 +2202,11 @@ export default function CreateQuiz() {
       .filter((item): item is QuizItem & { question: QuizQuestion } => item.kind === 'question' && Boolean(item.question))
       .map((item) => item.question);
 
-    const quiz: Quiz = {
+    const quiz: Quiz & { authorId?: string } = {
       quizName,
       quizDescription,
       createdBy: userName,
+      authorId: userId ?? undefined,
       quizItems,
     };
 
@@ -2209,11 +2218,13 @@ export default function CreateQuiz() {
     const uploadQuestionImage = async (quizId: string, questionIndex: number, file: File) => {
       const form = new FormData();
       form.append('image', file);
+      const token = await getAuthToken();
 
       const response = await fetch(
         `${backendUrl}/api/quizzes/${encodeURIComponent(quizId)}/questions/${questionIndex}/image`,
         {
           method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: form,
         }
       );
@@ -2228,11 +2239,13 @@ export default function CreateQuiz() {
     const uploadOptionImage = async (quizId: string, questionIndex: number, optionIndex: number, file: File) => {
       const form = new FormData();
       form.append('image', file);
+      const token = await getAuthToken();
 
       const response = await fetch(
         `${backendUrl}/api/quizzes/${encodeURIComponent(quizId)}/questions/${questionIndex}/options/${optionIndex}/image`,
         {
           method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: form,
         }
       );
@@ -2245,9 +2258,14 @@ export default function CreateQuiz() {
     };
 
     try {
+      const token = await getAuthToken();
+
       const response = await fetch(`${backendUrl}/api/create-quiz`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(quiz),
       });
 

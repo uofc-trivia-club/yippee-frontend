@@ -1,14 +1,13 @@
 import { AppBar, Avatar, Box, Button, Container, IconButton, Menu, Toolbar, Typography } from '@mui/material';
-import { Dispatch, MouseEvent, SetStateAction, useState } from 'react';
+import { Dispatch, MouseEvent, SetStateAction, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import { RootState } from '../../stores/store';
 import { Select } from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../../stores/authSlice';
+import { supabase } from '../../util/supabase';
+import type { User } from '@supabase/supabase-js';
 
 const themeOptions = [
   { label: 'UCalgary', value: 'ucalgary' },
@@ -22,10 +21,22 @@ type ThemeName = 'pink' | 'blue' | 'purple' | 'ucalgary' | 'dark';
 export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme: Dispatch<SetStateAction<ThemeName>> }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
-  const game = useSelector((state: RootState) => state.game);
-  const { user } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleOpenNavMenu = (event: MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -40,8 +51,8 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
     navigate(path);
   };
 
-  const handleSignOut = () => {
-    dispatch(logout());
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     navigate('/', { replace: true });
   };
 
@@ -53,15 +64,13 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
     return '#FF6B95';
   };
 
-  if (game.roomCode && game.gameStatus !== "") {
-    return null;
-  }
+  if (loading) return null;
 
   return (
     <AppBar position="static" sx={{ backgroundColor: getNavbarBackground(), zIndex: 1100 }}>
       <Container maxWidth="xl" sx={{ position: 'relative' }}>
         <Toolbar disableGutters>
-          <Box sx={{ display: 'flex', alignItems: 'center', width: '15%', justifyContent: 'flex-start' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 'fit-content', justifyContent: 'flex-start' }}>
             <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
               <IconButton
                 size="large"
@@ -83,20 +92,9 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
                 onClose={handleCloseNavMenu}
                 sx={{ display: { xs: 'block', md: 'none' } }}
               >
-                {user ? (
-                  <MenuItem onClick={() => handleNavigate('/')}>
-                    <Typography textAlign="center">Home</Typography>
-                  </MenuItem>
-                ) : (
-                  [
-                    { title: 'Sign Up', path: '/sign-up' },
-                    { title: 'Sign In', path: '/sign-in' },
-                  ].map((page) => (
-                    <MenuItem key={page.path} onClick={() => handleNavigate(page.path)} selected={location.pathname === page.path}>
-                      <Typography textAlign="center">{page.title}</Typography>
-                    </MenuItem>
-                  ))
-                )}
+                <MenuItem onClick={() => handleNavigate('/')}>
+                  <Typography textAlign="center">Home</Typography>
+                </MenuItem>
               </Menu>
             </Box>
           </Box>
@@ -113,38 +111,46 @@ export default function Navbar({ theme, setTheme }: { theme: ThemeName, setTheme
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto', justifyContent: 'flex-end', width: '15%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto', justifyContent: 'flex-end', minWidth: 'fit-content' }}>
             {user ? (
               <>
-                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                  <Button
-                    sx={{ color: 'white', textTransform: 'none', display: 'flex', alignItems: 'center', gap: 1, cursor: 'default' }}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconButton
+                    onClick={() => navigate('/profile')}
+                    sx={{ color: 'white', p: 0.5 }}
+                    title="Profile"
                   >
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', fontWeight: 700 }}>
-                      {user.name.charAt(0).toUpperCase()}
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '0.9rem', fontWeight: 700 }}>
+                      {(user.email ?? '?').charAt(0).toUpperCase()}
                     </Avatar>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{user.name}</Typography>
-                  </Button>
+                  </IconButton>
                 </Box>
-                <IconButton onClick={handleSignOut} sx={{ color: 'white', ml: 1 }} title="Sign out">
+                <IconButton onClick={handleSignOut} sx={{ color: 'white', ml: 0.5 }} title="Sign out">
                   <LogoutIcon />
                 </IconButton>
               </>
             ) : (
-              <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-                {[
-                  { title: 'Sign Up', path: '/sign-up' },
-                  { title: 'Sign In', path: '/sign-in' },
-                ].map((page) => (
-                  <Button
-                    key={page.path}
-                    onClick={() => handleNavigate(page.path)}
-                    sx={{ color: 'white', display: 'block', fontWeight: location.pathname === page.path ? 'bold' : 'normal', borderBottom: location.pathname === page.path ? '2px solid white' : 'none' }}
-                  >
-                    {page.title}
-                  </Button>
-                ))}
-              </Box>
+              [
+                { title: 'Sign Up', path: '/sign-up' },
+                { title: 'Sign In', path: '/sign-in' },
+              ].map((page) => (
+                <Button
+                  key={page.path}
+                  onClick={() => handleNavigate(page.path)}
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    display: 'block',
+                    fontWeight: location.pathname === page.path ? 'bold' : 'normal',
+                    borderBottom: location.pathname === page.path ? '2px solid white' : 'none',
+                    ml: 0.5,
+                    whiteSpace: 'nowrap',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  }}
+                >
+                  {page.title}
+                </Button>
+              ))
             )}
 
             <Select
