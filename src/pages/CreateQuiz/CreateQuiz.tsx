@@ -12,6 +12,7 @@ import {
   Divider,
   IconButton,
   MenuItem,
+  Paper,
   Radio,
   Snackbar,
   TextField,
@@ -57,7 +58,7 @@ import type { DragEvent as ReactDragEvent } from "react";
 import StarIcon from "@mui/icons-material/Star";
 import { backendUrl } from "../../util/backendConfig";
 import QuizPreviewDialog from "./components/QuizPreviewDialog";
-import QuizTimelineEditor from "./components/QuizTimelineEditor";
+import QuizEditorLayout from "./components/QuizEditorLayout";
 import styles from "./CreateQuiz.module.css";
 
 // Sortable Question Card Component
@@ -3154,76 +3155,46 @@ export default function CreateQuiz() {
     }
   };
 
-  const renderSlideTimelineCard = (
+  const renderSlideEditor = (
     item: Extract<TimelinePreviewItem, { kind: "slide" }>,
-    listIndex: number,
   ) => (
-    <Card
-      key={item.timelineId}
-      variant="outlined"
-      sx={{
-        borderColor:
-          selectedTimelineId === item.timelineId ? "info.main" : "divider",
-        bgcolor:
-          theme.palette.mode === "dark"
-            ? "rgba(3,169,244,0.08)"
-            : "rgba(3,169,244,0.05)",
-      }}
-    >
-      <CardContent>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1,
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-            #{listIndex + 1} • Slide {item.slideIndex + 1}
-          </Typography>
-          <IconButton
-            size="small"
-            onClick={() => deleteSlide(item.slide.id)}
-            sx={{ color: "error.main" }}
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Box>
-        <TextField
-          label="Slide Title"
-          fullWidth
-          size="small"
-          sx={{ mb: 1.25 }}
-          value={item.slide.title}
-          onChange={(e) => updateSlide(item.slide.id, "title", e.target.value)}
-        />
-        <TextField
-          label="Slide Content"
-          fullWidth
-          size="small"
-          multiline
-          rows={3}
-          sx={{ mb: 1.25 }}
-          value={item.slide.content}
-          onChange={(e) =>
-            updateSlide(item.slide.id, "content", e.target.value)
-          }
-        />
-        <TextField
-          label="Slide Image URL (Optional)"
-          fullWidth
-          size="small"
-          value={item.slide.imageUrl}
-          onChange={(e) =>
-            updateSlide(item.slide.id, "imageUrl", e.target.value)
-          }
-        />
-      </CardContent>
-    </Card>
+    <Box>
+      <Typography variant="h6" fontWeight="700" sx={{ mb: 2 }}>
+        Slide {item.slideIndex + 1}
+      </Typography>
+      <TextField
+        label="Slide Title"
+        fullWidth
+        size="small"
+        sx={{ mb: 2 }}
+        value={item.slide.title}
+        onChange={(e) => updateSlide(item.slide.id, "title", e.target.value)}
+      />
+      <TextField
+        label="Slide Content"
+        fullWidth
+        size="small"
+        multiline
+        rows={4}
+        sx={{ mb: 2 }}
+        value={item.slide.content}
+        onChange={(e) =>
+          updateSlide(item.slide.id, "content", e.target.value)
+        }
+      />
+      <TextField
+        label="Slide Image URL (Optional)"
+        fullWidth
+        size="small"
+        value={item.slide.imageUrl}
+        onChange={(e) =>
+          updateSlide(item.slide.id, "imageUrl", e.target.value)
+        }
+      />
+    </Box>
   );
 
-  const renderQuestionTimelineCard = (
+  const renderQuestionEditor = (
     item: Extract<TimelinePreviewItem, { kind: "question" }>,
   ) => (
     <SortableQuestionCard
@@ -3232,11 +3203,8 @@ export default function CreateQuiz() {
       question={item.question}
       index={item.questionIndex}
       globalIndex={item.questionIndex}
-      expanded={expandedQuestions.has(item.question.id)}
-      onToggle={() => {
-        setSelectedTimelineId(item.timelineId);
-        toggleExpanded(item.question.id);
-      }}
+      expanded={true}
+      onToggle={() => setSelectedTimelineId(item.timelineId)}
       onDelete={() => deleteQuestion(item.questionIndex)}
       onChange={(field, value) =>
         handleQuestionChange(item.questionIndex, field, value)
@@ -3327,21 +3295,17 @@ export default function CreateQuiz() {
             </CardContent>
           </Card>
 
-          <QuizTimelineEditor
+          <QuizEditorLayout
             timelinePreviewItems={timelinePreviewItems}
             selectedTimelineId={selectedTimelineId}
-            expandedQuestions={expandedQuestions}
             sensors={sensors}
             onDragEnd={handleDragEnd}
             onSelectItem={handleSelectTimelineItem}
-            onExpandQuestion={(questionId) =>
-              setExpandedQuestions(new Set([questionId]))
-            }
-            onExpandAll={expandAll}
-            onCollapseAll={collapseAll}
             onDeleteSlide={deleteSlide}
-            renderSlideCard={renderSlideTimelineCard}
-            renderQuestionCard={renderQuestionTimelineCard}
+            onAddSlide={addSlide}
+            onAddQuestion={addQuestion}
+            renderSlideEditor={renderSlideEditor}
+            renderQuestionEditor={renderQuestionEditor}
           />
 
           <Box sx={{ height: 72 }} />
