@@ -12,7 +12,7 @@ export default function EssayQuestion({
   disabled,
 }: EssayQuestionProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Typography fontStyle="italic" color="text.secondary">
         Essay question. Answers will be reviewed manually.
       </Typography>

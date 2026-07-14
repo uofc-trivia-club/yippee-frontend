@@ -1,5 +1,15 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
-import { DndContext, DragEndEvent, PointerSensor, TouchSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 
 import { CSS } from "@dnd-kit/utilities";
@@ -17,12 +27,23 @@ interface MatchPhraseQuestionProps {
 type AssignmentMap = Record<string, string>;
 type OptionEntry = { id: string; text: string };
 
-function DraggableOption({ option, disabled, selected, onSelect }: { option: OptionEntry; disabled: boolean; selected?: boolean; onSelect?: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: option.id,
-    data: { optionId: option.id },
-    disabled,
-  });
+function DraggableOption({
+  option,
+  disabled,
+  selected,
+  onSelect,
+}: {
+  option: OptionEntry;
+  disabled: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: option.id,
+      data: { optionId: option.id },
+      disabled,
+    });
 
   return (
     <Chip
@@ -93,7 +114,11 @@ function BlankSlot({
           sx={{ fontWeight: 700 }}
         />
       ) : (
-        <Typography variant="body2" color="text.disabled" sx={{ fontStyle: "italic" }}>
+        <Typography
+          variant="body2"
+          color="text.disabled"
+          sx={{ fontStyle: "italic" }}
+        >
           Drop here
         </Typography>
       )}
@@ -112,15 +137,27 @@ export default function MatchPhraseQuestion({
 }: MatchPhraseQuestionProps) {
   const phraseSegments = useMemo(() => phrase.split(/_{3,}/), [phrase]);
   const derivedSlotIds = useMemo(
-    () => Array.from({ length: Math.max(0, phraseSegments.length - 1) }, (_, index) => slots[index] || `blank${index + 1}`),
-    [phraseSegments.length, slots]
+    () =>
+      Array.from(
+        { length: Math.max(0, phraseSegments.length - 1) },
+        (_, index) => slots[index] || `blank${index + 1}`,
+      ),
+    [phraseSegments.length, slots],
   );
 
   const optionEntries = useMemo<OptionEntry[]>(
-    () => (Array.isArray(options) ? options : []).map((text, index) => ({ id: `opt-${index}`, text })),
-    [options]
+    () =>
+      (Array.isArray(options) ? options : []).map((text, index) => ({
+        id: `opt-${index}`,
+        text,
+      })),
+    [options],
   );
-  const optionMap = useMemo(() => Object.fromEntries(optionEntries.map((entry) => [entry.id, entry.text])), [optionEntries]);
+  const optionMap = useMemo(
+    () =>
+      Object.fromEntries(optionEntries.map((entry) => [entry.id, entry.text])),
+    [optionEntries],
+  );
 
   const [assignments, setAssignments] = useState<AssignmentMap>({});
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
@@ -131,7 +168,7 @@ export default function MatchPhraseQuestion({
     }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 120, tolerance: 8 },
-    })
+    }),
   );
 
   useEffect(() => {
@@ -145,13 +182,19 @@ export default function MatchPhraseQuestion({
     const formattedMatches = derivedSlotIds
       .map((slotId) => {
         const optionId = assignments[slotId];
-        const optionText = optionId ? optionMap[optionId] || '' : '';
+        const optionText = optionId ? optionMap[optionId] || "" : "";
         return optionText ? `${slotId}:${optionText}` : null;
       })
       .filter((entry): entry is string => Boolean(entry));
 
     onMatchesChange(formattedMatches);
-  }, [assignments, derivedSlotIds, onMatchesChange, optionMap, showCorrectAnswers]);
+  }, [
+    assignments,
+    derivedSlotIds,
+    onMatchesChange,
+    optionMap,
+    showCorrectAnswers,
+  ]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (disabled || showCorrectAnswers) return;
@@ -205,86 +248,120 @@ export default function MatchPhraseQuestion({
   const assignedOptionIds = new Set(Object.values(assignments));
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
       <Box sx={{ mt: 2 }}>
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-        Drag the words into the blanks.
-      </Typography>
-
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 2,
-          mb: 2,
-          borderRadius: 3,
-          background: (theme) => theme.palette.mode === "dark"
-            ? "rgba(255,255,255,0.03)"
-            : "rgba(0,0,0,0.02)",
-        }}
-      >
-        <Typography variant="body1" sx={{ lineHeight: 2.4 }}>
-          {phraseSegments.map((segment, index) => {
-            const slotId = derivedSlotIds[index];
-            const slotLabel = `Blank ${index + 1}`;
-            const slotValue = slotId
-              ? (showCorrectAnswers
-                  ? correctAssign?.[slotId]
-                  : (assignments[slotId] ? optionMap[assignments[slotId]] : undefined))
-              : undefined;
-
-            return (
-              <span key={`phrase-segment-${index}`}>
-                {segment}
-                {index < derivedSlotIds.length && slotId ? (
-                  <Box
-                    onClick={() => assignSelectedOptionToSlot(slotId)}
-                    sx={{ display: 'inline-flex', alignItems: 'center', cursor: selectedOptionId && !disabled && !showCorrectAnswers ? 'pointer' : 'default' }}
-                  >
-                    <BlankSlot
-                      slotId={slotId}
-                      label={slotLabel}
-                      value={slotValue}
-                      disabled={disabled}
-                      onClear={showCorrectAnswers ? undefined : () => clearSlot(slotId)}
-                    />
-                  </Box>
-                ) : null}
-              </span>
-            );
-          })}
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+          Drag the words into the blanks.
         </Typography>
-      </Paper>
+
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2,
+            mb: 2,
+            borderRadius: 3,
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.03)"
+                : "rgba(0,0,0,0.02)",
+          }}
+        >
+          <Typography variant="body1" sx={{ lineHeight: 2.4 }}>
+            {phraseSegments.map((segment, index) => {
+              const slotId = derivedSlotIds[index];
+              const slotLabel = `Blank ${index + 1}`;
+              const slotValue = slotId
+                ? showCorrectAnswers
+                  ? correctAssign?.[slotId]
+                  : assignments[slotId]
+                    ? optionMap[assignments[slotId]]
+                    : undefined
+                : undefined;
+
+              return (
+                <span key={`phrase-segment-${index}`}>
+                  {segment}
+                  {index < derivedSlotIds.length && slotId ? (
+                    <Box
+                      onClick={() => assignSelectedOptionToSlot(slotId)}
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        cursor:
+                          selectedOptionId && !disabled && !showCorrectAnswers
+                            ? "pointer"
+                            : "default",
+                      }}
+                    >
+                      <BlankSlot
+                        slotId={slotId}
+                        label={slotLabel}
+                        value={slotValue}
+                        disabled={disabled}
+                        onClear={
+                          showCorrectAnswers
+                            ? undefined
+                            : () => clearSlot(slotId)
+                        }
+                      />
+                    </Box>
+                  ) : null}
+                </span>
+              );
+            })}
+          </Typography>
+        </Paper>
 
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1.5 }}>
-          {revealedOptions.filter((option) => !assignedOptionIds.has(option.id)).map((option) => (
-            <DraggableOption
-              key={option.id}
-              option={option}
-              disabled={disabled || showCorrectAnswers}
-              selected={selectedOptionId === option.id}
-              onSelect={() => setSelectedOptionId((prev) => (prev === option.id ? null : option.id))}
-            />
-          ))}
+          {revealedOptions
+            .filter((option) => !assignedOptionIds.has(option.id))
+            .map((option) => (
+              <DraggableOption
+                key={option.id}
+                option={option}
+                disabled={disabled || showCorrectAnswers}
+                selected={selectedOptionId === option.id}
+                onSelect={() =>
+                  setSelectedOptionId((prev) =>
+                    prev === option.id ? null : option.id,
+                  )
+                }
+              />
+            ))}
         </Stack>
 
         {showCorrectAnswers && correctAssign && (
           <Box sx={{ mt: 1.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 1 }}
+            >
               Correct assignments
             </Typography>
             <Stack direction="row" flexWrap="wrap" gap={1}>
               {Object.entries(correctAssign).map(([slotId, value]) => (
-                <Chip key={slotId} label={`${slotId}: ${value}`} color="success" variant="outlined" />
+                <Chip
+                  key={slotId}
+                  label={`${slotId}: ${value}`}
+                  color="success"
+                  variant="outlined"
+                />
               ))}
             </Stack>
           </Box>
         )}
 
-      {!disabled && !showCorrectAnswers && (
-        <Typography variant="caption" color="text.secondary">
-          Drag each word onto a blank, or tap a word then tap a blank on mobile.
-        </Typography>
-      )}
+        {!disabled && !showCorrectAnswers && (
+          <Typography variant="caption" color="text.secondary">
+            Drag each word onto a blank, or tap a word then tap a blank on
+            mobile.
+          </Typography>
+        )}
       </Box>
     </DndContext>
   );

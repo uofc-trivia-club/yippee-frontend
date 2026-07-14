@@ -16,15 +16,23 @@ export default function PlayerCard({ player }: PlayerCardProps) {
     const width = Math.max(baseSize, name.length * charWidth);
     return {
       width: `${width}px`,
-      height: `${baseSize}px`
+      height: `${baseSize}px`,
     };
   };
 
   // Get color based on first letter of name
   const getPlayerColor = () => {
     const colors = [
-      "#64b5f6", "#81c784", "#ffb74d", "#4dd0e1", "#ba68c8", 
-      "#e57373", "#f06292", "#7986cb", "#a1887f", "#90a4ae"
+      "#64b5f6",
+      "#81c784",
+      "#ffb74d",
+      "#4dd0e1",
+      "#ba68c8",
+      "#e57373",
+      "#f06292",
+      "#7986cb",
+      "#a1887f",
+      "#90a4ae",
     ];
     const charCode = player.userName.charCodeAt(0) || 0;
     return colors[charCode % colors.length];
@@ -60,7 +68,7 @@ export default function PlayerCard({ player }: PlayerCardProps) {
       >
         {player.userName}
       </Typography>
-      
+
       {player.userMessage && (
         <Box
           sx={{

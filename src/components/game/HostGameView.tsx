@@ -1,4 +1,12 @@
-import { Avatar, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -13,9 +21,11 @@ import { useSelector } from "react-redux";
 
 export default function HostGameView() {
   const game = useSelector((state: RootState) => state.game);
-  const isSlideItem = game.currentItem?.kind === 'slide';
+  const isSlideItem = game.currentItem?.kind === "slide";
   const currentSlide = game.currentItem?.slide;
-  const [leaderboardView, setLeaderboardView] = useState<'page1' | 'page2'>('page1');
+  const [leaderboardView, setLeaderboardView] = useState<"page1" | "page2">(
+    "page1",
+  );
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [hintRevealed, setHintRevealed] = useState(false);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
@@ -27,9 +37,9 @@ export default function HostGameView() {
     executeWebSocketCommand(
       "showLeaderboard",
       { roomCode: game.roomCode, user: game.user },
-      (errorMessage) => console.log(errorMessage)
+      (errorMessage) => console.log(errorMessage),
     );
-    setLeaderboardView('page1');
+    setLeaderboardView("page1");
   }, [game.roomCode, game.user]);
 
   useEffect(() => {
@@ -38,7 +48,9 @@ export default function HostGameView() {
     autoTriggeredRef.current = false;
     timerInitializingRef.current = true;
     setHintRevealed(false);
-    setTimeRemaining(isSlideItem ? null : game.gameSettings?.questionTime || null);
+    setTimeRemaining(
+      isSlideItem ? null : game.gameSettings?.questionTime || null,
+    );
 
     // Cleanup when question changes or component unmounts
     return () => {
@@ -56,7 +68,7 @@ export default function HostGameView() {
       !isSlideItem &&
       game.currentQuestion &&
       timeRemaining !== null &&
-      timeRemaining > 0
+      timeRemaining > 0,
     );
 
     if (!shouldRunTimer) return;
@@ -72,19 +84,35 @@ export default function HostGameView() {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [game.currentQuestion, game.gameSettings?.questionTime, game.showLeaderboard, timeRemaining, isSlideItem]);
+  }, [
+    game.currentQuestion,
+    game.gameSettings?.questionTime,
+    game.showLeaderboard,
+    timeRemaining,
+    isSlideItem,
+  ]);
 
   useEffect(() => {
     if (timerInitializingRef.current) return;
 
-    if (!game.showLeaderboard && timeRemaining === 0 && !autoTriggeredRef.current) {
+    if (
+      !game.showLeaderboard &&
+      timeRemaining === 0 &&
+      !autoTriggeredRef.current
+    ) {
       autoTriggeredRef.current = true;
       handleViewLeaderboard();
     }
   }, [game.showLeaderboard, handleViewLeaderboard, timeRemaining]);
 
   const adjustTime = (deltaSeconds: number) => {
-    if (game.showLeaderboard || isSlideItem || !game.currentQuestion || !game.gameSettings?.questionTime) return;
+    if (
+      game.showLeaderboard ||
+      isSlideItem ||
+      !game.currentQuestion ||
+      !game.gameSettings?.questionTime
+    )
+      return;
     setTimeRemaining((prev) => {
       if (prev === null) return null;
       return Math.max(0, prev + deltaSeconds);
@@ -92,16 +120,16 @@ export default function HostGameView() {
   };
 
   const handleViewLeaderboard2 = () => {
-    setLeaderboardView('page2');
+    setLeaderboardView("page2");
   };
 
-    const handleNextQuestion = () => {
+  const handleNextQuestion = () => {
     console.log("Moving onto the next question");
-      if (isSlideItem) {
+    if (isSlideItem) {
       executeWebSocketCommand(
         "nextQuestion",
         { roomCode: game.roomCode, user: game.user },
-        (errorMessage) => console.log(errorMessage)
+        (errorMessage) => console.log(errorMessage),
       );
       return;
     }
@@ -110,13 +138,13 @@ export default function HostGameView() {
       executeWebSocketCommand(
         "endGame",
         { roomCode: game.roomCode, user: game.user },
-        (errorMessage) => console.log(errorMessage)
+        (errorMessage) => console.log(errorMessage),
       );
     } else {
       executeWebSocketCommand(
         "nextQuestion",
         { roomCode: game.roomCode, user: game.user },
-        (errorMessage) => console.log(errorMessage)
+        (errorMessage) => console.log(errorMessage),
       );
     }
   };
@@ -126,20 +154,21 @@ export default function HostGameView() {
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
 
   const getPlayerStatuses = () => {
     return Object.values(game.clientsInLobby)
-      .filter((user): user is User => 
-        user !== null && 
-        typeof user === 'object' && 
-        'userRole' in user && 
-        user.userRole === 'player'
+      .filter(
+        (user): user is User =>
+          user !== null &&
+          typeof user === "object" &&
+          "userRole" in user &&
+          user.userRole === "player",
       )
       .sort((a, b) => a.userName.localeCompare(b.userName));
   };
@@ -148,7 +177,7 @@ export default function HostGameView() {
     minWidth: 72,
     borderRadius: 2,
     fontWeight: 700,
-    letterSpacing: '0.01em',
+    letterSpacing: "0.01em",
   } as const;
 
   const primaryActionSx = {
@@ -157,9 +186,9 @@ export default function HostGameView() {
     py: 1,
     borderRadius: 2,
     fontWeight: 800,
-    letterSpacing: '0.02em',
-    textTransform: 'uppercase',
-    boxShadow: '0 10px 20px rgba(0,0,0,0.12)',
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+    boxShadow: "0 10px 20px rgba(0,0,0,0.12)",
   } as const;
 
   return (
@@ -167,21 +196,39 @@ export default function HostGameView() {
       {!game.showLeaderboard ? (
         <>
           {isSlideItem ? (
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="overline" color="text.secondary">Presentation Slide</Typography>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="overline" color="text.secondary">
+                Presentation Slide
+              </Typography>
               <Typography variant="h4" sx={{ fontWeight: 800, mt: 0.5, mb: 1 }}>
-                {currentSlide?.title || 'Slide'}
+                {currentSlide?.title || "Slide"}
               </Typography>
               {currentSlide?.imageUrl ? (
                 <Box
                   component="img"
                   src={resolveMediaUrl(currentSlide.imageUrl)}
-                  alt={currentSlide?.title || 'Slide'}
-                  sx={{ width: '100%', maxWidth: 860, borderRadius: 2, border: '1px solid', borderColor: 'divider', my: 1.5, objectFit: 'contain' }}
+                  alt={currentSlide?.title || "Slide"}
+                  sx={{
+                    width: "100%",
+                    maxWidth: 860,
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    my: 1.5,
+                    objectFit: "contain",
+                  }}
                 />
               ) : null}
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                {currentSlide?.content || 'No slide content provided.'}
+              <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+                {currentSlide?.content || "No slide content provided."}
               </Typography>
             </Paper>
           ) : (
@@ -195,54 +242,76 @@ export default function HostGameView() {
               my: 2,
               p: 2,
               borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'rgba(33, 150, 243, 0.03)',
+              border: "1px solid",
+              borderColor: "divider",
+              bgcolor: "rgba(33, 150, 243, 0.03)",
             }}
           >
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Players ({getPlayerStatuses().filter(p => p.submittedAnswer).length}/{getPlayerStatuses().length})
+            <Typography
+              variant="subtitle2"
+              sx={{
+                fontWeight: 700,
+                mb: 1.5,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Players (
+              {getPlayerStatuses().filter((p) => p.submittedAnswer).length}/
+              {getPlayerStatuses().length})
             </Typography>
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ flexWrap: "wrap", gap: 1 }}
+            >
               {getPlayerStatuses().map((player) => (
                 <Box
                   key={player.userName}
                   sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
                     gap: 0.75,
                   }}
                 >
-                  <Box sx={{ position: 'relative' }}>
+                  <Box sx={{ position: "relative" }}>
                     <Avatar
                       sx={{
                         width: 48,
                         height: 48,
-                        bgcolor: player.submittedAnswer ? 'success.main' : 'warning.main',
+                        bgcolor: player.submittedAnswer
+                          ? "success.main"
+                          : "warning.main",
                         fontWeight: 700,
-                        fontSize: '0.9rem',
+                        fontSize: "0.9rem",
                       }}
                     >
                       {getInitials(player.userName)}
                     </Avatar>
                     <Box
                       sx={{
-                        position: 'absolute',
+                        position: "absolute",
                         bottom: -6,
                         right: -6,
-                        bgcolor: player.submittedAnswer ? 'success.main' : 'warning.main',
-                        borderRadius: '50%',
+                        bgcolor: player.submittedAnswer
+                          ? "success.main"
+                          : "warning.main",
+                        borderRadius: "50%",
                         p: 0.25,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
                       {player.submittedAnswer ? (
-                        <CheckCircleIcon sx={{ fontSize: '1.2rem', color: 'white' }} />
+                        <CheckCircleIcon
+                          sx={{ fontSize: "1.2rem", color: "white" }}
+                        />
                       ) : (
-                        <HourglassEmptyIcon sx={{ fontSize: '1.2rem', color: 'white' }} />
+                        <HourglassEmptyIcon
+                          sx={{ fontSize: "1.2rem", color: "white" }}
+                        />
                       )}
                     </Box>
                   </Box>
@@ -250,11 +319,11 @@ export default function HostGameView() {
                     variant="caption"
                     sx={{
                       fontWeight: 600,
-                      textAlign: 'center',
+                      textAlign: "center",
                       maxWidth: 60,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {player.userName}
@@ -271,10 +340,10 @@ export default function HostGameView() {
                 mb: 2,
                 p: 1.5,
                 borderRadius: 1,
-                bgcolor: 'warning.light',
-                color: 'warning.contrastText',
-                border: '1px solid',
-                borderColor: 'warning.main',
+                bgcolor: "warning.light",
+                color: "warning.contrastText",
+                border: "1px solid",
+                borderColor: "warning.main",
               }}
             >
               {hintRevealed ? (
@@ -285,7 +354,14 @@ export default function HostGameView() {
                 <Button
                   variant="text"
                   onClick={() => setHintRevealed(true)}
-                  sx={{ fontWeight: 800, p: 0, minWidth: 'auto', color: 'inherit', letterSpacing: '0.02em', textTransform: 'uppercase' }}
+                  sx={{
+                    fontWeight: 800,
+                    p: 0,
+                    minWidth: "auto",
+                    color: "inherit",
+                    letterSpacing: "0.02em",
+                    textTransform: "uppercase",
+                  }}
                 >
                   Reveal Hint
                 </Button>
@@ -300,17 +376,17 @@ export default function HostGameView() {
                 my: 2,
                 p: 2,
                 borderRadius: 3,
-                border: '1px solid',
-                borderColor: isTimerCritical ? 'error.main' : 'divider',
+                border: "1px solid",
+                borderColor: isTimerCritical ? "error.main" : "divider",
                 bgcolor: isTimerCritical
-                  ? 'rgba(244, 67, 54, 0.08)'
-                  : 'rgba(33, 150, 243, 0.05)',
+                  ? "rgba(244, 67, 54, 0.08)"
+                  : "rgba(33, 150, 243, 0.05)",
               }}
             >
               <Stack spacing={1.5} alignItems="center">
                 <Chip
-                  label={isTimerCritical ? 'Hurry up' : 'Question timer'}
-                  color={isTimerCritical ? 'error' : 'primary'}
+                  label={isTimerCritical ? "Hurry up" : "Question timer"}
+                  color={isTimerCritical ? "error" : "primary"}
                   size="small"
                   variant="outlined"
                 />
@@ -318,38 +394,67 @@ export default function HostGameView() {
                 <Typography
                   variant="h4"
                   sx={{
-                    color: isTimerCritical ? 'error.main' : 'text.primary',
-                    animation: isTimerCritical ? 'pulse 1s infinite' : 'none',
-                    '@keyframes pulse': {
-                      '0%': { opacity: 1 },
-                      '50%': { opacity: 0.45 },
-                      '100%': { opacity: 1 },
+                    color: isTimerCritical ? "error.main" : "text.primary",
+                    animation: isTimerCritical ? "pulse 1s infinite" : "none",
+                    "@keyframes pulse": {
+                      "0%": { opacity: 1 },
+                      "50%": { opacity: 0.45 },
+                      "100%": { opacity: 1 },
                     },
                     fontWeight: 900,
-                    letterSpacing: '-0.02em',
-                    textAlign: 'center',
+                    letterSpacing: "-0.02em",
+                    textAlign: "center",
                   }}
                 >
                   {timerSeconds}s
                 </Typography>
 
-                <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: -0.5 }}
+                >
                   Time Remaining
                 </Typography>
 
-                <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
-                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(-10)} disabled={timeRemaining === null || timeRemaining <= 0}>
-                  -10s
-                </Button>
-                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(-5)} disabled={timeRemaining === null || timeRemaining <= 0}>
-                  -5s
-                </Button>
-                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(5)} disabled={timeRemaining === null}>
-                  +5s
-                </Button>
-                <Button sx={adjustButtonSx} variant="outlined" onClick={() => adjustTime(10)} disabled={timeRemaining === null}>
-                  +10s
-                </Button>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  justifyContent="center"
+                  flexWrap="wrap"
+                >
+                  <Button
+                    sx={adjustButtonSx}
+                    variant="outlined"
+                    onClick={() => adjustTime(-10)}
+                    disabled={timeRemaining === null || timeRemaining <= 0}
+                  >
+                    -10s
+                  </Button>
+                  <Button
+                    sx={adjustButtonSx}
+                    variant="outlined"
+                    onClick={() => adjustTime(-5)}
+                    disabled={timeRemaining === null || timeRemaining <= 0}
+                  >
+                    -5s
+                  </Button>
+                  <Button
+                    sx={adjustButtonSx}
+                    variant="outlined"
+                    onClick={() => adjustTime(5)}
+                    disabled={timeRemaining === null}
+                  >
+                    +5s
+                  </Button>
+                  <Button
+                    sx={adjustButtonSx}
+                    variant="outlined"
+                    onClick={() => adjustTime(10)}
+                    disabled={timeRemaining === null}
+                  >
+                    +10s
+                  </Button>
                 </Stack>
               </Stack>
             </Paper>
@@ -361,23 +466,33 @@ export default function HostGameView() {
             sx={primaryActionSx}
             onClick={isSlideItem ? handleNextQuestion : handleViewLeaderboard}
           >
-            {isSlideItem ? 'Next Item' : 'Next'}
+            {isSlideItem ? "Next Item" : "Next"}
           </Button>
         </>
       ) : (
         // show leaderboard
-        <> 
-          {leaderboardView === 'page1' ? (
+        <>
+          {leaderboardView === "page1" ? (
             <>
               <QuestionView displayCorrectAnswers={true} />
-              <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleViewLeaderboard2}>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={primaryActionSx}
+                onClick={handleViewLeaderboard2}
+              >
                 View Leaderboard
               </Button>
             </>
           ) : (
             <>
               <Leaderboard />
-              <Button variant="contained" color="primary" sx={primaryActionSx} onClick={handleNextQuestion}>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={primaryActionSx}
+                onClick={handleNextQuestion}
+              >
                 Next Question
               </Button>
             </>

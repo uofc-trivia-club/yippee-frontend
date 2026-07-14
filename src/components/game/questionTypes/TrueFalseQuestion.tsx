@@ -14,13 +14,13 @@ export default function TrueFalseQuestion({
   const options = ["True", "False"];
 
   return (
-    <Box sx={{ display: 'flex', gap: 2 }}>
+    <Box sx={{ display: "flex", gap: 2 }}>
       {options.map((option) => (
         <Button
           key={option}
           onClick={() => onAnswerSelect(option)}
           variant={selectedAnswers.includes(option) ? "contained" : "outlined"}
-          sx={{ m: 1, minWidth: '120px' }}
+          sx={{ m: 1, minWidth: "120px" }}
           disabled={disabled}
         >
           {option}

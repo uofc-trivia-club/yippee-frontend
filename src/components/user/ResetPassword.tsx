@@ -1,46 +1,46 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import Alert from '@mui/material/Alert';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CircularProgress from '@mui/material/CircularProgress';
-import FormControl from '@mui/material/FormControl';
-import FormLabel from '@mui/material/FormLabel';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CircularProgress from "@mui/material/CircularProgress";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
 
-import { supabase } from '../../util/supabase';
+import { supabase } from "../../util/supabase";
 
 export default function ResetPassword() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
-    if (!hash || !hash.includes('type=recovery')) {
-      setError('Invalid or expired reset link. Please request a new one.');
+    if (!hash || !hash.includes("type=recovery")) {
+      setError("Invalid or expired reset link. Please request a new one.");
     }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (password !== confirm) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -58,36 +58,40 @@ export default function ResetPassword() {
     setDone(true);
   };
 
-  const isUcalgary = theme.palette.primary.main === '#d6001c';
+  const isUcalgary = theme.palette.primary.main === "#d6001c";
 
   return (
-    <Box sx={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: 'calc(100vh - 80px)',
-      px: 2,
-      py: 4,
-    }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "calc(100vh - 80px)",
+        px: 2,
+        py: 4,
+      }}
+    >
       <Card
         elevation={8}
         sx={{
-          width: '100%',
+          width: "100%",
           maxWidth: 440,
           borderRadius: 3,
-          overflow: 'hidden',
-          position: 'relative',
+          overflow: "hidden",
+          position: "relative",
         }}
       >
-        <Box sx={{
-          height: 6,
-          background: isUcalgary
-            ? 'linear-gradient(90deg, #d6001c 0%, #ffcd00 50%, #ff671f 100%)'
-            : `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-        }} />
+        <Box
+          sx={{
+            height: 6,
+            background: isUcalgary
+              ? "linear-gradient(90deg, #d6001c 0%, #ffcd00 50%, #ff671f 100%)"
+              : `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+          }}
+        />
         <CardContent sx={{ p: 4 }}>
           {done ? (
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: "center" }}>
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
                 Password updated
               </Typography>
@@ -97,14 +101,14 @@ export default function ResetPassword() {
               <Button
                 variant="contained"
                 fullWidth
-                onClick={() => navigate('/sign-in')}
+                onClick={() => navigate("/sign-in")}
                 sx={{
                   py: 1.3,
                   borderRadius: 2,
                   fontWeight: 700,
-                  textTransform: 'none',
+                  textTransform: "none",
                   bgcolor: theme.palette.primary.main,
-                  '&:hover': { bgcolor: theme.palette.primary.dark },
+                  "&:hover": { bgcolor: theme.palette.primary.dark },
                 }}
               >
                 Sign in
@@ -112,18 +116,22 @@ export default function ResetPassword() {
             </Box>
           ) : (
             <>
-              <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Box sx={{ textAlign: "center", mb: 3 }}>
                 <Typography
                   variant="h4"
                   sx={{
                     fontWeight: 800,
-                    letterSpacing: '.15rem',
+                    letterSpacing: ".15rem",
                     color: theme.palette.primary.main,
                   }}
                 >
                   YIPPEE
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
                   Enter your new password.
                 </Typography>
               </Box>
@@ -134,9 +142,18 @@ export default function ResetPassword() {
                 </Alert>
               )}
 
-              <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5}}>
+              <Box
+                component="form"
+                onSubmit={handleSubmit}
+                sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
+              >
                 <FormControl>
-                  <FormLabel htmlFor="password" sx={{ fontWeight: 600, mb: 0.5 }}>New Password</FormLabel>
+                  <FormLabel
+                    htmlFor="password"
+                    sx={{ fontWeight: 600, mb: 0.5 }}
+                  >
+                    New Password
+                  </FormLabel>
                   <TextField
                     id="password"
                     type="password"
@@ -148,12 +165,25 @@ export default function ResetPassword() {
                     fullWidth
                     variant="outlined"
                     size="medium"
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' } }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        bgcolor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(0,0,0,0.02)",
+                      },
+                    }}
                   />
                 </FormControl>
 
                 <FormControl>
-                  <FormLabel htmlFor="confirm" sx={{ fontWeight: 600, mb: 0.5 }}>Confirm Password</FormLabel>
+                  <FormLabel
+                    htmlFor="confirm"
+                    sx={{ fontWeight: 600, mb: 0.5 }}
+                  >
+                    Confirm Password
+                  </FormLabel>
                   <TextField
                     id="confirm"
                     type="password"
@@ -165,7 +195,15 @@ export default function ResetPassword() {
                     fullWidth
                     variant="outlined"
                     size="medium"
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' } }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        bgcolor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(0,0,0,0.02)",
+                      },
+                    }}
                   />
                 </FormControl>
 
@@ -180,13 +218,17 @@ export default function ResetPassword() {
                     py: 1.3,
                     borderRadius: 2,
                     fontWeight: 700,
-                    fontSize: '1rem',
-                    textTransform: 'none',
+                    fontSize: "1rem",
+                    textTransform: "none",
                     bgcolor: theme.palette.primary.main,
-                    '&:hover': { bgcolor: theme.palette.primary.dark },
+                    "&:hover": { bgcolor: theme.palette.primary.dark },
                   }}
                 >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Reset Password'}
+                  {loading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    "Reset Password"
+                  )}
                 </Button>
               </Box>
             </>

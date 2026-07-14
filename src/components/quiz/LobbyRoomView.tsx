@@ -1,14 +1,22 @@
-import { Box, Button, IconButton, InputAdornment, TextField, Typography, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  IconButton,
+  InputAdornment,
+  TextField,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import { GameSettings, User } from "../../stores/types";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import ManageGameSettings from "./ManageGameSettings";
 import { RootState } from "../../stores/store";
-import SendIcon from '@mui/icons-material/Send';
+import SendIcon from "@mui/icons-material/Send";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
-import styles from './LobbyRoomView.module.css';
+import styles from "./LobbyRoomView.module.css";
 
 export default function LobbyRoomView() {
   const theme = useTheme();
@@ -27,16 +35,16 @@ export default function LobbyRoomView() {
   // Set CSS variables for the module styles with improved dark mode
   useEffect(() => {
     document.documentElement.style.setProperty(
-      '--gradient-primary',
-      theme.palette.mode === 'dark'
+      "--gradient-primary",
+      theme.palette.mode === "dark"
         ? `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.primary.main} 90%)`
-        : `linear-gradient(45deg, ${theme.palette.primary.light} 30%, ${theme.palette.primary.main} 90%)`
+        : `linear-gradient(45deg, ${theme.palette.primary.light} 30%, ${theme.palette.primary.main} 90%)`,
     );
     document.documentElement.style.setProperty(
-      '--gradient-secondary',
-      theme.palette.mode === 'dark'
+      "--gradient-secondary",
+      theme.palette.mode === "dark"
         ? `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`
-        : `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`
+        : `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`,
     );
   }, [theme]);
 
@@ -59,22 +67,26 @@ export default function LobbyRoomView() {
     executeWebSocketCommand(
       "sendLobbyMessage",
       { roomCode: game.roomCode, user: user },
-      (errorMessage) => setError(errorMessage)
+      (errorMessage) => setError(errorMessage),
     );
     // reset the message to be blank
-    setLobbyMessage("")
-  }
+    setLobbyMessage("");
+  };
 
   const handleStartGame = () => {
     // TODO: ensure that there is at least one player
-    console.log("Starting the Game")
+    console.log("Starting the Game");
     dispatch(gameActions.setGameSettings(gameSettings));
     executeWebSocketCommand(
       "startGame",
-      { roomCode: game.roomCode, user: userDetails, gameSettings: gameSettings },
-      (errorMessage) => setError(errorMessage)
+      {
+        roomCode: game.roomCode,
+        user: userDetails,
+        gameSettings: gameSettings,
+      },
+      (errorMessage) => setError(errorMessage),
     );
-  }
+  };
 
   return (
     <Box sx={{ padding: 4 }}>
@@ -84,12 +96,18 @@ export default function LobbyRoomView() {
       {/* quiz displayed for players to see */}
       {/* TODO: set it properly to the quiz instead of the host name! */}
       <Typography variant="h5" gutterBottom>
-        Quiz: {game.clientsInLobby.find((user) => user.userRole === "host")?.userName || "Loading..."}
+        Quiz:{" "}
+        {game.clientsInLobby.find((user) => user.userRole === "host")
+          ?.userName || "Loading..."}
       </Typography>
       {/* host displayed */}
       <Typography variant="h5" gutterBottom>
-        Host: {game.clientsInLobby.find((user) => user.userRole === "host")?.userName || "Loading..."}
-        {game.clientsInLobby.find((user) => user.userRole === "host")?.userMessage && `: ${game.clientsInLobby.find((user) => user.userRole === "host")?.userMessage}`}
+        Host:{" "}
+        {game.clientsInLobby.find((user) => user.userRole === "host")
+          ?.userName || "Loading..."}
+        {game.clientsInLobby.find((user) => user.userRole === "host")
+          ?.userMessage &&
+          `: ${game.clientsInLobby.find((user) => user.userRole === "host")?.userMessage}`}
       </Typography>
       <Typography variant="h6" gutterBottom>
         Players:
@@ -118,11 +136,7 @@ export default function LobbyRoomView() {
         value={lobbyMessage}
         onChange={(e) => setLobbyMessage(e.target.value)}
         InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              ...
-            </InputAdornment>
-          ),
+          endAdornment: <InputAdornment position="end">...</InputAdornment>,
         }}
       />
 
@@ -142,8 +156,8 @@ export default function LobbyRoomView() {
             color="primary"
             sx={{
               marginTop: 2,
-              fontWeight: 'bold',
-              color: '#ffffff' // Ensure white text
+              fontWeight: "bold",
+              color: "#ffffff", // Ensure white text
             }}
             onClick={handleStartGame}
             className={styles.button}

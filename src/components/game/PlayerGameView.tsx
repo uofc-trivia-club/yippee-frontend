@@ -1,4 +1,15 @@
-import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import {
   CalendarQuestion,
   DropdownQuestion,
@@ -11,7 +22,11 @@ import {
   ShortAnswerQuestion,
   TrueFalseQuestion,
 } from "./questionTypes";
-import { PlayerSubmissionSummary, getQuestionTypeTitle, isAnswerCorrectFor } from "./player";
+import {
+  PlayerSubmissionSummary,
+  getQuestionTypeTitle,
+  isAnswerCorrectFor,
+} from "./player";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -23,32 +38,39 @@ import { resolveMediaUrl } from "../../util/mediaUrl";
 
 export default function PlayerGameView() {
   const game = useSelector((state: RootState) => state.game);
-  const isSlideItem = game.currentItem?.kind === 'slide';
+  const isSlideItem = game.currentItem?.kind === "slide";
   const currentSlide = game.currentItem?.slide;
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [textAnswer, setTextAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pointsAtSubmission, setPointsAtSubmission] = useState<number | null>(null);
+  const [pointsAtSubmission, setPointsAtSubmission] = useState<number | null>(
+    null,
+  );
   const dispatch = useDispatch();
 
   const matchPhraseRevealData = useMemo(() => {
     const q = game.currentQuestion;
     const t = q?.type as any;
-    if (!q || !t || t.name !== 'match_the_phrase') return null;
+    if (!q || !t || t.name !== "match_the_phrase") return null;
 
-    const slots = ((t.slots || t.blanks || []) as string[]).map((slot) => String(slot || '').trim()).filter(Boolean);
+    const slots = ((t.slots || t.blanks || []) as string[])
+      .map((slot) => String(slot || "").trim())
+      .filter(Boolean);
     const orderedAnswers = (
-      Array.isArray(t.correct) ? t.correct
-      : Array.isArray(t.correctAnswers) ? t.correctAnswers
-      : Array.isArray(q.correctAnswers) ? q.correctAnswers
-      : []
+      Array.isArray(t.correct)
+        ? t.correct
+        : Array.isArray(t.correctAnswers)
+          ? t.correctAnswers
+          : Array.isArray(q.correctAnswers)
+            ? q.correctAnswers
+            : []
     ) as string[];
 
     const correctAssign: Record<string, string> = {};
     if (slots.length > 0 && orderedAnswers.length > 0) {
       slots.forEach((slotId, index) => {
-        const value = String(orderedAnswers[index] || '').trim();
+        const value = String(orderedAnswers[index] || "").trim();
         if (slotId && value) {
           correctAssign[slotId] = value;
         }
@@ -56,10 +78,12 @@ export default function PlayerGameView() {
     }
 
     if (Object.keys(correctAssign).length === 0) {
-      const keyValueAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+      const keyValueAnswers = Array.isArray(q.correctAnswers)
+        ? q.correctAnswers
+        : [];
       keyValueAnswers.forEach((entry) => {
-        const raw = String(entry || '').trim();
-        const separatorIndex = raw.indexOf(':');
+        const raw = String(entry || "").trim();
+        const separatorIndex = raw.indexOf(":");
         if (separatorIndex <= 0) return;
         const key = raw.slice(0, separatorIndex).trim();
         const value = raw.slice(separatorIndex + 1).trim();
@@ -70,13 +94,13 @@ export default function PlayerGameView() {
     }
 
     return {
-      phrase: t.phrase || q.question || '',
+      phrase: t.phrase || q.question || "",
       slots,
-      options: ((t.options || []) as string[]),
+      options: (t.options || []) as string[],
       correctAssign,
     };
   }, [game.currentQuestion]);
-  
+
   // Memoize ranking order change callback to prevent RankingComponent state reset
   const handleRankingOrderChange = useCallback((ordered: string[]) => {
     setSelectedAnswers(ordered);
@@ -89,7 +113,7 @@ export default function PlayerGameView() {
     setSelectedAnswers([]);
     setTextAnswer("");
 
-    if (questionType?.name === 'ranking' || questionType?.name === 'ordering') {
+    if (questionType?.name === "ranking" || questionType?.name === "ordering") {
       const items = ((questionType as any).items || []) as string[];
       setSelectedAnswers(items);
       return;
@@ -106,35 +130,41 @@ export default function PlayerGameView() {
     if (game.user.submittedAnswer) return;
 
     const typeName = game.currentQuestion?.type?.name;
-    if (typeName === 'multiple_choice' || typeName === 'true_false') {
+    if (typeName === "multiple_choice" || typeName === "true_false") {
       setSelectedAnswers([option]);
       return;
     }
 
-    setSelectedAnswers(prev =>
+    setSelectedAnswers((prev) =>
       prev.includes(option)
-        ? prev.filter(answer => answer !== option)
-        : [...prev, option]
+        ? prev.filter((answer) => answer !== option)
+        : [...prev, option],
     );
   };
 
   const handleSubmitAnswers = async () => {
     const currentType = game.currentQuestion?.type?.name;
-    const allowsEmptySubmission = currentType === 'multi_select';
+    const allowsEmptySubmission = currentType === "multi_select";
     const questionSnapshot = game.currentQuestion;
     const submittedSnapshot = [...selectedAnswers];
-    const normalizedSubmittedAnswers = currentType === 'match_the_phrase'
-      ? submittedSnapshot.map((entry) => {
-          const raw = String(entry || '').trim();
-          const separatorIndex = raw.indexOf(':');
-          return separatorIndex > 0 ? raw.slice(separatorIndex + 1).trim() : raw;
-        }).filter((value) => value.length > 0)
-      : submittedSnapshot;
+    const normalizedSubmittedAnswers =
+      currentType === "match_the_phrase"
+        ? submittedSnapshot
+            .map((entry) => {
+              const raw = String(entry || "").trim();
+              const separatorIndex = raw.indexOf(":");
+              return separatorIndex > 0
+                ? raw.slice(separatorIndex + 1).trim()
+                : raw;
+            })
+            .filter((value) => value.length > 0)
+        : submittedSnapshot;
 
-    if (!allowsEmptySubmission && normalizedSubmittedAnswers.length === 0) return;
+    if (!allowsEmptySubmission && normalizedSubmittedAnswers.length === 0)
+      return;
 
-    if (currentType === 'ranking' || currentType === 'ordering') {
-      console.log('[Ranking Submit] Submitted order:', submittedSnapshot);
+    if (currentType === "ranking" || currentType === "ordering") {
+      console.log("[Ranking Submit] Submitted order:", submittedSnapshot);
     }
 
     setIsSubmitting(true);
@@ -148,16 +178,16 @@ export default function PlayerGameView() {
         {
           roomCode: game.roomCode,
           user: game.user,
-          answer: normalizedSubmittedAnswers
+          answer: normalizedSubmittedAnswers,
         },
-        (errorMessage) => setError(errorMessage)
+        (errorMessage) => setError(errorMessage),
       );
 
       dispatch(gameActions.setLastSubmittedAnswers(normalizedSubmittedAnswers));
       setSelectedAnswers([]);
       dispatch(gameActions.setSubmittedAnswer(true));
     } catch (err) {
-      setError('Failed to submit answer. Please try again.');
+      setError("Failed to submit answer. Please try again.");
       setPointsAtSubmission(null);
     } finally {
       setIsSubmitting(false);
@@ -176,7 +206,7 @@ export default function PlayerGameView() {
     };
 
     switch (t.name) {
-      case 'multiple_choice': {
+      case "multiple_choice": {
         const options = (t.options || q.options || []) as string[];
         return (
           <MultipleChoiceQuestion
@@ -188,7 +218,7 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'multi_select': {
+      case "multi_select": {
         const options = (t.options || q.options || []) as string[];
         return (
           <MultipleChoiceQuestion
@@ -200,7 +230,7 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'dropdown': {
+      case "dropdown": {
         const options = (t.options || q.options || []) as string[];
         return (
           <DropdownQuestion
@@ -212,7 +242,7 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'true_false': {
+      case "true_false": {
         return (
           <TrueFalseQuestion
             selectedAnswers={selectedAnswers}
@@ -221,7 +251,7 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'short_answer': {
+      case "short_answer": {
         return (
           <ShortAnswerQuestion
             textAnswer={textAnswer}
@@ -230,15 +260,15 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'fill_in_blank': {
-        const blankCount = Math.max(1, q.question.split('____').length - 1);
+      case "fill_in_blank": {
+        const blankCount = Math.max(1, q.question.split("____").length - 1);
         return (
           <Stack spacing={1.5}>
             {Array.from({ length: blankCount }).map((_, index) => (
               <TextField
                 key={`blank-${index}`}
                 label={`Blank ${index + 1}`}
-                value={selectedAnswers[index] || ''}
+                value={selectedAnswers[index] || ""}
                 onChange={(e) => {
                   const next = [...selectedAnswers];
                   next[index] = e.target.value;
@@ -251,7 +281,7 @@ export default function PlayerGameView() {
           </Stack>
         );
       }
-      case 'numerical': {
+      case "numerical": {
         return (
           <ShortAnswerQuestion
             textAnswer={textAnswer}
@@ -265,9 +295,9 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'match_the_phrase': {
-        const phrase = (t as any).phrase || q.question || '';
-        const slots = (((t as any).slots || (t as any).blanks || []) as string[]);
+      case "match_the_phrase": {
+        const phrase = (t as any).phrase || q.question || "";
+        const slots = ((t as any).slots || (t as any).blanks || []) as string[];
         const options = ((t as any).options || []) as string[];
         return (
           <MatchPhraseQuestion
@@ -275,14 +305,22 @@ export default function PlayerGameView() {
             slots={slots}
             options={options}
             disabled={isDisabled}
-            onMatchesChange={(formattedMatches: string[]) => setSelectedAnswers(formattedMatches)}
+            onMatchesChange={(formattedMatches: string[]) =>
+              setSelectedAnswers(formattedMatches)
+            }
           />
         );
       }
-      case 'matching': {
+      case "matching": {
         const pairs = (t as any).pairs || [];
-        const left = pairs.length > 0 ? pairs.map((p: any) => p.left || p.leftItem || '') : (t.leftItems || []);
-        const right = pairs.length > 0 ? pairs.map((p: any) => p.right || p.rightItem || '') : (t.rightItems || []);
+        const left =
+          pairs.length > 0
+            ? pairs.map((p: any) => p.left || p.leftItem || "")
+            : t.leftItems || [];
+        const right =
+          pairs.length > 0
+            ? pairs.map((p: any) => p.right || p.rightItem || "")
+            : t.rightItems || [];
         return (
           <MatchingQuestion
             leftItems={left}
@@ -294,9 +332,9 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'ranking':
-      case 'ordering': {
-        const items = (((t as any).items || q?.options || []) as string[]);
+      case "ranking":
+      case "ordering": {
+        const items = ((t as any).items || q?.options || []) as string[];
         return (
           <RankingQuestion
             items={items}
@@ -306,21 +344,23 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'image_based': {
+      case "image_based": {
         return (
           <ImageBasedQuestion
-            imageUrl={t.imageUrl || q.imageUrl || ''}
+            imageUrl={t.imageUrl || q.imageUrl || ""}
             textAnswer={textAnswer}
             onAnswerChange={handleTextChange}
             disabled={isSubmitting}
           />
         );
       }
-      case 'calendar': {
-        const correctAnswers = ((t as any).correctAnswers || q.correctAnswers || []) as string[];
+      case "calendar": {
+        const correctAnswers = ((t as any).correctAnswers ||
+          q.correctAnswers ||
+          []) as string[];
         return (
           <CalendarQuestion
-            question={q.question || ''}
+            question={q.question || ""}
             correctAnswers={correctAnswers}
             disabled={isDisabled}
             onAnswer={(dates) => setSelectedAnswers(dates)}
@@ -328,7 +368,7 @@ export default function PlayerGameView() {
           />
         );
       }
-      case 'essay': {
+      case "essay": {
         return (
           <EssayQuestion
             textAnswer={textAnswer}
@@ -349,18 +389,28 @@ export default function PlayerGameView() {
       return Number.isFinite(parsed) ? parsed : 0;
     };
 
-    const currentAnonymousRef = ((game.user as typeof game.user & { anonymousRef?: string }).anonymousRef || '').trim().toLowerCase();
+    const currentAnonymousRef = (
+      (game.user as typeof game.user & { anonymousRef?: string })
+        .anonymousRef || ""
+    )
+      .trim()
+      .toLowerCase();
 
     const sortedPlayers = Object.values(game.clientsInLobby)
-      .filter((user): user is any => 
-        user !== null && 
-        typeof user === 'object' && 
-        'userRole' in user && 
-        user.userRole === 'player'
+      .filter(
+        (user): user is any =>
+          user !== null &&
+          typeof user === "object" &&
+          "userRole" in user &&
+          user.userRole === "player",
       )
-      .sort((a, b) => safePoints(b.points) - safePoints(a.points) || String(a.userName || '').localeCompare(String(b.userName || '')));
+      .sort(
+        (a, b) =>
+          safePoints(b.points) - safePoints(a.points) ||
+          String(a.userName || "").localeCompare(String(b.userName || "")),
+      );
 
-    const normalize = (value: string) => (value || '').trim().toLowerCase();
+    const normalize = (value: string) => (value || "").trim().toLowerCase();
     const currentPlayerName = normalize(game.user.userName);
     const foundIndex = sortedPlayers.findIndex((p) => {
       const playerName = normalize(p.userName);
@@ -370,14 +420,18 @@ export default function PlayerGameView() {
         (currentPlayerName && playerName === currentPlayerName)
       );
     });
-    const currentPlayerIndex = foundIndex >= 0
-      ? foundIndex
-      : (sortedPlayers.length === 1 ? 0 : -1);
-    const currentPlayer = currentPlayerIndex >= 0 ? sortedPlayers[currentPlayerIndex] : undefined;
+    const currentPlayerIndex =
+      foundIndex >= 0 ? foundIndex : sortedPlayers.length === 1 ? 0 : -1;
+    const currentPlayer =
+      currentPlayerIndex >= 0 ? sortedPlayers[currentPlayerIndex] : undefined;
     const leaderPlayer = sortedPlayers[0];
-    const currentPoints = safePoints(currentPlayer?.points ?? game.user.points ?? 0);
+    const currentPoints = safePoints(
+      currentPlayer?.points ?? game.user.points ?? 0,
+    );
     const leaderPoints = safePoints(leaderPlayer?.points ?? 0);
-    const pointsBehind = leaderPlayer ? Math.max(0, leaderPoints - currentPoints) : 0;
+    const pointsBehind = leaderPlayer
+      ? Math.max(0, leaderPoints - currentPoints)
+      : 0;
 
     return {
       rank: currentPlayerIndex >= 0 ? currentPlayerIndex + 1 : null,
@@ -393,8 +447,10 @@ export default function PlayerGameView() {
     game.lastSubmittedQuestion || game.currentQuestion,
     game.lastSubmittedAnswers,
   );
-  const gainedPointsAfterSubmit = pointsAtSubmission !== null && stats.points > pointsAtSubmission;
-  const submissionWasCorrect = isSubmittedAnswerCorrect || gainedPointsAfterSubmit;
+  const gainedPointsAfterSubmit =
+    pointsAtSubmission !== null && stats.points > pointsAtSubmission;
+  const submissionWasCorrect =
+    isSubmittedAnswerCorrect || gainedPointsAfterSubmit;
 
   return (
     <Box sx={{ p: { xs: 0.5, sm: 1, md: 2 } }}>
@@ -413,41 +469,63 @@ export default function PlayerGameView() {
                 mb: { xs: 1, md: 2 },
                 borderRadius: 3,
                 border: (theme) => `1px solid ${theme.palette.divider}`,
-                background: (theme) => theme.palette.mode === 'dark'
-                  ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
-                  : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
-                boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+                background: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))"
+                    : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))",
+                boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
               }}
             >
-            <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>
+              <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>
                 <Stack spacing={1}>
                   <Chip
                     label="Slide"
                     color="primary"
                     variant="outlined"
-                    sx={{ width: 'fit-content', fontWeight: 700, fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' } }}
+                    sx={{
+                      width: "fit-content",
+                      fontWeight: 700,
+                      fontSize: {
+                        xs: "0.65rem",
+                        sm: "0.75rem",
+                        md: "0.875rem",
+                      },
+                    }}
                   />
-                  <Typography sx={{ fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', fontSize: { xs: '1.1rem', sm: '1.5rem', md: '2.125rem' } }}>
-                    {currentSlide?.title || 'Presentation Slide'}
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      lineHeight: 1.2,
+                      letterSpacing: "-0.02em",
+                      fontSize: { xs: "1.1rem", sm: "1.5rem", md: "2.125rem" },
+                    }}
+                  >
+                    {currentSlide?.title || "Presentation Slide"}
                   </Typography>
                   {currentSlide?.imageUrl ? (
                     <Box
                       component="img"
                       src={resolveMediaUrl(currentSlide.imageUrl)}
-                      alt={currentSlide?.title || 'Slide'}
+                      alt={currentSlide?.title || "Slide"}
                       sx={{
-                        width: '100%',
+                        width: "100%",
                         maxWidth: 860,
                         borderRadius: 3,
                         border: (theme) => `1px solid ${theme.palette.divider}`,
-                        boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
-                        objectFit: 'contain',
+                        boxShadow: "0 12px 28px rgba(0,0,0,0.10)",
+                        objectFit: "contain",
                         mt: 1,
                       }}
                     />
                   ) : null}
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: { xs: '0.875rem', md: '1rem' } }}>
-                    {currentSlide?.content || 'No slide content provided.'}
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      whiteSpace: "pre-wrap",
+                      fontSize: { xs: "0.875rem", md: "1rem" },
+                    }}
+                  >
+                    {currentSlide?.content || "No slide content provided."}
                   </Typography>
                   <Alert severity="info" sx={{ mt: 1 }}>
                     Wait for the host to continue to the next item.
@@ -456,59 +534,75 @@ export default function PlayerGameView() {
               </CardContent>
             </Card>
           ) : (
-          <Card
-            elevation={0}
-            sx={{
-              mb: { xs: 1, md: 2 },
-              borderRadius: 3,
-              border: (theme) => `1px solid ${theme.palette.divider}`,
-              background: (theme) => theme.palette.mode === 'dark'
-                ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
-                : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
-              boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
-            }}
-          >
-            <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>
-              <Stack spacing={1}>
-                <Chip
-                  label={`Question ${questionNumber}`}
-                  color="primary"
-                  variant="outlined"
-                  sx={{ width: 'fit-content', fontWeight: 700, fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' } }}
-                />
-                <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: { xs: '0.65rem', md: '0.75rem' } }}>
-                  {getQuestionTypeTitle(game.currentQuestion?.type?.name)}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontWeight: 800,
-                    lineHeight: 1.2,
-                    letterSpacing: '-0.02em',
-                    wordBreak: 'break-word',
-                    fontSize: { xs: '1.1rem', sm: '1.5rem', md: '2.125rem' },
-                  }}
-                >
-                  {game.currentQuestion?.question}
-                </Typography>
-                {game.currentQuestion?.imageUrl ? (
-                  <Box
-                    component="img"
-                    src={resolveMediaUrl(game.currentQuestion.imageUrl)}
-                    alt="Question"
+            <Card
+              elevation={0}
+              sx={{
+                mb: { xs: 1, md: 2 },
+                borderRadius: 3,
+                border: (theme) => `1px solid ${theme.palette.divider}`,
+                background: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))"
+                    : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))",
+                boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
+              }}
+            >
+              <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>
+                <Stack spacing={1}>
+                  <Chip
+                    label={`Question ${questionNumber}`}
+                    color="primary"
+                    variant="outlined"
                     sx={{
-                      width: '100%',
-                      maxWidth: 860,
-                      borderRadius: 3,
-                      border: (theme) => `1px solid ${theme.palette.divider}`,
-                      boxShadow: '0 12px 28px rgba(0,0,0,0.10)',
-                      objectFit: 'contain',
-                      mt: 1,
+                      width: "fit-content",
+                      fontWeight: 700,
+                      fontSize: {
+                        xs: "0.65rem",
+                        sm: "0.75rem",
+                        md: "0.875rem",
+                      },
                     }}
                   />
-                ) : null}
-              </Stack>
-            </CardContent>
-          </Card>
+                  <Typography
+                    variant="overline"
+                    sx={{
+                      fontWeight: 700,
+                      color: "text.secondary",
+                      fontSize: { xs: "0.65rem", md: "0.75rem" },
+                    }}
+                  >
+                    {getQuestionTypeTitle(game.currentQuestion?.type?.name)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      lineHeight: 1.2,
+                      letterSpacing: "-0.02em",
+                      wordBreak: "break-word",
+                      fontSize: { xs: "1.1rem", sm: "1.5rem", md: "2.125rem" },
+                    }}
+                  >
+                    {game.currentQuestion?.question}
+                  </Typography>
+                  {game.currentQuestion?.imageUrl ? (
+                    <Box
+                      component="img"
+                      src={resolveMediaUrl(game.currentQuestion.imageUrl)}
+                      alt="Question"
+                      sx={{
+                        width: "100%",
+                        maxWidth: 860,
+                        borderRadius: 3,
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                        boxShadow: "0 12px 28px rgba(0,0,0,0.10)",
+                        objectFit: "contain",
+                        mt: 1,
+                      }}
+                    />
+                  ) : null}
+                </Stack>
+              </CardContent>
+            </Card>
           )}
 
           {!isSlideItem && game.user.submittedAnswer ? (
@@ -516,24 +610,32 @@ export default function PlayerGameView() {
               Answer Submitted Successfully
             </Typography>
           ) : !isSlideItem ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 } }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: { xs: 1, md: 2 },
+              }}
+            >
               {renderQuestionInput()}
-              
+
               <Button
                 variant="contained"
                 color="primary"
                 onClick={handleSubmitAnswers}
                 disabled={
                   isSubmitting ||
-                  (game.currentQuestion?.type?.name !== 'multi_select' && selectedAnswers.length === 0) ||
-                  (game.currentQuestion?.type?.name === 'fill_in_blank' && selectedAnswers.some((answer) => !answer?.trim()))
+                  (game.currentQuestion?.type?.name !== "multi_select" &&
+                    selectedAnswers.length === 0) ||
+                  (game.currentQuestion?.type?.name === "fill_in_blank" &&
+                    selectedAnswers.some((answer) => !answer?.trim()))
                 }
                 sx={{ mt: { xs: 1, md: 2 } }}
               >
                 {isSubmitting ? (
                   <CircularProgress size={24} color="inherit" />
                 ) : (
-                  'Submit Answer'
+                  "Submit Answer"
                 )}
               </Button>
             </Box>
@@ -541,17 +643,19 @@ export default function PlayerGameView() {
         </>
       ) : !game.finalQuestionLeaderboard ? (
         <>
-          {game.currentQuestion?.type?.name === 'match_the_phrase' && matchPhraseRevealData ? (
+          {game.currentQuestion?.type?.name === "match_the_phrase" &&
+          matchPhraseRevealData ? (
             <Card
               elevation={0}
               sx={{
                 mb: { xs: 1, md: 2 },
                 borderRadius: 3,
                 border: (theme) => `1px solid ${theme.palette.divider}`,
-                background: (theme) => theme.palette.mode === 'dark'
-                  ? 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))'
-                  : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))',
-                boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
+                background: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))"
+                    : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))",
+                boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
               }}
             >
               <CardContent sx={{ p: { xs: 0.75, sm: 1.5, md: 3 } }}>

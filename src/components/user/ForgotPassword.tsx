@@ -1,28 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
-import Alert from '@mui/material/Alert';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
-import { supabase } from '../../util/supabase';
-import { useTheme } from '@mui/material';
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { supabase } from "../../util/supabase";
+import { useTheme } from "@mui/material";
 
 interface ForgotPasswordProps {
   open: boolean;
   handleClose: () => void;
 }
 
-export default function ForgotPassword({ open, handleClose }: ForgotPasswordProps) {
+export default function ForgotPassword({
+  open,
+  handleClose,
+}: ForgotPasswordProps) {
   const theme = useTheme();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -48,18 +51,27 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
+      );
 
       if (resetError) {
         const typedErr = resetError as any;
-        if (typedErr.status === 429 || resetError.message.toLowerCase().includes('rate limit') || resetError.message.toLowerCase().includes('email rate')) {
-          setError('Too many requests. Supabase\'s free tier limits how many reset emails can be sent per hour. Configure custom SMTP in your Supabase dashboard to remove this limit, or try again later.');
+        if (
+          typedErr.status === 429 ||
+          resetError.message.toLowerCase().includes("rate limit") ||
+          resetError.message.toLowerCase().includes("email rate")
+        ) {
+          setError(
+            "Too many requests. Supabase's free tier limits how many reset emails can be sent per hour. Configure custom SMTP in your Supabase dashboard to remove this limit, or try again later.",
+          );
         } else {
           setError(resetError.message);
         }
@@ -68,16 +80,16 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
 
       setSent(true);
     } catch (err: any) {
-      setError(err?.message || 'An unexpected error occurred');
+      setError(err?.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCloseDialog = () => {
-    setEmail('');
+    setEmail("");
     setSent(false);
-    setError('');
+    setError("");
     setCooldown(0);
     if (timerRef.current) clearInterval(timerRef.current);
     handleClose();
@@ -85,7 +97,7 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
 
   const handleRetry = () => {
     setSent(false);
-    setError('');
+    setError("");
     startCooldown();
   };
 
@@ -103,7 +115,7 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
       }}
     >
       {sent ? (
-        <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Box sx={{ p: 4, textAlign: "center" }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
             Check your email
           </Typography>
@@ -111,23 +123,23 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
             We sent a reset link to <strong>{email}</strong>
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Didn't get it? Check your spam folder, or{' '}
+            Didn't get it? Check your spam folder, or{" "}
             <Button
               type="button"
               onClick={handleRetry}
               disabled={cooldown > 0}
               sx={{
-                textTransform: 'none',
+                textTransform: "none",
                 fontWeight: 600,
                 color: theme.palette.primary.main,
                 minWidth: 0,
                 p: 0,
-                verticalAlign: 'baseline',
-                fontSize: 'inherit',
-                '&:hover': { background: 'none', textDecoration: 'underline' },
+                verticalAlign: "baseline",
+                fontSize: "inherit",
+                "&:hover": { background: "none", textDecoration: "underline" },
               }}
             >
-              {cooldown > 0 ? `Resend in ${cooldown}s` : 'send again'}
+              {cooldown > 0 ? `Resend in ${cooldown}s` : "send again"}
             </Button>
           </Typography>
           <Button
@@ -138,9 +150,9 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
               py: 1.3,
               borderRadius: 2,
               fontWeight: 700,
-              textTransform: 'none',
+              textTransform: "none",
               bgcolor: theme.palette.primary.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark },
+              "&:hover": { bgcolor: theme.palette.primary.dark },
             }}
           >
             Done
@@ -148,19 +160,33 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
         </Box>
       ) : (
         <>
-          <Box sx={{
-            height: 6,
-            background: theme.palette.primary.main === '#d6001c'
-              ? 'linear-gradient(90deg, #d6001c 0%, #ffcd00 50%, #ff671f 100%)'
-              : `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-          }} />
-          <DialogTitle sx={{ fontWeight: 700, textAlign: 'center', pt: 4, px: 4 }}>
+          <Box
+            sx={{
+              height: 6,
+              background:
+                theme.palette.primary.main === "#d6001c"
+                  ? "linear-gradient(90deg, #d6001c 0%, #ffcd00 50%, #ff671f 100%)"
+                  : `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            }}
+          />
+          <DialogTitle
+            sx={{ fontWeight: 700, textAlign: "center", pt: 4, px: 4 }}
+          >
             Reset password
           </DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, px: 4, pb: 2, pt: 1 }}>
-            <DialogContentText sx={{ textAlign: 'center' }}>
-              Enter your account&apos;s email address, and we&apos;ll send you a link to
-              reset your password.
+          <DialogContent
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2.5,
+              px: 4,
+              pb: 2,
+              pt: 1,
+            }}
+          >
+            <DialogContentText sx={{ textAlign: "center" }}>
+              Enter your account&apos;s email address, and we&apos;ll send you a
+              link to reset your password.
             </DialogContentText>
             {error && (
               <Alert severity="error" sx={{ borderRadius: 2 }}>
@@ -181,9 +207,12 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               sx={{
-                '& .MuiOutlinedInput-root': {
+                "& .MuiOutlinedInput-root": {
                   borderRadius: 2,
-                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  bgcolor:
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.02)",
                 },
               }}
             />
@@ -196,9 +225,15 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
               sx={{
                 borderRadius: 2,
                 fontWeight: 600,
-                textTransform: 'none',
-                color: theme.palette.mode === 'dark' ? theme.palette.common.white : undefined,
-                borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : undefined,
+                textTransform: "none",
+                color:
+                  theme.palette.mode === "dark"
+                    ? theme.palette.common.white
+                    : undefined,
+                borderColor:
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.3)"
+                    : undefined,
               }}
             >
               Cancel
@@ -211,13 +246,13 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
               sx={{
                 borderRadius: 2,
                 fontWeight: 600,
-                textTransform: 'none',
+                textTransform: "none",
                 py: 1,
                 bgcolor: theme.palette.primary.main,
-                '&:hover': { bgcolor: theme.palette.primary.dark },
+                "&:hover": { bgcolor: theme.palette.primary.dark },
               }}
             >
-              {loading ? 'Sending...' : 'Continue'}
+              {loading ? "Sending..." : "Continue"}
             </Button>
           </DialogActions>
         </>

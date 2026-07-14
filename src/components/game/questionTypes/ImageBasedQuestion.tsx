@@ -17,7 +17,7 @@ export default function ImageBasedQuestion({
   const resolvedImageUrl = resolveMediaUrl(imageUrl);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {resolvedImageUrl && (
         <img
           src={resolvedImageUrl}

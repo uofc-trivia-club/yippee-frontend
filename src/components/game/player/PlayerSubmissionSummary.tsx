@@ -11,7 +11,7 @@ interface PlayerSubmissionSummaryProps {
 }
 
 const getRankOrdinal = (n: number) => {
-  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const suffixes = ["th", "st", "nd", "rd"];
   const value = n % 100;
   return n + (suffixes[(value - 20) % 10] || suffixes[value] || suffixes[0]);
 };
@@ -26,27 +26,37 @@ export default function PlayerSubmissionSummary({
   submittedAnswer,
 }: PlayerSubmissionSummaryProps) {
   const submittedAnswerText = Array.isArray(submittedAnswer)
-    ? (submittedAnswer.length > 0 ? submittedAnswer.join(', ') : 'No answer')
-    : (submittedAnswer && String(submittedAnswer).trim().length > 0 ? submittedAnswer : 'No answer');
+    ? submittedAnswer.length > 0
+      ? submittedAnswer.join(", ")
+      : "No answer"
+    : submittedAnswer && String(submittedAnswer).trim().length > 0
+      ? submittedAnswer
+      : "No answer";
 
   return (
     <Box
       sx={{
         p: 3,
         borderRadius: 3,
-        border: '1px solid',
-        borderColor: submissionWasCorrect ? 'success.main' : 'error.main',
-        bgcolor: submissionWasCorrect ? 'success.light' : 'error.light',
-        color: submissionWasCorrect ? 'success.contrastText' : 'error.contrastText',
-        textAlign: 'center',
+        border: "1px solid",
+        borderColor: submissionWasCorrect ? "success.main" : "error.main",
+        bgcolor: submissionWasCorrect ? "success.light" : "error.light",
+        color: submissionWasCorrect
+          ? "success.contrastText"
+          : "error.contrastText",
+        textAlign: "center",
       }}
     >
       <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-        {submissionWasCorrect ? '✅ You got it right!' : '❌ Incorrect'}
+        {submissionWasCorrect ? "✅ You got it right!" : "❌ Incorrect"}
       </Typography>
 
-      <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 2 }}>
-        <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5 }}>Current Points</Typography>
+      <Box
+        sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.15)", borderRadius: 2 }}
+      >
+        <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5 }}>
+          Current Points
+        </Typography>
         <Typography variant="h4" sx={{ fontWeight: 900 }}>
           {points}
         </Typography>
@@ -59,7 +69,8 @@ export default function PlayerSubmissionSummary({
           </Typography>
         ) : rank ? (
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            You are {pointsBehind} {pointsBehind === 1 ? 'point' : 'points'} behind {leaderName}!
+            You are {pointsBehind} {pointsBehind === 1 ? "point" : "points"}{" "}
+            behind {leaderName}!
           </Typography>
         ) : (
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -68,11 +79,10 @@ export default function PlayerSubmissionSummary({
         )}
       </Box>
 
-
       <Typography variant="body2" sx={{ opacity: 0.9, mt: 2 }}>
         {submissionWasCorrect
-          ? 'Great job! Keep this up.'
-          : 'Review the correct answer on the host screen.'}
+          ? "Great job! Keep this up."
+          : "Review the correct answer on the host screen."}
       </Typography>
 
       {submittedAnswer !== undefined && (
@@ -82,7 +92,14 @@ export default function PlayerSubmissionSummary({
       )}
 
       {explanation ? (
-        <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.15)' }}>
+        <Box
+          sx={{
+            mt: 2,
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: "rgba(255,255,255,0.15)",
+          }}
+        >
           <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
             Explanation
           </Typography>

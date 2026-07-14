@@ -1,11 +1,14 @@
 import { Box, Button, TextField, Typography, useTheme } from "@mui/material";
-import { executeWebSocketCommand, useCheckConnection } from "../util/websocketUtil";
+import {
+  executeWebSocketCommand,
+  useCheckConnection,
+} from "../util/websocketUtil";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import { RootState } from "../stores/store";
 import { gameActions } from "../stores/gameSlice";
-import styles from './JoinGame.module.css';
+import styles from "./JoinGame.module.css";
 import { useNavigate } from "react-router-dom";
 
 export default function JoinGame() {
@@ -18,14 +21,14 @@ export default function JoinGame() {
 
   // get necessary states from Redux
   const roomCode = useSelector((state: RootState) => state.game.roomCode);
-  
+
   useCheckConnection();
 
   // Clear room code immediately on mount to prevent old room redirects
   useEffect(() => {
     dispatch(gameActions.setRoomCode(""));
   }, [dispatch]);
-  
+
   // When roomCode is set in Redux (after successful join), navigate to the lobby
   useEffect(() => {
     if (roomCode) {
@@ -34,7 +37,10 @@ export default function JoinGame() {
   }, [roomCode, navigate]);
 
   const sanitizeRoomCode = (input: string) =>
-    input.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4);
+    input
+      .replace(/[^a-zA-Z]/g, "")
+      .toUpperCase()
+      .slice(0, 4);
 
   const handleJoinGame = async () => {
     // input room code
@@ -54,10 +60,10 @@ export default function JoinGame() {
       return;
     }
 
-    dispatch(gameActions.setUserName(playerName))
-    dispatch(gameActions.setRole("player"))
+    dispatch(gameActions.setUserName(playerName));
+    dispatch(gameActions.setRole("player"));
 
-    // TODO: figure out how to use the updated state instead of creating an object to pass 
+    // TODO: figure out how to use the updated state instead of creating an object to pass
     const user = {
       userName: playerName,
       userRole: "player",
@@ -72,19 +78,20 @@ export default function JoinGame() {
       { roomCode: roomCodeToJoin, player: user },
       (errorMessage) => {
         setError(errorMessage);
-      }
+      },
     );
   };
 
   return (
     <div className={styles.container}>
-      <Box 
+      <Box
         className={styles.formBox}
-        sx={{ 
+        sx={{
           backgroundColor: theme.palette.background.paper,
-          boxShadow: theme.palette.mode === 'dark'
-            ? '0px 4px 20px rgba(0, 0, 0, 0.5)'
-            : '0px 4px 20px rgba(0, 0, 0, 0.1)',
+          boxShadow:
+            theme.palette.mode === "dark"
+              ? "0px 4px 20px rgba(0, 0, 0, 0.5)"
+              : "0px 4px 20px rgba(0, 0, 0, 0.1)",
         }}
       >
         <Typography variant="h4" gutterBottom className={styles.title}>
@@ -117,26 +124,31 @@ export default function JoinGame() {
           sx={{ marginBottom: 2 }}
         />
         {error && (
-          <Typography color="error" sx={{ marginBottom: 2, whiteSpace: 'pre-line' }}>
+          <Typography
+            color="error"
+            sx={{ marginBottom: 2, whiteSpace: "pre-line" }}
+          >
             {error}
           </Typography>
         )}
         <div className={styles.buttonDiv}>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={handleJoinGame} 
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleJoinGame}
             sx={{
-              background: theme.palette.mode === 'dark'
-                ? `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.primary.main} 90%)`
-                : `linear-gradient(45deg, ${theme.palette.primary.light} 30%, ${theme.palette.primary.main} 90%)`,
-              color: '#ffffff',
-              fontWeight: 'bold',
-              '&:hover': {
-                background: theme.palette.mode === 'dark'
-                  ? `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`
-                  : `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`,
-              }
+              background:
+                theme.palette.mode === "dark"
+                  ? `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.primary.main} 90%)`
+                  : `linear-gradient(45deg, ${theme.palette.primary.light} 30%, ${theme.palette.primary.main} 90%)`,
+              color: "#ffffff",
+              fontWeight: "bold",
+              "&:hover": {
+                background:
+                  theme.palette.mode === "dark"
+                    ? `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`
+                    : `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`,
+              },
             }}
           >
             Join Game

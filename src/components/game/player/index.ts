@@ -1,2 +1,2 @@
-export { default as PlayerSubmissionSummary } from './PlayerSubmissionSummary';
-export { getQuestionTypeTitle, isAnswerCorrectFor } from './playerGameUtils';
+export { default as PlayerSubmissionSummary } from "./PlayerSubmissionSummary";
+export { getQuestionTypeTitle, isAnswerCorrectFor } from "./playerGameUtils";

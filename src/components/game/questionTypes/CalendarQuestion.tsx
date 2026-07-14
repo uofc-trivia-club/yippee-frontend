@@ -1,4 +1,12 @@
-import { Box, Button, TextField, Typography, Chip, Paper, Stack } from "@mui/material";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Chip,
+  Paper,
+  Stack,
+} from "@mui/material";
 import { useState, useEffect } from "react";
 
 interface CalendarQuestionProps {
@@ -25,7 +33,7 @@ export default function CalendarQuestion({
 
   const addDate = () => {
     if (!dateInput.trim()) return;
-    
+
     // Validate ISO 8601 format (YYYY-MM-DD)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
       return;
@@ -56,7 +64,9 @@ export default function CalendarQuestion({
           mb: 2,
           borderRadius: 2,
           bgcolor: (theme) =>
-            theme.palette.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            theme.palette.mode === "dark"
+              ? "rgba(255,255,255,0.03)"
+              : "rgba(0,0,0,0.02)",
         }}
       >
         <TextField
@@ -84,7 +94,11 @@ export default function CalendarQuestion({
           <Chip
             key={date}
             label={date}
-            onDelete={disabled || showCorrectAnswers ? undefined : () => removeDate(date)}
+            onDelete={
+              disabled || showCorrectAnswers
+                ? undefined
+                : () => removeDate(date)
+            }
             color={
               showCorrectAnswers
                 ? isDateCorrect(date)

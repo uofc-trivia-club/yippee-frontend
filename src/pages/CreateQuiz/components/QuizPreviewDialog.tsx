@@ -1,7 +1,15 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, useTheme } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Typography,
+  useTheme,
+} from "@mui/material";
 
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import EditIcon from '@mui/icons-material/Edit';
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import EditIcon from "@mui/icons-material/Edit";
 import { PresentationSlideForm, QuizQuestionForm } from "../createQuizTypes";
 import PresentationSlidesPreview from "./PresentationSlidesPreview";
 import QuizQuestionsPreview from "./QuizQuestionsPreview";
@@ -42,11 +50,13 @@ export default function QuizPreviewDialog({
       PaperProps={{
         sx: {
           bgcolor: theme.palette.background.paper,
-          minHeight: '80vh',
-        }
+          minHeight: "80vh",
+        },
       }}
     >
-      <DialogTitle sx={{ borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
+      <DialogTitle
+        sx={{ borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}
+      >
         <Typography variant="h5" fontWeight="bold">
           Quiz Preview
         </Typography>
@@ -66,7 +76,8 @@ export default function QuizPreviewDialog({
             </Typography>
           )}
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-            {questions.length} question{questions.length !== 1 ? 's' : ''} and {slides.length} slide{slides.length !== 1 ? 's' : ''}
+            {questions.length} question{questions.length !== 1 ? "s" : ""} and{" "}
+            {slides.length} slide{slides.length !== 1 ? "s" : ""}
           </Typography>
         </div>
 
@@ -79,7 +90,9 @@ export default function QuizPreviewDialog({
         />
       </DialogContent>
 
-      <DialogActions sx={{ borderTop: `1px solid ${theme.palette.divider}`, p: 2 }}>
+      <DialogActions
+        sx={{ borderTop: `1px solid ${theme.palette.divider}`, p: 2 }}
+      >
         <Button
           onClick={onClose}
           variant="outlined"
@@ -96,11 +109,11 @@ export default function QuizPreviewDialog({
           startIcon={<CheckCircleIcon />}
           sx={{
             bgcolor: theme.palette.secondary.main,
-            color: '#ffffff',
-            fontWeight: 'bold',
-            '&:hover': {
+            color: "#ffffff",
+            fontWeight: "bold",
+            "&:hover": {
               bgcolor: theme.palette.secondary.dark,
-            }
+            },
           }}
         >
           Create Quiz

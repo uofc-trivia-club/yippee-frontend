@@ -63,38 +63,56 @@ export type TimelinePreviewItem =
 export const QUESTIONS_PER_PAGE = 5;
 
 export const PREDEFINED_CATEGORIES = [
-  'Math',
-  'Science',
-  'History',
-  'Geography',
-  'Literature',
-  'Sports',
-  'Technology',
-  'Art',
-  'Music',
-  'General Knowledge',
+  "Math",
+  "Science",
+  "History",
+  "Geography",
+  "Literature",
+  "Sports",
+  "Technology",
+  "Art",
+  "Music",
+  "General Knowledge",
 ];
 
 export const QUESTION_TYPE_OPTIONS = [
-  { value: 'multiple', label: 'Multiple Choice (Single Answer)' },
-  { value: 'multi_select', label: 'Multi-Select (Multiple Answers)' },
-  { value: 'dropdown', label: 'Dropdown' },
-  { value: 'true_false', label: 'True / False' },
-  { value: 'short_answer', label: 'Short Answer' },
-  { value: 'fill_in_blank', label: 'Fill in the Blank' },
-  { value: 'numerical', label: 'Numerical' },
-  { value: 'essay', label: 'Essay' },
-  { value: 'ranking', label: 'Ranking' },
-  { value: 'match_the_phrase', label: 'Match the Phrase' },
-  { value: 'matching', label: 'Matching' },
-  { value: 'image_based', label: 'Image Based' },
-  { value: 'calendar', label: 'Calendar' },
+  { value: "multiple", label: "Multiple Choice (Single Answer)" },
+  { value: "multi_select", label: "Multi-Select (Multiple Answers)" },
+  { value: "dropdown", label: "Dropdown" },
+  { value: "true_false", label: "True / False" },
+  { value: "short_answer", label: "Short Answer" },
+  { value: "fill_in_blank", label: "Fill in the Blank" },
+  { value: "numerical", label: "Numerical" },
+  { value: "essay", label: "Essay" },
+  { value: "ranking", label: "Ranking" },
+  { value: "match_the_phrase", label: "Match the Phrase" },
+  { value: "matching", label: "Matching" },
+  { value: "image_based", label: "Image Based" },
+  { value: "calendar", label: "Calendar" },
 ] as const;
 
-export const createMatchingPairs = () => ([
-  { left: "", right: "", leftImageUrl: "", leftImageId: "", leftImageFile: null, rightImageUrl: "", rightImageId: "", rightImageFile: null },
-  { left: "", right: "", leftImageUrl: "", leftImageId: "", leftImageFile: null, rightImageUrl: "", rightImageId: "", rightImageFile: null },
-]);
+export const createMatchingPairs = () => [
+  {
+    left: "",
+    right: "",
+    leftImageUrl: "",
+    leftImageId: "",
+    leftImageFile: null,
+    rightImageUrl: "",
+    rightImageId: "",
+    rightImageFile: null,
+  },
+  {
+    left: "",
+    right: "",
+    leftImageUrl: "",
+    leftImageId: "",
+    leftImageFile: null,
+    rightImageUrl: "",
+    rightImageId: "",
+    rightImageFile: null,
+  },
+];
 
 export const createInitialQuestion = (): QuizQuestionForm => ({
   id: `question-${Date.now()}-${Math.random()}`,

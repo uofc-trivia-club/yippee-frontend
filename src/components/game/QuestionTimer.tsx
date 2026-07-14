@@ -8,7 +8,11 @@ interface QuestionTimerProps {
   isActive: boolean;
 }
 
-export default function QuestionTimer({ duration, onTimeUp, isActive }: QuestionTimerProps) {
+export default function QuestionTimer({
+  duration,
+  onTimeUp,
+  isActive,
+}: QuestionTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timer | null>(null);
@@ -21,7 +25,7 @@ export default function QuestionTimer({ duration, onTimeUp, isActive }: Question
 
     if (duration > 0 && isActive) {
       countdownRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
+        setTimeRemaining((prev) => {
           if (prev === null || prev <= 0) return 0;
           return prev - 1;
         });
@@ -42,18 +46,20 @@ export default function QuestionTimer({ duration, onTimeUp, isActive }: Question
   if (!isActive || duration <= 0) return null;
 
   return (
-    <Typography 
-      variant="h6" 
-      sx={{ 
-        color: timeRemaining && timeRemaining <= 10 ? 'error.main' : 'text.primary',
-        animation: timeRemaining && timeRemaining <= 10 ? 'pulse 1s infinite' : 'none',
-        '@keyframes pulse': {
-          '0%': { opacity: 1 },
-          '50%': { opacity: 0.5 },
-          '100%': { opacity: 1 },
+    <Typography
+      variant="h6"
+      sx={{
+        color:
+          timeRemaining && timeRemaining <= 10 ? "error.main" : "text.primary",
+        animation:
+          timeRemaining && timeRemaining <= 10 ? "pulse 1s infinite" : "none",
+        "@keyframes pulse": {
+          "0%": { opacity: 1 },
+          "50%": { opacity: 0.5 },
+          "100%": { opacity: 1 },
         },
         marginY: 2,
-        textAlign: 'center'
+        textAlign: "center",
       }}
     >
       Time Remaining: {timeRemaining ?? duration} seconds

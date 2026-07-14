@@ -1,22 +1,38 @@
-import { Avatar, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Stack, Typography, useTheme } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Divider,
+  Stack,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import { GameSettings, Quiz, User } from "../../stores/types";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import FavoriteIcon from '@mui/icons-material/Favorite';
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 import LobbyChatPanel from "./LobbyChatPanel";
 import ManageGameSettings from "../quiz/ManageGameSettings";
-import PsychologyIcon from '@mui/icons-material/Psychology';
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import PsychologyIcon from "@mui/icons-material/Psychology";
+import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import { RootState } from "../../stores/store";
 import SelectQuiz from "../quiz/SelectQuiz";
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import StarIcon from '@mui/icons-material/Star';
-import WhatshotIcon from '@mui/icons-material/Whatshot';
+import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
+import StarIcon from "@mui/icons-material/Star";
+import WhatshotIcon from "@mui/icons-material/Whatshot";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
-import styles from './LobbyRoomView.module.css';
+import styles from "./LobbyRoomView.module.css";
 import { useNavigate } from "react-router-dom";
 
 type ChatMessage = {
@@ -52,7 +68,7 @@ export default function LobbyRoomView() {
     executeWebSocketCommand(
       "endGame",
       { roomCode: game.roomCode, user: userDetails },
-      (errorMessage) => setError(errorMessage)
+      (errorMessage) => setError(errorMessage),
     );
     setConfirmLeaveOpen(false);
     navigate("/");
@@ -61,7 +77,6 @@ export default function LobbyRoomView() {
   const handleCancelLeave = () => {
     setConfirmLeaveOpen(false);
   };
-
 
   const playerIcons = [
     SportsEsportsIcon,
@@ -75,22 +90,25 @@ export default function LobbyRoomView() {
 
   // Utility to get a player icon based on the user's name
   const getPlayerIcon = (name: string) => {
-    const hash = Array.from(name).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = Array.from(name).reduce(
+      (acc, char) => acc + char.charCodeAt(0),
+      0,
+    );
     return playerIcons[hash % playerIcons.length];
   };
 
   useEffect(() => {
     document.documentElement.style.setProperty(
-      '--gradient-primary',
-      theme.palette.mode === 'dark'
+      "--gradient-primary",
+      theme.palette.mode === "dark"
         ? `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.primary.main} 90%)`
-        : `linear-gradient(45deg, ${theme.palette.primary.light} 30%, ${theme.palette.primary.main} 90%)`
+        : `linear-gradient(45deg, ${theme.palette.primary.light} 30%, ${theme.palette.primary.main} 90%)`,
     );
     document.documentElement.style.setProperty(
-      '--gradient-secondary',
-      theme.palette.mode === 'dark'
+      "--gradient-secondary",
+      theme.palette.mode === "dark"
         ? `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`
-        : `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`
+        : `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`,
     );
   }, [theme]);
 
@@ -113,18 +131,20 @@ export default function LobbyRoomView() {
     executeWebSocketCommand(
       "sendLobbyMessage",
       { roomCode: game.roomCode, user: user },
-      (errorMessage) => setError(errorMessage)
+      (errorMessage) => setError(errorMessage),
     );
 
-    setChatMessages((previousMessages) => [
-      ...previousMessages,
-      {
-        id: `${user.userRole}-${user.userName}-${lobbyMessage}`,
-        userName: user.userName,
-        userRole: user.userRole,
-        message: lobbyMessage,
-      },
-    ].slice(-25));
+    setChatMessages((previousMessages) =>
+      [
+        ...previousMessages,
+        {
+          id: `${user.userRole}-${user.userName}-${lobbyMessage}`,
+          userName: user.userName,
+          userRole: user.userRole,
+          message: lobbyMessage,
+        },
+      ].slice(-25),
+    );
 
     // reset the message to be blank
     setLobbyMessage("");
@@ -136,8 +156,12 @@ export default function LobbyRoomView() {
     dispatch(gameActions.setGameSettings(gameSettings));
     executeWebSocketCommand(
       "startGame",
-      { roomCode: game.roomCode, user: userDetails, gameSettings: gameSettings },
-      (errorMessage) => setError(errorMessage)
+      {
+        roomCode: game.roomCode,
+        user: userDetails,
+        gameSettings: gameSettings,
+      },
+      (errorMessage) => setError(errorMessage),
     );
   };
 
@@ -145,19 +169,29 @@ export default function LobbyRoomView() {
     executeWebSocketCommand(
       "changeQuiz",
       { roomCode: game.roomCode, user: userDetails, quiz },
-      (errorMessage) => setError(errorMessage)
+      (errorMessage) => setError(errorMessage),
     );
   };
 
   // Host and player lists
   const host = game.clientsInLobby.find((user) => user.userRole === "host");
-  const players = game.clientsInLobby.filter((user) => user.userRole === "player");
+  const players = game.clientsInLobby.filter(
+    (user) => user.userRole === "player",
+  );
 
   // Move Back to Main Page button and dialog to the top
   return (
     <Box sx={{ p: { xs: 2, md: 4 } }}>
       {userDetails.userRole === "host" && (
-        <Box sx={{ maxWidth: 980, mx: "auto", mb: 2, display: "flex", justifyContent: "flex-end" }}>
+        <Box
+          sx={{
+            maxWidth: 980,
+            mx: "auto",
+            mb: 2,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
           <Button
             variant="outlined"
             color="secondary"
@@ -171,18 +205,27 @@ export default function LobbyRoomView() {
             onClose={handleCancelLeave}
             aria-labelledby="confirm-leave-dialog-title"
           >
-            <DialogTitle id="confirm-leave-dialog-title">Leave Lobby and End Room?</DialogTitle>
+            <DialogTitle id="confirm-leave-dialog-title">
+              Leave Lobby and End Room?
+            </DialogTitle>
             <DialogContent>
               <DialogContentText>
                 Are you sure you want to leave and close this room? <br />
-                <b>All players will be disconnected and the room will be deleted.</b>
+                <b>
+                  All players will be disconnected and the room will be deleted.
+                </b>
               </DialogContentText>
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCancelLeave} color="primary">
                 Cancel
               </Button>
-              <Button onClick={handleConfirmLeave} color="secondary" variant="contained" autoFocus>
+              <Button
+                onClick={handleConfirmLeave}
+                color="secondary"
+                variant="contained"
+                autoFocus
+              >
                 Yes, Leave and Close Room
               </Button>
             </DialogActions>
@@ -196,9 +239,10 @@ export default function LobbyRoomView() {
           mx: "auto",
           borderRadius: 4,
           border: `1px solid ${theme.palette.divider}`,
-          background: theme.palette.mode === "dark"
-            ? "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))"
-            : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))",
+          background:
+            theme.palette.mode === "dark"
+              ? "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))"
+              : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))",
           boxShadow: "0 16px 40px rgba(0,0,0,0.08)",
           overflow: "hidden",
         }}
@@ -217,7 +261,8 @@ export default function LobbyRoomView() {
                 Lobby Room
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Chat with players, swap quizzes, and prepare the game before the host starts.
+                Chat with players, swap quizzes, and prepare the game before the
+                host starts.
               </Typography>
             </Box>
 
@@ -234,9 +279,15 @@ export default function LobbyRoomView() {
                     Current Quiz
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-                    {game.clientsInLobby.find((user) => user.userRole === "host")?.userName || "Loading..."}
+                    {game.clientsInLobby.find(
+                      (user) => user.userRole === "host",
+                    )?.userName || "Loading..."}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1 }}
+                  >
                     {/* TODO: replace this with the actual quiz title from quizMeta */}
                     The selected quiz is shown here while the lobby is active.
                   </Typography>
@@ -272,7 +323,11 @@ export default function LobbyRoomView() {
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" },
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      sm: "1fr 1fr",
+                      lg: "1fr 1fr 1fr",
+                    },
                     gap: 2,
                   }}
                 >
@@ -284,23 +339,37 @@ export default function LobbyRoomView() {
                         variant="outlined"
                         sx={{
                           borderRadius: 3,
-                          transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                          '&:hover': {
-                            transform: 'translateY(-2px)',
-                            boxShadow: '0 10px 24px rgba(0,0,0,0.08)',
+                          transition:
+                            "transform 0.15s ease, box-shadow 0.15s ease",
+                          "&:hover": {
+                            transform: "translateY(-2px)",
+                            boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
                           },
                         }}
                       >
                         <CardContent>
-                          <Stack direction="row" spacing={1.5} alignItems="center">
-                            <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                          <Stack
+                            direction="row"
+                            spacing={1.5}
+                            alignItems="center"
+                          >
+                            <Avatar
+                              sx={{ bgcolor: theme.palette.primary.main }}
+                            >
                               <PlayerIcon fontSize="small" />
                             </Avatar>
                             <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 700 }} noWrap>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 700 }}
+                                noWrap
+                              >
                                 {player.userName}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
                                 Player
                               </Typography>
                             </Box>
@@ -309,7 +378,7 @@ export default function LobbyRoomView() {
                             <Chip
                               label={player.userMessage}
                               size="small"
-                              sx={{ mt: 1.5, maxWidth: '100%' }}
+                              sx={{ mt: 1.5, maxWidth: "100%" }}
                             />
                           )}
                         </CardContent>
@@ -336,7 +405,9 @@ export default function LobbyRoomView() {
             />
 
             {userDetails.userRole === "host" ? (
-              <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <Box
+                sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 2 }}
+              >
                 <Typography variant="body1">
                   You are the host. Manage the game and start the quiz.
                 </Typography>
@@ -363,8 +434,8 @@ export default function LobbyRoomView() {
                     color="text.secondary"
                     sx={{ mb: 2 }}
                   >
-                    Pick a different quiz for this room. The change will apply for
-                    everyone in the lobby.
+                    Pick a different quiz for this room. The change will apply
+                    for everyone in the lobby.
                   </Typography>
                   <SelectQuiz onSelectQuiz={handleChangeQuiz} compact />
                 </Box>

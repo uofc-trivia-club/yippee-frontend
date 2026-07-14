@@ -1,7 +1,7 @@
 import { Box, IconButton, Paper, Typography, useTheme } from "@mui/material";
 
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import MatchPhraseQuestion from "../game/questionTypes/MatchPhraseQuestion";
 import { QuizQuestion } from "../../stores/types";
 import { resolveMediaUrl } from "../../util/mediaUrl";
@@ -21,11 +21,14 @@ export default function QuizQuestionPreview({
   totalQuestions,
   onNext,
   onPrevious,
-  showCorrectAnswers = false
+  showCorrectAnswers = false,
 }: QuizQuestionPreviewProps) {
   const theme = useTheme();
-  const asStringArray = (value: unknown): string[] => Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
-  
+  const asStringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((v): v is string => typeof v === "string")
+      : [];
+
   // Type-safe extraction of options and answers based on question type
   let options: string[] = [];
   let correctAnswers: string[] = [];
@@ -43,7 +46,9 @@ export default function QuizQuestionPreview({
     case "multi_select": {
       const t = question.type;
       options = asStringArray((t as any).options ?? question.options);
-      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
+      correctAnswers = asStringArray(
+        (t as any).correctAnswers ?? question.correctAnswers,
+      );
       break;
     }
     case "dropdown": {
@@ -60,12 +65,16 @@ export default function QuizQuestionPreview({
     }
     case "short_answer": {
       const t = question.type;
-      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
+      correctAnswers = asStringArray(
+        (t as any).correctAnswers ?? question.correctAnswers,
+      );
       break;
     }
     case "fill_in_blank": {
       const t = question.type;
-      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
+      correctAnswers = asStringArray(
+        (t as any).correctAnswers ?? question.correctAnswers,
+      );
       break;
     }
     case "numerical": {
@@ -82,8 +91,12 @@ export default function QuizQuestionPreview({
       const t = question.type as any;
       const pairs = Array.isArray(t.pairs) ? t.pairs : [];
       if (pairs.length > 0) {
-        leftItems = pairs.map((p: any) => String(p?.left ?? p?.leftItem ?? '')).filter(Boolean);
-        rightItems = pairs.map((p: any) => String(p?.right ?? p?.rightItem ?? '')).filter(Boolean);
+        leftItems = pairs
+          .map((p: any) => String(p?.left ?? p?.leftItem ?? ""))
+          .filter(Boolean);
+        rightItems = pairs
+          .map((p: any) => String(p?.right ?? p?.rightItem ?? ""))
+          .filter(Boolean);
       } else {
         leftItems = asStringArray(t.leftItems);
         rightItems = asStringArray(t.rightItems);
@@ -98,7 +111,9 @@ export default function QuizQuestionPreview({
     }
     case "image_based": {
       const t = question.type;
-      correctAnswers = asStringArray((t as any).correctAnswers ?? question.correctAnswers);
+      correctAnswers = asStringArray(
+        (t as any).correctAnswers ?? question.correctAnswers,
+      );
       break;
     }
     default:
@@ -106,49 +121,60 @@ export default function QuizQuestionPreview({
   }
 
   return (
-    <Paper 
-      elevation={0} 
-      sx={{ 
-        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    <Paper
+      elevation={0}
+      sx={{
+        bgcolor:
+          theme.palette.mode === "dark"
+            ? "rgba(255,255,255,0.05)"
+            : "rgba(0,0,0,0.03)",
         p: 3,
         borderRadius: 2,
-        position: 'relative',
+        position: "relative",
         minHeight: 150,
-        display: 'flex',
-        flexDirection: 'column'
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* Question Navigation */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center',
-        width: '100%',
-        justifyContent: 'space-between',
-        mb: 2
-      }}>
-        <IconButton 
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          width: "100%",
+          justifyContent: "space-between",
+          mb: 2,
+        }}
+      >
+        <IconButton
           onClick={onPrevious}
           disabled={currentIndex === 0}
-          sx={{ 
-            bgcolor: currentIndex > 0 ? 
-              (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 
-              'transparent' 
+          sx={{
+            bgcolor:
+              currentIndex > 0
+                ? theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.1)"
+                  : "rgba(0,0,0,0.05)"
+                : "transparent",
           }}
         >
           <ArrowBackIosNewIcon fontSize="small" />
         </IconButton>
-        
-        <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+
+        <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>
           Question {currentIndex + 1} of {totalQuestions}
         </Typography>
-        
-        <IconButton 
+
+        <IconButton
           onClick={onNext}
           disabled={currentIndex >= totalQuestions - 1}
-          sx={{ 
-            bgcolor: currentIndex < totalQuestions - 1 ? 
-              (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 
-              'transparent' 
+          sx={{
+            bgcolor:
+              currentIndex < totalQuestions - 1
+                ? theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.1)"
+                  : "rgba(0,0,0,0.05)"
+                : "transparent",
           }}
         >
           <ArrowForwardIosIcon fontSize="small" />
@@ -167,19 +193,23 @@ export default function QuizQuestionPreview({
             src={resolveMediaUrl(question.imageUrl)}
             alt="Question"
             sx={{
-              width: '100%',
+              width: "100%",
               maxWidth: 520,
               borderRadius: 2,
               border: `1px solid ${theme.palette.divider}`,
-              boxShadow: '0 8px 18px rgba(0,0,0,0.10)',
-              objectFit: 'cover',
+              boxShadow: "0 8px 18px rgba(0,0,0,0.10)",
+              objectFit: "cover",
               mb: 1.5,
             }}
           />
         )}
 
         {question.hint && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontStyle: 'italic' }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 1, fontStyle: "italic" }}
+          >
             Hint: {question.hint}
           </Typography>
         )}
@@ -195,12 +225,18 @@ export default function QuizQuestionPreview({
             correctAssign={(question.type as any).correctAssign || {}}
             onMatchesChange={() => undefined}
           />
-        ) : question.type.name === "matching" && leftItems.length > 0 && rightItems.length > 0 ? (
+        ) : question.type.name === "matching" &&
+          leftItems.length > 0 &&
+          rightItems.length > 0 ? (
           <>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ mb: 1 }}
+            >
               Match the following pairs:
             </Typography>
-            <Box sx={{ display: 'flex', gap: 4, ml: 2 }}>
+            <Box sx={{ display: "flex", gap: 4, ml: 2 }}>
               <Box>
                 <Typography variant="subtitle2">Left</Typography>
                 {leftItems.map((item, idx) => (
@@ -231,7 +267,11 @@ export default function QuizQuestionPreview({
           />
         ) : options.length > 0 ? (
           <>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ mb: 1 }}
+            >
               Options:
             </Typography>
             <Box sx={{ ml: 2 }}>
@@ -244,34 +284,48 @@ export default function QuizQuestionPreview({
                     py: 0.5,
                     px: 1,
                     borderRadius: 1,
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                    color: showCorrectAnswers && (
-                      (correctAnswers && correctAnswers.includes(option)) ||
-                      (correctAnswer && correctAnswer === option)
-                    )
-                      ? theme.palette.success.main
-                      : 'inherit'
+                    bgcolor:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(0,0,0,0.03)",
+                    color:
+                      showCorrectAnswers &&
+                      ((correctAnswers && correctAnswers.includes(option)) ||
+                        (correctAnswer && correctAnswer === option))
+                        ? theme.palette.success.main
+                        : "inherit",
                   }}
                 >
                   {question.optionImageUrls?.[idx] ? (
                     <img
                       src={resolveMediaUrl(question.optionImageUrls[idx])}
                       alt={`Option ${idx + 1}`}
-                      style={{ width: 44, height: 30, objectFit: 'cover', borderRadius: 4, marginRight: 8, verticalAlign: 'middle' }}
+                      style={{
+                        width: 44,
+                        height: 30,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                        marginRight: 8,
+                        verticalAlign: "middle",
+                      }}
                     />
                   ) : null}
                   {idx + 1}. {option}
-                  {showCorrectAnswers && (
-                    (correctAnswers && correctAnswers.includes(option)) ||
-                    (correctAnswer && correctAnswer === option)
-                  ) && ' ✓'}
+                  {showCorrectAnswers &&
+                    ((correctAnswers && correctAnswers.includes(option)) ||
+                      (correctAnswer && correctAnswer === option)) &&
+                    " ✓"}
                 </Typography>
               ))}
             </Box>
           </>
         ) : correctAnswers.length > 0 ? (
           <>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ mb: 1 }}
+            >
               Correct Answers:
             </Typography>
             <Box sx={{ ml: 2 }}>
@@ -284,7 +338,11 @@ export default function QuizQuestionPreview({
           </>
         ) : correctAnswer ? (
           <>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ mb: 1 }}
+            >
               Correct Answer:
             </Typography>
             <Box sx={{ ml: 2 }}>
@@ -292,7 +350,9 @@ export default function QuizQuestionPreview({
             </Box>
           </>
         ) : (
-          <Typography variant="body2" color="text.secondary">No options to display.</Typography>
+          <Typography variant="body2" color="text.secondary">
+            No options to display.
+          </Typography>
         )}
 
         {showCorrectAnswers && question.explanation ? (
@@ -301,7 +361,10 @@ export default function QuizQuestionPreview({
               mt: 2,
               p: 1.5,
               borderRadius: 1,
-              bgcolor: theme.palette.mode === 'dark' ? 'rgba(33,150,243,0.14)' : 'rgba(33,150,243,0.09)',
+              bgcolor:
+                theme.palette.mode === "dark"
+                  ? "rgba(33,150,243,0.14)"
+                  : "rgba(33,150,243,0.09)",
               border: `1px solid ${theme.palette.info.main}`,
             }}
           >
@@ -314,11 +377,18 @@ export default function QuizQuestionPreview({
       </Box>
 
       {/* Question Metadata */}
-      <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'space-between' }}>
+      <Box
+        sx={{
+          mt: "auto",
+          pt: 1,
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
         <Typography variant="caption" color="text.secondary">
           {question.points} points • Difficulty: {question.difficulty}/10
         </Typography>
-        
+
         <Typography variant="caption" color="text.secondary">
           {currentIndex + 1} of {totalQuestions}
         </Typography>

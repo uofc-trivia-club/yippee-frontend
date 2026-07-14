@@ -4,6 +4,6 @@ declare module "*.module.css" {
 }
 
 // Add missing type declarations for third-party packages
-declare module 'react-xarrows';
-declare module '@dnd-kit/sortable';
-declare module '@dnd-kit/utilities';
+declare module "react-xarrows";
+declare module "@dnd-kit/sortable";
+declare module "@dnd-kit/utilities";

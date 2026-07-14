@@ -6,18 +6,18 @@ import {
   closestCenter,
   useSensor,
   useSensors,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+} from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
 
-import { CSS } from '@dnd-kit/utilities';
-import type { DragEndEvent } from '@dnd-kit/core';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import { CSS } from "@dnd-kit/utilities";
+import type { DragEndEvent } from "@dnd-kit/core";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { resolveMediaUrl } from "../../../util/mediaUrl";
 
 interface RankingQuestionProps {
@@ -33,7 +33,8 @@ const hashString = (value: string) => {
   let hash = 2166136261;
   for (let i = 0; i < value.length; i += 1) {
     hash ^= value.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
   return hash >>> 0;
 };
@@ -62,16 +63,20 @@ export default function RankingQuestion({
   disabled,
   onOrderChange,
 }: RankingQuestionProps) {
-  const shuffleSeed = `${items.join('\u0001')}::${(optionImageUrls || []).join('\u0001')}`;
+  const shuffleSeed = `${items.join("\u0001")}::${(optionImageUrls || []).join("\u0001")}`;
   const [orderedItems, setOrderedItems] = useState<RankedItem[]>(() => {
-    const initial = items.map((text, index) => ({ id: `${index}-${text}`, text, imageUrl: resolveMediaUrl(optionImageUrls?.[index]) }));
+    const initial = items.map((text, index) => ({
+      id: `${index}-${text}`,
+      text,
+      imageUrl: resolveMediaUrl(optionImageUrls?.[index]),
+    }));
     return deterministicShuffle(initial, shuffleSeed);
   });
   const onOrderChangeRef = useRef(onOrderChange);
   const itemsRef = useRef(items);
   const optionImageUrlsRef = useRef(optionImageUrls);
-  const itemsSignature = items.join('\u0001');
-  const imageUrlsSignature = (optionImageUrls || []).join('\u0001');
+  const itemsSignature = items.join("\u0001");
+  const imageUrlsSignature = (optionImageUrls || []).join("\u0001");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -84,7 +89,7 @@ export default function RankingQuestion({
         delay: 120,
         tolerance: 8,
       },
-    })
+    }),
   );
 
   useEffect(() => {
@@ -116,8 +121,12 @@ export default function RankingQuestion({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = orderedItems.findIndex((item) => item.id === String(active.id));
-    const newIndex = orderedItems.findIndex((item) => item.id === String(over.id));
+    const oldIndex = orderedItems.findIndex(
+      (item) => item.id === String(active.id),
+    );
+    const newIndex = orderedItems.findIndex(
+      (item) => item.id === String(over.id),
+    );
     if (oldIndex < 0 || newIndex < 0) return;
 
     const next = arrayMove(orderedItems, oldIndex, newIndex);
@@ -137,7 +146,10 @@ export default function RankingQuestion({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={orderedItems} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={orderedItems}
+          strategy={verticalListSortingStrategy}
+        >
           {orderedItems.map((item, idx) => (
             <SortableRankRow
               key={item.id}
@@ -178,7 +190,7 @@ function SortableRankRow({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || 'transform 220ms cubic-bezier(0.2, 0, 0, 1)',
+    transition: transition || "transform 220ms cubic-bezier(0.2, 0, 0, 1)",
   };
 
   return (
@@ -208,7 +220,8 @@ function SortableRankRow({
           bgcolor: isDragging ? "action.hover" : "background.paper",
           cursor: disabled ? "default" : "grab",
           opacity: isDragging ? 0.85 : 1,
-          transition: "box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease",
+          transition:
+            "box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease",
           userSelect: "none",
           touchAction: "none",
           flex: 1,
@@ -219,16 +232,34 @@ function SortableRankRow({
         {...attributes}
         {...listeners}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0 }}
+        >
           {imageUrl ? (
             <Box
               component="img"
               src={imageUrl}
               alt={text}
-              sx={{ width: { xs: 72, md: 96 }, height: { xs: 52, md: 68 }, objectFit: "contain", borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper", flexShrink: 0 }}
+              sx={{
+                width: { xs: 72, md: 96 },
+                height: { xs: 52, md: 68 },
+                objectFit: "contain",
+                borderRadius: 1,
+                border: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.paper",
+                flexShrink: 0,
+              }}
             />
           ) : null}
-          <Typography variant="body2" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <Typography
+            variant="body2"
+            sx={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {text}
           </Typography>
         </Box>

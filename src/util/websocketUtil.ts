@@ -12,7 +12,9 @@ import { websocketActions } from "../stores/websocketSlice";
  */
 export const useCheckConnection = () => {
   const dispatch = useDispatch();
-  const isConnected = useSelector((state: RootState) => state.websocket.isConnected);
+  const isConnected = useSelector(
+    (state: RootState) => state.websocket.isConnected,
+  );
 
   useEffect(() => {
     if (!isConnected) {
@@ -45,56 +47,83 @@ const WebSocketCommands: Record<WebSocketCommandType, WebSocketCommand> = {
     action: "createLobby",
     handler: (webSocket: WebSocket, quiz: Quiz, user: User) => {
       webSocket.send(JSON.stringify({ action: "createLobby", quiz, user }));
-    }
+    },
   },
   joinLobby: {
     action: "joinLobby",
     handler: (webSocket: WebSocket, roomCode: string, user: User) => {
       webSocket.send(JSON.stringify({ action: "joinLobby", roomCode, user }));
-    }
+    },
   },
   sendLobbyMessage: {
     action: "sendLobbyMessage",
     handler: (webSocket: WebSocket, roomCode: string, user: User) => {
-      webSocket.send(JSON.stringify({ action: "sendLobbyMessage", roomCode, user }));
-    }
+      webSocket.send(
+        JSON.stringify({ action: "sendLobbyMessage", roomCode, user }),
+      );
+    },
   },
   startGame: {
     action: "startGame",
-    handler: (webSocket: WebSocket, roomCode: string, user: User, gameSettings: GameSettings) => {
-      webSocket.send(JSON.stringify({ action: "startGame", roomCode, user, gameSettings }));
-    }
+    handler: (
+      webSocket: WebSocket,
+      roomCode: string,
+      user: User,
+      gameSettings: GameSettings,
+    ) => {
+      webSocket.send(
+        JSON.stringify({ action: "startGame", roomCode, user, gameSettings }),
+      );
+    },
   },
   changeQuiz: {
     action: "changeQuiz",
-    handler: (webSocket: WebSocket, roomCode: string, user: User, quiz: Quiz) => {
-      webSocket.send(JSON.stringify({ action: "changeQuiz", roomCode, user, quiz }));
-    }
+    handler: (
+      webSocket: WebSocket,
+      roomCode: string,
+      user: User,
+      quiz: Quiz,
+    ) => {
+      webSocket.send(
+        JSON.stringify({ action: "changeQuiz", roomCode, user, quiz }),
+      );
+    },
   },
   submitAnswer: {
     action: "submitAnswer",
-    handler: (webSocket: WebSocket, roomCode: string, user: User, answer: number) => {
-      webSocket.send(JSON.stringify({ action: "submitAnswer", roomCode, user, answer }));
-    }
+    handler: (
+      webSocket: WebSocket,
+      roomCode: string,
+      user: User,
+      answer: number,
+    ) => {
+      webSocket.send(
+        JSON.stringify({ action: "submitAnswer", roomCode, user, answer }),
+      );
+    },
   },
   showLeaderboard: {
     action: "showLeaderboard",
     handler: (webSocket: WebSocket, roomCode: string, user: User) => {
-      webSocket.send(JSON.stringify({ action: "showLeaderboard", roomCode, user }));
-    }
+      webSocket.send(
+        JSON.stringify({ action: "showLeaderboard", roomCode, user }),
+      );
+    },
   },
   nextQuestion: {
     action: "nextQuestion",
     handler: (webSocket: WebSocket, roomCode: string, user: User) => {
-      webSocket.send(JSON.stringify({ action: "nextQuestion", roomCode, user }));
-    }
+      webSocket.send(
+        JSON.stringify({ action: "nextQuestion", roomCode, user }),
+      );
+    },
   },
   endGame: {
     action: "endGame",
     handler: (webSocket: WebSocket, roomCode: string, user: User) => {
       webSocket.send(JSON.stringify({ action: "endGame", roomCode, user }));
-    }
-  }
+    },
+  },
 };
 
 /**
@@ -103,7 +132,7 @@ const WebSocketCommands: Record<WebSocketCommandType, WebSocketCommand> = {
 export const executeWebSocketCommand = (
   command: WebSocketCommandType,
   payload: Record<string, any>,
-  onError?: (error: string) => void
+  onError?: (error: string) => void,
 ) => {
   const webSocket = getWebSocket();
 
@@ -120,7 +149,10 @@ export const executeWebSocketCommand = (
   } else if (webSocket.readyState === WebSocket.OPEN) {
     executeCommand(command, webSocket, payload, onError);
   } else {
-    handleError("WebSocket connection is not available. Please try again.", onError);
+    handleError(
+      "WebSocket connection is not available. Please try again.",
+      onError,
+    );
   }
 };
 
@@ -131,7 +163,7 @@ const executeCommand = (
   command: WebSocketCommandType,
   webSocket: WebSocket,
   payload: Record<string, any>,
-  onError?: (error: string) => void
+  onError?: (error: string) => void,
 ) => {
   const commandConfig = WebSocketCommands[command];
 

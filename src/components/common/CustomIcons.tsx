@@ -1,6 +1,6 @@
-import * as React from 'react';
+import * as React from "react";
 
-import SvgIcon from '@mui/material/SvgIcon';
+import SvgIcon from "@mui/material/SvgIcon";
 
 export function SitemarkIcon() {
   return (

@@ -1,10 +1,4 @@
-import {
-  Autocomplete,
-  Box,
-  Chip,
-  TextField,
-  useTheme,
-} from "@mui/material";
+import { Autocomplete, Box, Chip, TextField, useTheme } from "@mui/material";
 
 interface CategorySelectorProps {
   value: string[];
@@ -33,7 +27,7 @@ export default function CategorySelector({
   const theme = useTheme();
 
   const availableOptions = PREDEFINED_CATEGORIES.filter(
-    (option) => !value.includes(option)
+    (option) => !value.includes(option),
   );
 
   function getColorForTag(tag: string): string {

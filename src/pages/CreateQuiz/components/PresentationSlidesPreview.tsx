@@ -1,4 +1,11 @@
-import { Box, Card, CardContent, Divider, Typography, useTheme } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  Divider,
+  Typography,
+  useTheme,
+} from "@mui/material";
 
 import { PresentationSlideForm } from "../createQuizTypes";
 
@@ -6,7 +13,9 @@ interface PresentationSlidesPreviewProps {
   slides: PresentationSlideForm[];
 }
 
-export default function PresentationSlidesPreview({ slides }: PresentationSlidesPreviewProps) {
+export default function PresentationSlidesPreview({
+  slides,
+}: PresentationSlidesPreviewProps) {
   const theme = useTheme();
 
   if (slides.length === 0) return null;
@@ -25,7 +34,11 @@ export default function PresentationSlidesPreview({ slides }: PresentationSlides
           }}
         >
           <CardContent>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ mb: 1 }}
+            >
               Slide {slideIndex + 1}
             </Typography>
             {slide.title && (
@@ -44,12 +57,12 @@ export default function PresentationSlidesPreview({ slides }: PresentationSlides
                 src={slide.imageUrl}
                 alt={`Slide ${slideIndex + 1}`}
                 sx={{
-                  width: '100%',
+                  width: "100%",
                   maxWidth: 520,
                   borderRadius: 2,
                   border: `1px solid ${theme.palette.divider}`,
-                  boxShadow: '0 8px 18px rgba(0,0,0,0.10)',
-                  objectFit: 'cover',
+                  boxShadow: "0 8px 18px rgba(0,0,0,0.10)",
+                  objectFit: "cover",
                 }}
               />
             )}

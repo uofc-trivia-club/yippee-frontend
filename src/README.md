@@ -23,10 +23,11 @@ src/
 ## Importing Components
 
 Always try to use path aliases when importing components for cleaner code.
+
 ```tsx
 // Good
-import { Button } from '@/components/common';
+import { Button } from "@/components/common";
 
 // Avoid
-import Button from '../../../../components/common/Button';
+import Button from "../../../../components/common/Button";
 ```

@@ -1,6 +1,20 @@
-import { Avatar, Box, Card, CardContent, Chip, Divider, IconButton, InputAdornment, List, ListItem, Stack, TextField, Typography } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  IconButton,
+  InputAdornment,
+  List,
+  ListItem,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 
-import SendIcon from '@mui/icons-material/Send';
+import SendIcon from "@mui/icons-material/Send";
 
 interface LobbyChatMessage {
   id: string;
@@ -32,12 +46,22 @@ export default function LobbyChatPanel({
         variant="outlined"
         sx={{
           borderRadius: 3,
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(255,255,255,0.02)"
+              : "rgba(0,0,0,0.01)",
         }}
       >
         <CardContent>
           <Stack spacing={1.5}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 2,
+              }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Chat
               </Typography>
@@ -47,58 +71,93 @@ export default function LobbyChatPanel({
             <Box
               sx={{
                 maxHeight: 260,
-                overflowY: 'auto',
+                overflowY: "auto",
                 px: 0.5,
                 py: 0.5,
                 borderRadius: 2,
                 border: (theme) => `1px solid ${theme.palette.divider}`,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.75)',
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.02)"
+                    : "rgba(255,255,255,0.75)",
               }}
             >
               {chatMessages.length > 0 ? (
                 <List disablePadding>
                   {chatMessages.map((message) => {
                     const MessageIcon = getPlayerIcon(message.userName);
-                    const isHost = message.userRole === 'host';
+                    const isHost = message.userRole === "host";
 
                     return (
-                      <ListItem key={message.id} disableGutters sx={{ px: 1, py: 0.75 }}>
+                      <ListItem
+                        key={message.id}
+                        disableGutters
+                        sx={{ px: 1, py: 0.75 }}
+                      >
                         <Box
                           sx={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
+                            display: "flex",
+                            alignItems: "flex-start",
                             gap: 1.25,
-                            width: '100%',
+                            width: "100%",
                           }}
                         >
-                          <Avatar sx={{ bgcolor: (theme) => isHost ? theme.palette.secondary.main : theme.palette.primary.main, width: 34, height: 34 }}>
+                          <Avatar
+                            sx={{
+                              bgcolor: (theme) =>
+                                isHost
+                                  ? theme.palette.secondary.main
+                                  : theme.palette.primary.main,
+                              width: 34,
+                              height: 34,
+                            }}
+                          >
                             <MessageIcon fontSize="small" />
                           </Avatar>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.25 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                              sx={{ mb: 0.25 }}
+                            >
+                              <Typography
+                                variant="subtitle2"
+                                sx={{ fontWeight: 700 }}
+                                noWrap
+                              >
                                 {message.userName}
                               </Typography>
                               <Chip
-                                label={isHost ? 'Host' : 'Player'}
+                                label={isHost ? "Host" : "Player"}
                                 size="small"
                                 variant="outlined"
-                                sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: 11 } }}
+                                sx={{
+                                  height: 20,
+                                  "& .MuiChip-label": {
+                                    px: 0.75,
+                                    fontSize: 11,
+                                  },
+                                }}
                               />
                             </Stack>
                             <Box
                               sx={{
-                                display: 'inline-block',
+                                display: "inline-block",
                                 px: 1.25,
                                 py: 0.75,
                                 borderRadius: 2,
-                                bgcolor: isHost ? 'rgba(255, 64, 129, 0.12)' : 'rgba(33, 150, 243, 0.10)',
-                                border: `1px solid ${isHost ? 'rgba(255, 64, 129, 0.25)' : 'rgba(33, 150, 243, 0.20)'}`,
-                                wordBreak: 'break-word',
-                                maxWidth: '100%',
+                                bgcolor: isHost
+                                  ? "rgba(255, 64, 129, 0.12)"
+                                  : "rgba(33, 150, 243, 0.10)",
+                                border: `1px solid ${isHost ? "rgba(255, 64, 129, 0.25)" : "rgba(33, 150, 243, 0.20)"}`,
+                                wordBreak: "break-word",
+                                maxWidth: "100%",
                               }}
                             >
-                              <Typography variant="body2">{message.message}</Typography>
+                              <Typography variant="body2">
+                                {message.message}
+                              </Typography>
                             </Box>
                           </Box>
                         </Box>

@@ -198,7 +198,7 @@ export type User = {
 
 export type Lobby = {
   roomCode: string;
-  quizMeta: QuizMeta;            // BE sends quizMeta, NOT quiz
+  quizMeta: QuizMeta; // BE sends quizMeta, NOT quiz
   status: string;
   gameSettings: GameSettings;
   currentItemIndex?: number;
@@ -218,8 +218,8 @@ export type MessageRequest = {
   user: User;
   roomCode?: string;
   quiz?: Quiz;
-  answer?: string[];           
-  gameSettings?: GameSettings;  
+  answer?: string[];
+  gameSettings?: GameSettings;
 };
 
 export type MessageResponse = {

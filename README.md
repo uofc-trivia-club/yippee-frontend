@@ -1,4 +1,5 @@
 # Yippee Front-End
+
 Yippee is a real-time multiplayer quiz game built with React, TypeScript, and Material-UI. Users can create quizzes, host live game sessions, and compete with others using WebSockets.
 
 ---
@@ -17,6 +18,7 @@ Yippee is a real-time multiplayer quiz game built with React, TypeScript, and Ma
 ## Tech Stack
 
 ### Frontend
+
 - **React 18 + TypeScript** ([React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/))
 - **Material-UI (MUI)** – https://mui.com/
 - **Redux Toolkit** – https://redux-toolkit.js.org/
@@ -29,11 +31,13 @@ Yippee is a real-time multiplayer quiz game built with React, TypeScript, and Ma
 ## Getting Started
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org/en/download)
-- npm 
+- npm
 - [Backend server](https://github.com/uofc-trivia-club/yippee-backend/issues) running
 
 ### Installation
+
 ```bash
 git clone https://github.com/uofc-trivia-club/yippee-frontend.git
 cd yippee
@@ -58,10 +62,12 @@ REACT_APP_WS_URL_PRODUCTION=wss://yippee-backend-production.up.railway.app/ws
 ```
 
 Set `REACT_APP_BACKEND_TARGET` to:
+
 - `local` for local backend development
 - `production` for deployed backend
 
 Suggested file usage:
+
 - `.env` shared defaults
 - `.env.local` local machine overrides
 - `.env.production` production build values
@@ -103,6 +109,7 @@ npm run build:production
 ```
 
 ### Development
+
 1. Ensure backend is running.
 2. Set `REACT_APP_BACKEND_TARGET=local`.
 3. Start frontend:
@@ -114,6 +121,7 @@ npm start
 Runs the app at http://localhost:3000
 
 ### Production Build
+
 1. Set `REACT_APP_BACKEND_TARGET=production`.
 2. Build:
 
@@ -149,30 +157,36 @@ git commit -m "Stop tracking env files"
 ## Application Flow
 
 ### Home
+
 - Host Game
 - Join Game
 - Create Quiz
 - Resources
 
 ### Create Quiz
+
 - Add questions and multiple-choice answers
 - Set difficulty (1–10), points, and optional hints
 - Submit via /api/create-quiz
 
 ### Host Game
+
 - Select a quiz
 - Create lobby (room code generated)
 - Configure settings and start game
 
 ### Join Game
+
 - Enter player name and room code
 - Wait in lobby until game starts
 
 ### Lobby
+
 - Player list and chat
 - Host controls game settings and start
 
 ### Game Session
+
 - Host controls question flow
 - Players submit answers
 - Live leaderboard updates
@@ -182,6 +196,7 @@ git commit -m "Stop tracking env files"
 ## WebSocket Integration
 
 ### Key Commands
+
 - createLobby
 - joinLobby
 - sendLobbyMessage
@@ -190,7 +205,9 @@ git commit -m "Stop tracking env files"
 - nextQuestion
 
 ### State Management
+
 WebSocket and game state are managed with Redux:
+
 - Room code
 - Players
 - Questions
@@ -205,7 +222,7 @@ App.tsx – Routing and theme setup
 Game.tsx – Lobby, active game, and results  
 types.ts – Shared TypeScript types  
 SelectQuiz.tsx – Quiz selection UI  
-PlayerCard.tsx – Player display component  
+PlayerCard.tsx – Player display component
 
 ---
 
