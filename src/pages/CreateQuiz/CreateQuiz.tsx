@@ -511,56 +511,133 @@ function SortableQuestionCard({
 
         {/* Expanded Content */}
         <Collapse in={expanded}>
-          <Box sx={{ mt: 2 }}>
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-                mt: 2,
-                flexDirection: { xs: "column", sm: "row" },
-              }}
-            >
-              <TextField
-                label="Question Type"
-                select
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={question.type}
-                onChange={(e) =>
-                  onChange("type", e.target.value as QuizQuestionForm["type"])
-                }
+          <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 2.5 }}>
+            {/* Section: Question Settings */}
+            <Paper variant="outlined" sx={{ p: 2.5 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+                Question Settings
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  flexDirection: { xs: "column", sm: "row" },
+                }}
               >
-                {QUESTION_TYPE_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Points"
-                type="number"
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={question.points === 0 ? "" : question.points}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const numValue = value === "" ? 0 : parseInt(value, 10);
-                  onChange("points", Math.max(0, numValue || 0));
-                }}
-                onBlur={(e) => {
-                  if (e.target.value === "" || question.points === 0) {
-                    onChange("points", 1);
+                <TextField
+                  label="Question Type"
+                  select
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  value={question.type}
+                  onChange={(e) =>
+                    onChange("type", e.target.value as QuizQuestionForm["type"])
                   }
+                >
+                  {QUESTION_TYPE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Points"
+                  type="number"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  value={question.points === 0 ? "" : question.points}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value === "" ? 0 : parseInt(value, 10);
+                    onChange("points", Math.max(0, numValue || 0));
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === "" || question.points === 0) {
+                      onChange("points", 1);
+                    }
+                  }}
+                  placeholder="1"
+                  inputProps={{
+                    min: 1,
+                    step: 1,
+                  }}
+                  helperText="Point value for this question"
+                />
+              </Box>
+
+              <Box
+                sx={{
+                  mt: 1.5,
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "0.9fr 1.1fr" },
+                  gap: 2,
+                  alignItems: "start",
                 }}
-                placeholder="1"
-                inputProps={{
-                  min: 1,
-                  step: 1,
-                }}
-                helperText="Point value for this question"
-              />
+              >
+                <Box sx={{ maxWidth: { xs: "100%", md: 360 } }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mb: 0.5 }}
+                  >
+                    Difficulty
+                  </Typography>
+                  <Box
+                    sx={{
+                      transform: "scale(0.92)",
+                      transformOrigin: "top left",
+                      width: "108%",
+                    }}
+                  >
+                    <DifficultySlider
+                      difficulty={question.difficulty}
+                      onChange={(newVal) => onChange("difficulty", newVal)}
+                    />
+                  </Box>
+                </Box>
+
+                <Box sx={{ maxWidth: { xs: "100%", md: 520 } }}>
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={PREDEFINED_CATEGORIES}
+                    value={question.category}
+                    onChange={(_, newValue) => {
+                      onChange("category", newValue);
+                    }}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option}
+                          {...getTagProps({ index })}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        variant="outlined"
+                        label="Categories"
+                        placeholder="Select or type categories..."
+                        helperText="Choose existing categories or create new ones"
+                      />
+                    )}
+                  />
+                </Box>
+              </Box>
+            </Paper>
+
+            {/* Section: Question */}
+            <Paper variant="outlined" sx={{ p: 2.5 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+                Question
+              </Typography>
               <TextField
                 label="Hint (Optional)"
                 variant="outlined"
@@ -569,458 +646,384 @@ function SortableQuestionCard({
                 value={question.hint}
                 onChange={(e) => onChange("hint", e.target.value)}
                 placeholder="Add a helpful hint..."
+                sx={{ mb: 1.5 }}
               />
-            </Box>
 
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-                mt: 1.5,
-                flexDirection: { xs: "column", sm: "row" },
-              }}
-            >
-              <TextField
-                label="Image URL (Optional)"
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={question.imageUrl}
-                onChange={(e) => onChange("imageUrl", e.target.value)}
-                placeholder="https://example.com/question-image.png"
-              />
               <Box
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (!dragOverQuestionImage) {
-                    setDragOverQuestionImage(true);
-                  }
-                }}
-                onDragLeave={() => setDragOverQuestionImage(false)}
-                onDrop={handleQuestionImageDrop}
                 sx={{
-                  minWidth: { xs: "100%", sm: 220 },
-                  borderRadius: 1,
-                  border: "1px dashed",
-                  borderColor: dragOverQuestionImage
-                    ? "primary.main"
-                    : "divider",
-                  bgcolor: dragOverQuestionImage
-                    ? "action.hover"
-                    : theme.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.02)"
-                      : "rgba(0,0,0,0.01)",
-                  transition: "all 0.2s ease",
-                  boxShadow: dragOverQuestionImage
-                    ? `0 0 0 1px ${theme.palette.primary.main}`
-                    : "none",
+                  display: "flex",
+                  gap: 2,
+                  mb: 1.5,
+                  flexDirection: { xs: "column", sm: "row" },
                 }}
               >
-                <Button
+                <TextField
+                  label="Image URL (Optional)"
                   variant="outlined"
-                  component="label"
                   fullWidth
+                  size="small"
+                  value={question.imageUrl}
+                  onChange={(e) => onChange("imageUrl", e.target.value)}
+                  placeholder="https://example.com/question-image.png"
+                />
+                <Box
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!dragOverQuestionImage) {
+                      setDragOverQuestionImage(true);
+                    }
+                  }}
+                  onDragLeave={() => setDragOverQuestionImage(false)}
+                  onDrop={handleQuestionImageDrop}
                   sx={{
-                    minHeight: 40,
-                    border: 0,
-                    justifyContent: "space-between",
-                    px: 1.5,
-                    "&:hover": { border: 0 },
-                    color: dragOverQuestionImage ? "primary.main" : "inherit",
+                    minWidth: { xs: "100%", sm: 220 },
+                    borderRadius: 1,
+                    border: "1px dashed",
+                    borderColor: dragOverQuestionImage
+                      ? "primary.main"
+                      : "divider",
+                    bgcolor: dragOverQuestionImage
+                      ? "action.hover"
+                      : theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.02)"
+                        : "rgba(0,0,0,0.01)",
+                    transition: "all 0.2s ease",
+                    boxShadow: dragOverQuestionImage
+                      ? `0 0 0 1px ${theme.palette.primary.main}`
+                      : "none",
                   }}
                 >
-                  <Box sx={{ textAlign: "left" }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: 600, lineHeight: 1.2 }}
-                    >
-                      {dragOverQuestionImage
-                        ? "Drop image to attach"
-                        : question.imageFile
-                          ? "Question Image Selected"
-                          : "Upload Question Image"}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block" }}
-                    >
-                      Drag and drop or click to browse
-                    </Typography>
-                  </Box>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      onChange("imageFile", file);
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    sx={{
+                      minHeight: 40,
+                      border: 0,
+                      justifyContent: "space-between",
+                      px: 1.5,
+                      "&:hover": { border: 0 },
+                      color: dragOverQuestionImage ? "primary.main" : "inherit",
                     }}
-                  />
-                </Button>
+                  >
+                    <Box sx={{ textAlign: "left" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, lineHeight: 1.2 }}
+                      >
+                        {dragOverQuestionImage
+                          ? "Drop image to attach"
+                          : question.imageFile
+                            ? "Question Image Selected"
+                            : "Upload Question Image"}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block" }}
+                      >
+                        Drag and drop or click to browse
+                      </Typography>
+                    </Box>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        onChange("imageFile", file);
+                      }}
+                    />
+                  </Button>
+                </Box>
               </Box>
+
               <TextField
-                label="Explanation (Optional)"
+                label="Question Text"
                 variant="outlined"
                 fullWidth
-                size="small"
-                value={question.explanation}
-                onChange={(e) => onChange("explanation", e.target.value)}
-                placeholder="Explain why the answer is correct..."
-              />
-            </Box>
+                margin="dense"
+                value={question.question}
+                inputRef={questionInputRef}
+                onClick={() =>
+                  setQuestionCursorPos(
+                    questionInputRef.current?.selectionStart ?? null,
+                  )
+                }
+                onChange={(e) => {
+                  const nextQuestionText = e.target.value;
+                  setQuestionCursorPos(e.target.selectionStart ?? null);
+                  onChange("question", nextQuestionText);
 
-            <Box
-              sx={{
-                mt: 1.5,
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "0.9fr 1.1fr" },
-                gap: 2,
-                alignItems: "start",
-              }}
-            >
-              <Box sx={{ maxWidth: { xs: "100%", md: 360 } }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: "block", mb: 0.5 }}
-                >
-                  Difficulty
-                </Typography>
+                  if (isPhraseMatchType) {
+                    const nextBlankCount = Math.max(
+                      0,
+                      nextQuestionText.split(/_{3,}/).length - 1,
+                    );
+                    const nextAnswers = Array.from(
+                      { length: nextBlankCount },
+                      (_, index) => question.acceptedAnswers[index] || "",
+                    );
+                    onChange("acceptedAnswers", nextAnswers);
+
+                    const syncedWordBank = nextAnswers.map((answer, index) => ({
+                      text: answer.trim() || question.options[index]?.text || "",
+                      isCorrect: false,
+                      imageUrl: question.options[index]?.imageUrl || "",
+                      imageId: question.options[index]?.imageId || "",
+                      imageFile: question.options[index]?.imageFile || null,
+                    }));
+                    const remainingWords = question.options.slice(nextBlankCount);
+                    onChange("options", [...syncedWordBank, ...remainingWords]);
+                  }
+                }}
+                required
+                multiline
+                rows={2}
+                placeholder="Enter your question here..."
+              />
+
+              {isPhraseMatchType && (
                 <Box
                   sx={{
-                    transform: "scale(0.92)",
-                    transformOrigin: "top left",
-                    width: "108%",
+                    mt: 1.25,
+                    p: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: 2,
+                    backgroundColor:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(0,0,0,0.015)",
                   }}
                 >
-                  <DifficultySlider
-                    difficulty={question.difficulty}
-                    onChange={(newVal) => onChange("difficulty", newVal)}
-                  />
-                </Box>
-              </Box>
-
-              <Box sx={{ maxWidth: { xs: "100%", md: 520 } }}>
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={PREDEFINED_CATEGORIES}
-                  value={question.category}
-                  onChange={(_, newValue) => {
-                    onChange("category", newValue);
-                  }}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
-                    ))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      variant="outlined"
-                      label="Categories"
-                      placeholder="Select or type categories..."
-                      helperText="Choose existing categories or create new ones"
-                    />
-                  )}
-                />
-              </Box>
-            </Box>
-
-            <TextField
-              label="Question Text"
-              variant="outlined"
-              fullWidth
-              margin="dense"
-              value={question.question}
-              inputRef={questionInputRef}
-              onClick={() =>
-                setQuestionCursorPos(
-                  questionInputRef.current?.selectionStart ?? null,
-                )
-              }
-              onChange={(e) => {
-                const nextQuestionText = e.target.value;
-                setQuestionCursorPos(e.target.selectionStart ?? null);
-                onChange("question", nextQuestionText);
-
-                if (isPhraseMatchType) {
-                  const nextBlankCount = Math.max(
-                    0,
-                    nextQuestionText.split(/_{3,}/).length - 1,
-                  );
-                  const nextAnswers = Array.from(
-                    { length: nextBlankCount },
-                    (_, index) => question.acceptedAnswers[index] || "",
-                  );
-                  onChange("acceptedAnswers", nextAnswers);
-
-                  const syncedWordBank = nextAnswers.map((answer, index) => ({
-                    text: answer.trim() || question.options[index]?.text || "",
-                    isCorrect: false,
-                    imageUrl: question.options[index]?.imageUrl || "",
-                    imageId: question.options[index]?.imageId || "",
-                    imageFile: question.options[index]?.imageFile || null,
-                  }));
-                  const remainingWords = question.options.slice(nextBlankCount);
-                  onChange("options", [...syncedWordBank, ...remainingWords]);
-                }
-              }}
-              required
-              multiline
-              rows={2}
-              placeholder="Enter your question here..."
-            />
-
-            {isPhraseMatchType && (
-              <Box
-                sx={{
-                  mt: 1.25,
-                  p: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: 2,
-                  backgroundColor:
-                    theme.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.03)"
-                      : "rgba(0,0,0,0.015)",
-                }}
-              >
-                <Typography
-                  variant="subtitle1"
-                  fontWeight="600"
-                  sx={{ mb: 0.5 }}
-                >
-                  Drag-to-Match Phrase Editor
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: "block", mb: 1.5 }}
-                >
-                  Write the sentence using blanks, then add the correct word for
-                  each blank and a word bank for dragging.
-                </Typography>
-
-                <Box
-                  sx={{ display: "flex", gap: 1, mb: 1.5, flexWrap: "wrap" }}
-                >
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={addPhraseBlank}
-                    startIcon={<AddIcon />}
-                  >
-                    Add Blank At Cursor
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={removePhraseBlank}
-                    disabled={phraseBlankCount <= 1}
-                  >
-                    Remove Blank
-                  </Button>
-                </Box>
-
-                {hasBlankTokens ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      gap: 1,
-                    }}
-                  >
-                    {blankSegments.map((segment, index) => (
-                      <Fragment key={`phrase-segment-${index}`}>
-                        {segment && (
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {segment}
-                          </Typography>
-                        )}
-                        {index < blankSegments.length - 1 && (
-                          <Box
-                            sx={{ minWidth: 200, flex: "1 1 200px" }}
-                            draggable
-                            onDragStart={() =>
-                              setDraggedPhraseBlankIndex(index)
-                            }
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={() => {
-                              if (draggedPhraseBlankIndex === null) return;
-                              movePhraseBlank(draggedPhraseBlankIndex, index);
-                              setDraggedPhraseBlankIndex(null);
-                            }}
-                            onDragEnd={() => setDraggedPhraseBlankIndex(null)}
-                          >
-                            <TextField
-                              size="small"
-                              fullWidth
-                              value={question.acceptedAnswers[index] || ""}
-                              onChange={(e) =>
-                                handlePhraseAnswerChange(index, e.target.value)
-                              }
-                              placeholder={`Answer for blank ${index + 1}`}
-                              InputProps={{
-                                startAdornment: (
-                                  <Box
-                                    sx={{
-                                      width: 24,
-                                      height: 24,
-                                      borderRadius: "50%",
-                                      border: `1px solid ${theme.palette.primary.main}`,
-                                      color: theme.palette.primary.main,
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      fontSize: "0.75rem",
-                                      fontWeight: 700,
-                                      mr: 1,
-                                      flexShrink: 0,
-                                      bgcolor:
-                                        theme.palette.mode === "dark"
-                                          ? "rgba(33, 150, 243, 0.12)"
-                                          : "rgba(33, 150, 243, 0.08)",
-                                    }}
-                                  >
-                                    {index + 1}
-                                  </Box>
-                                ),
-                                endAdornment: (
-                                  <DragIndicatorIcon
-                                    fontSize="small"
-                                    color="disabled"
-                                  />
-                                ),
-                              }}
-                              sx={{
-                                bgcolor: theme.palette.background.paper,
-                                borderRadius: 2,
-                                "& .MuiInputBase-input": {
-                                  py: 1.1,
-                                },
-                              }}
-                            />
-                          </Box>
-                        )}
-                      </Fragment>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Insert blanks using ___ in the sentence. Example: The ___
-                    jumps over the ___ dog.
-                  </Typography>
-                )}
-
-                <Box sx={{ mt: 2 }}>
                   <Typography
-                    variant="subtitle2"
+                    variant="subtitle1"
                     fontWeight="600"
                     sx={{ mb: 0.5 }}
                   >
-                    Word Bank
+                    Drag-to-Match Phrase Editor
                   </Typography>
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ display: "block", mb: 1 }}
+                    sx={{ display: "block", mb: 1.5 }}
                   >
-                    Add words that players can drag into the blanks.
+                    Write the sentence using blanks, then add the correct word for
+                    each blank and a word bank for dragging.
                   </Typography>
-                  {question.options.map((option, optionIndex) => (
+
+                  <Box
+                    sx={{ display: "flex", gap: 1, mb: 1.5, flexWrap: "wrap" }}
+                  >
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={addPhraseBlank}
+                      startIcon={<AddIcon />}
+                    >
+                      Add Blank At Cursor
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={removePhraseBlank}
+                      disabled={phraseBlankCount <= 1}
+                    >
+                      Remove Blank
+                    </Button>
+                  </Box>
+
+                  {hasBlankTokens ? (
                     <Box
-                      key={`phrase-option-${optionIndex}`}
                       sx={{
                         display: "flex",
-                        gap: 1,
+                        flexWrap: "wrap",
                         alignItems: "center",
-                        mb: 1,
+                        gap: 1,
                       }}
                     >
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        fullWidth
-                        value={option.text}
-                        onChange={(e) =>
-                          onOptionChange(optionIndex, "text", e.target.value)
-                        }
-                        placeholder={
-                          optionIndex < phraseBlankCount
-                            ? `Correct word ${optionIndex + 1}`
-                            : `Word ${optionIndex + 1}`
-                        }
-                        disabled={optionIndex < phraseBlankCount}
-                        InputProps={{
-                          startAdornment: (
+                      {blankSegments.map((segment, index) => (
+                        <Fragment key={`phrase-segment-${index}`}>
+                          {segment && (
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {segment}
+                            </Typography>
+                          )}
+                          {index < blankSegments.length - 1 && (
                             <Box
-                              sx={{
-                                width: 22,
-                                height: 22,
-                                borderRadius: "50%",
-                                border: `1px solid ${optionIndex < phraseBlankCount ? theme.palette.success.main : theme.palette.divider}`,
-                                color:
-                                  optionIndex < phraseBlankCount
-                                    ? theme.palette.success.main
-                                    : theme.palette.text.secondary,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "0.7rem",
-                                fontWeight: 700,
-                                mr: 1,
-                                flexShrink: 0,
-                                bgcolor:
-                                  optionIndex < phraseBlankCount
-                                    ? theme.palette.mode === "dark"
-                                      ? "rgba(76, 175, 80, 0.12)"
-                                      : "rgba(76, 175, 80, 0.08)"
-                                    : theme.palette.mode === "dark"
-                                      ? "rgba(255,255,255,0.04)"
-                                      : "rgba(0,0,0,0.03)",
+                              sx={{ minWidth: 200, flex: "1 1 200px" }}
+                              draggable
+                              onDragStart={() =>
+                                setDraggedPhraseBlankIndex(index)
+                              }
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={() => {
+                                if (draggedPhraseBlankIndex === null) return;
+                                movePhraseBlank(draggedPhraseBlankIndex, index);
+                                setDraggedPhraseBlankIndex(null);
                               }}
+                              onDragEnd={() => setDraggedPhraseBlankIndex(null)}
                             >
-                              {optionIndex < phraseBlankCount
-                                ? optionIndex + 1
-                                : optionIndex + 1}
+                              <TextField
+                                size="small"
+                                fullWidth
+                                value={question.acceptedAnswers[index] || ""}
+                                onChange={(e) =>
+                                  handlePhraseAnswerChange(index, e.target.value)
+                                }
+                                placeholder={`Answer for blank ${index + 1}`}
+                                InputProps={{
+                                  startAdornment: (
+                                    <Box
+                                      sx={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: "50%",
+                                        border: `1px solid ${theme.palette.primary.main}`,
+                                        color: theme.palette.primary.main,
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700,
+                                        mr: 1,
+                                        flexShrink: 0,
+                                        bgcolor:
+                                          theme.palette.mode === "dark"
+                                            ? "rgba(33, 150, 243, 0.12)"
+                                            : "rgba(33, 150, 243, 0.08)",
+                                      }}
+                                    >
+                                      {index + 1}
+                                    </Box>
+                                  ),
+                                  endAdornment: (
+                                    <DragIndicatorIcon
+                                      fontSize="small"
+                                      color="disabled"
+                                    />
+                                  ),
+                                }}
+                                sx={{
+                                  bgcolor: theme.palette.background.paper,
+                                  borderRadius: 2,
+                                  "& .MuiInputBase-input": {
+                                    py: 1.1,
+                                  },
+                                }}
+                              />
                             </Box>
-                          ),
-                        }}
-                      />
-                      <IconButton
-                        size="small"
-                        onClick={() => onDeleteOption(optionIndex)}
-                        disabled={
-                          question.options.length <= 1 ||
-                          optionIndex < phraseBlankCount
-                        }
-                        sx={{ color: theme.palette.error.main }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                          )}
+                        </Fragment>
+                      ))}
                     </Box>
-                  ))}
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={onAddOption}
-                    startIcon={<AddIcon />}
-                  >
-                    Add Word
-                  </Button>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Insert blanks using ___ in the sentence. Example: The ___
+                      jumps over the ___ dog.
+                    </Typography>
+                  )}
+
+                  <Box sx={{ mt: 2 }}>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight="600"
+                      sx={{ mb: 0.5 }}
+                    >
+                      Word Bank
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mb: 1 }}
+                    >
+                      Add words that players can drag into the blanks.
+                    </Typography>
+                    {question.options.map((option, optionIndex) => (
+                      <Box
+                        key={`phrase-option-${optionIndex}`}
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          alignItems: "center",
+                          mb: 1,
+                        }}
+                      >
+                        <TextField
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          value={option.text}
+                          onChange={(e) =>
+                            onOptionChange(optionIndex, "text", e.target.value)
+                          }
+                          placeholder={
+                            optionIndex < phraseBlankCount
+                              ? `Correct word ${optionIndex + 1}`
+                              : `Word ${optionIndex + 1}`
+                          }
+                          disabled={optionIndex < phraseBlankCount}
+                          InputProps={{
+                            startAdornment: (
+                              <Box
+                                sx={{
+                                  width: 22,
+                                  height: 22,
+                                  borderRadius: "50%",
+                                  border: `1px solid ${optionIndex < phraseBlankCount ? theme.palette.success.main : theme.palette.divider}`,
+                                  color:
+                                    optionIndex < phraseBlankCount
+                                      ? theme.palette.success.main
+                                      : theme.palette.text.secondary,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.7rem",
+                                  fontWeight: 700,
+                                  mr: 1,
+                                  flexShrink: 0,
+                                  bgcolor:
+                                    optionIndex < phraseBlankCount
+                                      ? theme.palette.mode === "dark"
+                                        ? "rgba(76, 175, 80, 0.12)"
+                                        : "rgba(76, 175, 80, 0.08)"
+                                      : theme.palette.mode === "dark"
+                                        ? "rgba(255,255,255,0.04)"
+                                        : "rgba(0,0,0,0.03)",
+                                }}
+                              >
+                                {optionIndex < phraseBlankCount
+                                  ? optionIndex + 1
+                                  : optionIndex + 1}
+                              </Box>
+                            ),
+                          }}
+                        />
+                        <IconButton
+                          size="small"
+                          onClick={() => onDeleteOption(optionIndex)}
+                          disabled={
+                            question.options.length <= 1 ||
+                            optionIndex < phraseBlankCount
+                          }
+                          sx={{ color: theme.palette.error.main }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ))}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={onAddOption}
+                      startIcon={<AddIcon />}
+                    >
+                      Add Word
+                    </Button>
+                  </Box>
                 </Box>
-              </Box>
-            )}
+              )}
 
             {isFillInBlankType && (
               <Box
@@ -1180,9 +1183,15 @@ function SortableQuestionCard({
               </Box>
             )}
 
-            <Divider sx={{ my: 3 }} />
+            </Paper>
 
-            {isFreeTextType && (
+            {/* Section: Answers */}
+            <Paper variant="outlined" sx={{ p: 2.5 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+                Answers
+              </Typography>
+
+              {isFreeTextType && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
                   Accepted Answers
@@ -1563,16 +1572,8 @@ function SortableQuestionCard({
                       </Button>
                     </Card>
                   ) : (
-                    <Card
-                      variant="outlined"
-                      sx={{
-                        p: 2,
-                        backgroundColor:
-                          theme.palette.mode === "dark"
-                            ? "rgba(255, 255, 255, 0.02)"
-                            : "rgba(0, 0, 0, 0.01)",
-                      }}
-                    >
+                    <>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                       {question.options.map((option, optionIndex) =>
                         (() => {
                           const shouldHighlightCorrect =
@@ -1598,12 +1599,12 @@ function SortableQuestionCard({
                               }
                               sx={{
                                 display: "flex",
-                                alignItems: "flex-start",
+                                alignItems: "center",
                                 gap: 1,
-                                mb: 2,
-                                p: 1.5,
-                                borderRadius: 1,
-                                border: `2px solid ${
+                                p: 1,
+                                pl: 1.25,
+                                borderRadius: 1.5,
+                                border: `1px solid ${
                                   dragOverOptionIndex === optionIndex &&
                                   canAttachOptionImage
                                     ? theme.palette.primary.main
@@ -1611,18 +1612,14 @@ function SortableQuestionCard({
                                       ? theme.palette.success.main
                                       : theme.palette.divider
                                 }`,
-                                backgroundColor: shouldHighlightCorrect
+                                bgcolor: shouldHighlightCorrect
                                   ? theme.palette.mode === "dark"
                                     ? "rgba(76, 175, 80, 0.08)"
                                     : "rgba(76, 175, 80, 0.04)"
-                                  : "transparent",
+                                  : theme.palette.mode === "dark"
+                                    ? "rgba(255, 255, 255, 0.02)"
+                                    : "rgba(0, 0, 0, 0.01)",
                                 transition: "all 0.2s ease",
-                                "&:hover": {
-                                  backgroundColor:
-                                    theme.palette.mode === "dark"
-                                      ? "rgba(255, 255, 255, 0.05)"
-                                      : "rgba(0, 0, 0, 0.02)",
-                                },
                                 ...(dragOverOptionIndex === optionIndex &&
                                 canAttachOptionImage
                                   ? {
@@ -1632,53 +1629,11 @@ function SortableQuestionCard({
                                   : {}),
                               }}
                             >
-                              {/* Correct Answer Selector */}
-                              {showCorrectSelector &&
-                                (isSingleCorrectType ? (
-                                  <Radio
-                                    checked={option.isCorrect}
-                                    onChange={(e) =>
-                                      onOptionChange(
-                                        optionIndex,
-                                        "isCorrect",
-                                        e.target.checked,
-                                      )
-                                    }
-                                    size="small"
-                                    sx={{
-                                      color: theme.palette.text.secondary,
-                                      "&.Mui-checked": {
-                                        color: theme.palette.success.main,
-                                      },
-                                      p: 0.5,
-                                    }}
-                                  />
-                                ) : (
-                                  <Checkbox
-                                    checked={option.isCorrect}
-                                    onChange={(e) =>
-                                      onOptionChange(
-                                        optionIndex,
-                                        "isCorrect",
-                                        e.target.checked,
-                                      )
-                                    }
-                                    size="small"
-                                    sx={{
-                                      color: theme.palette.text.secondary,
-                                      "&.Mui-checked": {
-                                        color: theme.palette.success.main,
-                                      },
-                                      p: 0.5,
-                                    }}
-                                  />
-                                ))}
-
-                              {/* Option Letter/Number */}
+                              {/* Option Letter */}
                               <Box
                                 sx={{
-                                  minWidth: 32,
-                                  height: 32,
+                                  width: 28,
+                                  height: 28,
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
@@ -1692,7 +1647,7 @@ function SortableQuestionCard({
                                     ? "#fff"
                                     : theme.palette.text.primary,
                                   fontWeight: 600,
-                                  fontSize: "0.875rem",
+                                  fontSize: "0.8rem",
                                   flexShrink: 0,
                                 }}
                               >
@@ -1722,9 +1677,9 @@ function SortableQuestionCard({
                                 InputProps={{
                                   disableUnderline: false,
                                   sx: {
-                                    fontSize: "0.95rem",
+                                    fontSize: "0.9rem",
                                     "& .MuiInput-input": {
-                                      py: 0.5,
+                                      py: 0.4,
                                     },
                                   },
                                 }}
@@ -1739,98 +1694,144 @@ function SortableQuestionCard({
                                 }}
                               />
 
-                              {question.type !== "true_false" ? (
-                                <Box
-                                  onDragOver={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    if (dragOverOptionIndex !== optionIndex) {
-                                      setDragOverOptionIndex(optionIndex);
+                              {/* Right controls */}
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+                                {/* Image Upload */}
+                                {question.type !== "true_false" ? (
+                                  <Box
+                                    onDragOver={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      if (dragOverOptionIndex !== optionIndex) {
+                                        setDragOverOptionIndex(optionIndex);
+                                      }
+                                    }}
+                                    onDragLeave={() => {
+                                      if (dragOverOptionIndex === optionIndex) {
+                                        setDragOverOptionIndex(null);
+                                      }
+                                    }}
+                                    onDrop={(event) =>
+                                      handleOptionImageDrop(event, optionIndex)
                                     }
-                                  }}
-                                  onDragLeave={() => {
-                                    if (dragOverOptionIndex === optionIndex) {
-                                      setDragOverOptionIndex(null);
-                                    }
-                                  }}
-                                  onDrop={(event) =>
-                                    handleOptionImageDrop(event, optionIndex)
-                                  }
-                                  sx={{
-                                    flexShrink: 0,
-                                    borderRadius: 1,
-                                    border: "1px dashed",
-                                    borderColor:
-                                      dragOverOptionIndex === optionIndex
-                                        ? "primary.main"
-                                        : "divider",
-                                    bgcolor:
-                                      dragOverOptionIndex === optionIndex
-                                        ? "action.hover"
-                                        : "transparent",
-                                    transition: "all 0.2s ease",
-                                  }}
-                                >
-                                  <Button
-                                    variant="outlined"
-                                    component="label"
-                                    size="small"
                                     sx={{
-                                      flexShrink: 0,
-                                      minWidth: 96,
-                                      border: 0,
-                                      color:
+                                      borderRadius: 1,
+                                      border: "1px dashed",
+                                      borderColor:
                                         dragOverOptionIndex === optionIndex
                                           ? "primary.main"
-                                          : "inherit",
-                                      "&:hover": { border: 0 },
+                                          : theme.palette.divider,
+                                      transition: "all 0.2s ease",
                                     }}
                                   >
-                                    {dragOverOptionIndex === optionIndex
-                                      ? "Drop Image"
-                                      : option.imageFile || option.imageUrl
-                                        ? "Image Set"
-                                        : "Add Image"}
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      hidden
-                                      onChange={(e) => {
-                                        const file =
-                                          e.target.files?.[0] || null;
+                                    <Button
+                                      variant="outlined"
+                                      component="label"
+                                      size="small"
+                                      sx={{
+                                        minWidth: 0,
+                                        py: 0.4,
+                                        px: 1,
+                                        border: 0,
+                                        fontSize: "0.75rem",
+                                        color:
+                                          dragOverOptionIndex === optionIndex
+                                            ? "primary.main"
+                                            : option.imageFile || option.imageUrl
+                                              ? "success.main"
+                                              : "text.secondary",
+                                        "&:hover": { border: 0, bgcolor: "action.hover" },
+                                      }}
+                                    >
+                                      {dragOverOptionIndex === optionIndex
+                                        ? "Drop"
+                                        : option.imageFile || option.imageUrl
+                                          ? "IMG"
+                                          : "IMG"}
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        hidden
+                                        onChange={(e) => {
+                                          const file =
+                                            e.target.files?.[0] || null;
+                                          onOptionChange(
+                                            optionIndex,
+                                            "imageFile",
+                                            file,
+                                          );
+                                        }}
+                                      />
+                                    </Button>
+                                  </Box>
+                                ) : null}
+
+                                {/* Correct Answer Selector */}
+                                {showCorrectSelector &&
+                                  (isSingleCorrectType ? (
+                                    <Radio
+                                      checked={option.isCorrect}
+                                      onChange={(e) =>
                                         onOptionChange(
                                           optionIndex,
-                                          "imageFile",
-                                          file,
-                                        );
+                                          "isCorrect",
+                                          e.target.checked,
+                                        )
+                                      }
+                                      size="small"
+                                      sx={{
+                                        color: theme.palette.text.secondary,
+                                        "&.Mui-checked": {
+                                          color: theme.palette.success.main,
+                                        },
+                                        p: 0.5,
                                       }}
                                     />
-                                  </Button>
-                                </Box>
-                              ) : null}
+                                  ) : (
+                                    <Checkbox
+                                      checked={option.isCorrect}
+                                      onChange={(e) =>
+                                        onOptionChange(
+                                          optionIndex,
+                                          "isCorrect",
+                                          e.target.checked,
+                                        )
+                                      }
+                                      size="small"
+                                      sx={{
+                                        color: theme.palette.text.secondary,
+                                        "&.Mui-checked": {
+                                          color: theme.palette.success.main,
+                                        },
+                                        p: 0.5,
+                                      }}
+                                    />
+                                  ))}
 
-                              {/* Delete Button */}
-                              <IconButton
-                                size="small"
-                                onClick={() => onDeleteOption(optionIndex)}
-                                disabled={
-                                  question.options.length <= 2 ||
-                                  question.type === "true_false"
-                                }
-                                sx={{
-                                  color: theme.palette.error.main,
-                                  flexShrink: 0,
-                                  "&.Mui-disabled": {
-                                    color: theme.palette.action.disabled,
-                                  },
-                                }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
+                                {/* Delete Button */}
+                                <IconButton
+                                  size="small"
+                                  onClick={() => onDeleteOption(optionIndex)}
+                                  disabled={
+                                    question.options.length <= 2 ||
+                                    question.type === "true_false"
+                                  }
+                                  sx={{
+                                    color: theme.palette.error.main,
+                                    p: 0.5,
+                                    "&.Mui-disabled": {
+                                      color: theme.palette.action.disabled,
+                                    },
+                                  }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
                             </Box>
                           );
                         })(),
                       )}
+                    </Box>
 
                       <Button
                         variant="outlined"
@@ -1843,10 +1844,29 @@ function SortableQuestionCard({
                       >
                         {isOrderType ? "Add Item" : "Add Answer Option"}
                       </Button>
-                    </Card>
+                    </>
                   ))}
               </Box>
             )}
+
+            </Paper>
+
+            {/* Section: Explanation */}
+            <Paper variant="outlined" sx={{ p: 2.5 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+                Explanation
+              </Typography>
+              <TextField
+                label="Explanation (Optional)"
+                variant="outlined"
+                fullWidth
+                size="small"
+                value={question.explanation}
+                onChange={(e) => onChange("explanation", e.target.value)}
+                placeholder="Explain why the answer is correct..."
+              />
+            </Paper>
+
           </Box>
         </Collapse>
       </CardContent>

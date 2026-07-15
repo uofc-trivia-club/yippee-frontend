@@ -1,9 +1,11 @@
 import React from "react";
 import {
+  Badge,
   Box,
   Button,
   Card,
   CardContent,
+  Chip,
   IconButton,
   Typography,
   useTheme,
@@ -76,11 +78,12 @@ function SidebarItem({
         display: "flex",
         alignItems: "center",
         gap: 0.5,
-        p: 0.75,
-        borderRadius: 1.5,
+        py: 0.6,
+        px: 0.75,
+        borderRadius: 1,
         cursor: "pointer",
-        border: "2px solid",
-        borderColor: isSelected
+        borderLeft: "3px solid",
+        borderLeftColor: isSelected
           ? item.kind === "slide"
             ? "info.main"
             : "secondary.main"
@@ -204,9 +207,16 @@ export default function QuizEditorLayout({
         }}
       >
         <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-            Quiz Items
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+            <Typography variant="subtitle2" fontWeight={700}>
+              Quiz Items
+            </Typography>
+            <Chip
+              label={timelinePreviewItems.length}
+              size="small"
+              sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }}
+            />
+          </Box>
 
           <DndContext
             sensors={sensors}
@@ -234,21 +244,23 @@ export default function QuizEditorLayout({
           <Box sx={{ display: "flex", gap: 0.75 }}>
             <Button
               size="small"
-              variant="outlined"
+              variant="contained"
               color="info"
               onClick={onAddSlide}
               startIcon={<AddIcon />}
               fullWidth
+              sx={{ textTransform: "none", fontWeight: 600 }}
             >
               Slide
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant="contained"
               color="secondary"
               onClick={onAddQuestion}
               startIcon={<AddIcon />}
               fullWidth
+              sx={{ textTransform: "none", fontWeight: 600 }}
             >
               Question
             </Button>
@@ -289,14 +301,16 @@ export default function QuizEditorLayout({
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                minHeight: 300,
+                minHeight: 400,
                 color: theme.palette.text.secondary,
+                gap: 1,
               }}
             >
-              <Typography variant="h6" gutterBottom>
+              <SlideshowIcon sx={{ fontSize: 48, opacity: 0.3 }} />
+              <Typography variant="h6" gutterBottom sx={{ opacity: 0.6 }}>
                 Select an item to edit
               </Typography>
-              <Typography variant="body2">
+              <Typography variant="body2" sx={{ opacity: 0.5 }}>
                 Choose a slide or question from the sidebar.
               </Typography>
             </Box>
