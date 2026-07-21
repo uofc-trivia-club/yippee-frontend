@@ -61,6 +61,8 @@ import QuizPreviewDialog from "./components/QuizPreviewDialog";
 import QuizEditorLayout from "./components/QuizEditorLayout";
 import styles from "./CreateQuiz.module.css";
 
+const QUIZ_INFO_ID = "quiz-info-slide";
+
 // Sortable Question Card Component
 function SortableQuestionCard({
   question,
@@ -448,23 +450,68 @@ function SortableQuestionCard({
             />
           </Badge>
 
-          {/* Question Preview */}
+          {/* Question Input */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: 500,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+            <TextField
+              variant="standard"
+              fullWidth
+              value={question.question}
+              inputRef={questionInputRef}
+              onClick={() =>
+                setQuestionCursorPos(
+                  questionInputRef.current?.selectionStart ?? null,
+                )
+              }
+              onChange={(e) => {
+                const nextQuestionText = e.target.value;
+                setQuestionCursorPos(e.target.selectionStart ?? null);
+                onChange("question", nextQuestionText);
+
+                if (isPhraseMatchType) {
+                  const nextBlankCount = Math.max(
+                    0,
+                    nextQuestionText.split(/_{3,}/).length - 1,
+                  );
+                  const nextAnswers = Array.from(
+                    { length: nextBlankCount },
+                    (_, index) => question.acceptedAnswers[index] || "",
+                  );
+                  onChange("acceptedAnswers", nextAnswers);
+
+                  const syncedWordBank = nextAnswers.map((answer, index) => ({
+                    text: answer.trim() || question.options[index]?.text || "",
+                    isCorrect: false,
+                    imageUrl: question.options[index]?.imageUrl || "",
+                    imageId: question.options[index]?.imageId || "",
+                    imageFile: question.options[index]?.imageFile || null,
+                  }));
+                  const remainingWords = question.options.slice(nextBlankCount);
+                  onChange("options", [...syncedWordBank, ...remainingWords]);
+                }
               }}
-            >
-              {question.question || (
-                <em style={{ color: theme.palette.text.disabled }}>
-                  No question text
-                </em>
-              )}
-            </Typography>
+              placeholder="Type your question..."
+              InputProps={{
+                disableUnderline: false,
+                sx: {
+                  fontSize: "0.95rem",
+                  fontWeight: 500,
+                  "& .MuiInput-input": {
+                    py: 0.5,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  },
+                },
+              }}
+              sx={{
+                "& .MuiInput-underline:before": {
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                },
+                "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
+                  borderBottom: `2px solid ${theme.palette.primary.main}`,
+                },
+              }}
+            />
           </Box>
 
           {/* Points Badge */}
@@ -511,29 +558,27 @@ function SortableQuestionCard({
 
         {/* Expanded Content */}
         <Collapse in={expanded}>
-          <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 2.5 }}>
+          <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
             {/* Section: Question Settings */}
-            <Paper variant="outlined" sx={{ p: 2.5 }}>
-              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
-                Question Settings
-              </Typography>
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
               <Box
                 sx={{
                   display: "flex",
-                  gap: 2,
-                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 1.5,
+                  alignItems: "center",
+                  flexWrap: "wrap",
                 }}
               >
                 <TextField
-                  label="Question Type"
+                  label="Type"
                   select
                   variant="outlined"
-                  fullWidth
                   size="small"
                   value={question.type}
                   onChange={(e) =>
                     onChange("type", e.target.value as QuizQuestionForm["type"])
                   }
+                  sx={{ minWidth: 150 }}
                 >
                   {QUESTION_TYPE_OPTIONS.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -545,7 +590,6 @@ function SortableQuestionCard({
                   label="Points"
                   type="number"
                   variant="outlined"
-                  fullWidth
                   size="small"
                   value={question.points === 0 ? "" : question.points}
                   onChange={(e) => {
@@ -559,104 +603,39 @@ function SortableQuestionCard({
                     }
                   }}
                   placeholder="1"
-                  inputProps={{
-                    min: 1,
-                    step: 1,
-                  }}
-                  helperText="Point value for this question"
+                  inputProps={{ min: 1, step: 1 }}
+                  sx={{ width: 80 }}
                 />
-              </Box>
-
-              <Box
-                sx={{
-                  mt: 1.5,
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "0.9fr 1.1fr" },
-                  gap: 2,
-                  alignItems: "start",
-                }}
-              >
-                <Box sx={{ maxWidth: { xs: "100%", md: 360 } }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block", mb: 0.5 }}
-                  >
+                <Box sx={{ flex: 1, minWidth: 150, maxWidth: 280 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: -0.5 }}>
                     Difficulty
                   </Typography>
-                  <Box
-                    sx={{
-                      transform: "scale(0.92)",
-                      transformOrigin: "top left",
-                      width: "108%",
-                    }}
-                  >
-                    <DifficultySlider
-                      difficulty={question.difficulty}
-                      onChange={(newVal) => onChange("difficulty", newVal)}
-                    />
-                  </Box>
-                </Box>
-
-                <Box sx={{ maxWidth: { xs: "100%", md: 520 } }}>
-                  <Autocomplete
-                    multiple
-                    freeSolo
-                    options={PREDEFINED_CATEGORIES}
-                    value={question.category}
-                    onChange={(_, newValue) => {
-                      onChange("category", newValue);
-                    }}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip
-                          label={option}
-                          {...getTagProps({ index })}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      ))
-                    }
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        size="small"
-                        variant="outlined"
-                        label="Categories"
-                        placeholder="Select or type categories..."
-                        helperText="Choose existing categories or create new ones"
-                      />
-                    )}
+                  <DifficultySlider
+                    difficulty={question.difficulty}
+                    onChange={(newVal) => onChange("difficulty", newVal)}
                   />
                 </Box>
               </Box>
             </Paper>
 
             {/* Section: Question */}
-            <Paper variant="outlined" sx={{ p: 2.5 }}>
-              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
-                Question
-              </Typography>
-              <TextField
-                label="Hint (Optional)"
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={question.hint}
-                onChange={(e) => onChange("hint", e.target.value)}
-                placeholder="Add a helpful hint..."
-                sx={{ mb: 1.5 }}
-              />
-
+            <Paper variant="outlined" sx={{ p: 2 }}>
               <Box
                 sx={{
                   display: "flex",
-                  gap: 2,
-                  mb: 1.5,
+                  gap: 1.5,
                   flexDirection: { xs: "column", sm: "row" },
                 }}
               >
+                <TextField
+                  label="Hint (Optional)"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  value={question.hint}
+                  onChange={(e) => onChange("hint", e.target.value)}
+                  placeholder="Add a helpful hint..."
+                />
                 <TextField
                   label="Image URL (Optional)"
                   variant="outlined"
@@ -677,7 +656,7 @@ function SortableQuestionCard({
                   onDragLeave={() => setDragOverQuestionImage(false)}
                   onDrop={handleQuestionImageDrop}
                   sx={{
-                    minWidth: { xs: "100%", sm: 220 },
+                    minWidth: { xs: "100%", sm: 200 },
                     borderRadius: 1,
                     border: "1px dashed",
                     borderColor: dragOverQuestionImage
@@ -685,9 +664,7 @@ function SortableQuestionCard({
                       : "divider",
                     bgcolor: dragOverQuestionImage
                       ? "action.hover"
-                      : theme.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.02)"
-                        : "rgba(0,0,0,0.01)",
+                      : "transparent",
                     transition: "all 0.2s ease",
                     boxShadow: dragOverQuestionImage
                       ? `0 0 0 1px ${theme.palette.primary.main}`
@@ -699,33 +676,20 @@ function SortableQuestionCard({
                     component="label"
                     fullWidth
                     sx={{
-                      minHeight: 40,
+                      minHeight: 36,
                       border: 0,
-                      justifyContent: "space-between",
+                      justifyContent: "center",
                       px: 1.5,
                       "&:hover": { border: 0 },
-                      color: dragOverQuestionImage ? "primary.main" : "inherit",
+                      color: dragOverQuestionImage ? "primary.main" : "text.secondary",
+                      fontSize: "0.8rem",
                     }}
                   >
-                    <Box sx={{ textAlign: "left" }}>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 600, lineHeight: 1.2 }}
-                      >
-                        {dragOverQuestionImage
-                          ? "Drop image to attach"
-                          : question.imageFile
-                            ? "Question Image Selected"
-                            : "Upload Question Image"}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: "block" }}
-                      >
-                        Drag and drop or click to browse
-                      </Typography>
-                    </Box>
+                    {dragOverQuestionImage
+                      ? "Drop image to attach"
+                      : question.imageFile
+                        ? "Image Selected"
+                        : "Upload Image"}
                     <input
                       type="file"
                       accept="image/*"
@@ -738,51 +702,6 @@ function SortableQuestionCard({
                   </Button>
                 </Box>
               </Box>
-
-              <TextField
-                label="Question Text"
-                variant="outlined"
-                fullWidth
-                margin="dense"
-                value={question.question}
-                inputRef={questionInputRef}
-                onClick={() =>
-                  setQuestionCursorPos(
-                    questionInputRef.current?.selectionStart ?? null,
-                  )
-                }
-                onChange={(e) => {
-                  const nextQuestionText = e.target.value;
-                  setQuestionCursorPos(e.target.selectionStart ?? null);
-                  onChange("question", nextQuestionText);
-
-                  if (isPhraseMatchType) {
-                    const nextBlankCount = Math.max(
-                      0,
-                      nextQuestionText.split(/_{3,}/).length - 1,
-                    );
-                    const nextAnswers = Array.from(
-                      { length: nextBlankCount },
-                      (_, index) => question.acceptedAnswers[index] || "",
-                    );
-                    onChange("acceptedAnswers", nextAnswers);
-
-                    const syncedWordBank = nextAnswers.map((answer, index) => ({
-                      text: answer.trim() || question.options[index]?.text || "",
-                      isCorrect: false,
-                      imageUrl: question.options[index]?.imageUrl || "",
-                      imageId: question.options[index]?.imageId || "",
-                      imageFile: question.options[index]?.imageFile || null,
-                    }));
-                    const remainingWords = question.options.slice(nextBlankCount);
-                    onChange("options", [...syncedWordBank, ...remainingWords]);
-                  }
-                }}
-                required
-                multiline
-                rows={2}
-                placeholder="Enter your question here..."
-              />
 
               {isPhraseMatchType && (
                 <Box
@@ -1889,6 +1808,8 @@ export default function CreateQuiz() {
     supabaseUser?.user_metadata?.name ?? supabaseUser?.email ?? "Anonymous";
   const [quizName, setQuizName] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
+  const [quizCategories, setQuizCategories] = useState<string[]>([]);
+  const [quizImageFile, setQuizImageFile] = useState<File | null>(null);
   const [slides, setSlides] = useState<PresentationSlideForm[]>([]);
   const [questions, setQuestions] = useState<QuizQuestionForm[]>(() => [
     createInitialQuestion(),
@@ -1925,11 +1846,20 @@ export default function CreateQuiz() {
 
   useEffect(() => {
     if (timelineItems.length === 0 && questions.length > 0) {
-      const firstTimelineId = `timeline-${Date.now()}-${Math.random()}`;
+      const quizInfoTimelineId = `timeline-quiz-info`;
+      const firstQuestionTimelineId = `timeline-${Date.now()}-${Math.random()}`;
+      const quizInfoSlide: PresentationSlideForm = {
+        id: QUIZ_INFO_ID,
+        title: "",
+        content: "",
+        imageUrl: "",
+      };
+      setSlides([quizInfoSlide]);
       setTimelineItems([
-        { id: firstTimelineId, kind: "question", refId: questions[0].id },
+        { id: quizInfoTimelineId, kind: "slide", refId: QUIZ_INFO_ID },
+        { id: firstQuestionTimelineId, kind: "question", refId: questions[0].id },
       ]);
-      setSelectedTimelineId(firstTimelineId);
+      setSelectedTimelineId(quizInfoTimelineId);
     }
   }, [timelineItems.length, questions]);
 
@@ -3277,47 +3207,10 @@ export default function CreateQuiz() {
             Create a Quiz
           </Typography>
 
-          {/* Quiz Info Section */}
-          <Card
-            sx={{
-              mb: 4,
-              backgroundColor:
-                theme.palette.mode === "dark"
-                  ? theme.palette.background.default
-                  : "#fafafa",
-              boxShadow: "none",
-              border: `1px solid ${theme.palette.divider}`,
-            }}
-          >
-            <CardContent>
-              <Typography variant="h6" gutterBottom fontWeight="600">
-                Quiz Information
-              </Typography>
-              <TextField
-                label="Quiz Name"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={quizName}
-                onChange={(e) => setQuizName(e.target.value)}
-                required
-              />
-              <TextField
-                label="Quiz Description"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                multiline
-                rows={3}
-                value={quizDescription}
-                onChange={(e) => setQuizDescription(e.target.value)}
-              />
-            </CardContent>
-          </Card>
-
           <QuizEditorLayout
             timelinePreviewItems={timelinePreviewItems}
             selectedTimelineId={selectedTimelineId}
+            quizInfoTimelineId={`timeline-quiz-info`}
             sensors={sensors}
             onDragEnd={handleDragEnd}
             onSelectItem={handleSelectTimelineItem}
@@ -3326,6 +3219,101 @@ export default function CreateQuiz() {
             onAddQuestion={addQuestion}
             renderSlideEditor={renderSlideEditor}
             renderQuestionEditor={renderQuestionEditor}
+            renderQuizInfoEditor={() => (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.25 }}>
+                    Quiz Info
+                  </Typography>
+                  <TextField
+                    label="Quiz Name"
+                    variant="outlined"
+                    fullWidth
+                    size="small"
+                    sx={{ mb: 1.5 }}
+                    value={quizName}
+                    onChange={(e) => setQuizName(e.target.value)}
+                    required
+                  />
+                  <TextField
+                    label="Quiz Description"
+                    variant="outlined"
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={3}
+                    value={quizDescription}
+                    onChange={(e) => setQuizDescription(e.target.value)}
+                  />
+                </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.25 }}>
+                    Categories
+                  </Typography>
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={PREDEFINED_CATEGORIES}
+                    value={quizCategories}
+                    onChange={(_, newValue) => setQuizCategories(newValue)}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option}
+                          {...getTagProps({ index })}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        variant="outlined"
+                        label="Categories"
+                        placeholder="Select or type categories..."
+                      />
+                    )}
+                  />
+                </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.25 }}>
+                    Cover Image
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    sx={{
+                      minHeight: 48,
+                      border: "1px dashed",
+                      borderColor: quizImageFile ? "success.main" : "divider",
+                      color: quizImageFile ? "success.main" : "text.secondary",
+                      justifyContent: "center",
+                      gap: 1,
+                    }}
+                  >
+                    {quizImageFile ? `Image: ${quizImageFile.name}` : "Upload Cover Image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setQuizImageFile(file);
+                        if (file) {
+                          updateSlide(QUIZ_INFO_ID, "imageUrl", URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </Button>
+                </Paper>
+              </Box>
+            )}
           />
 
           <Box sx={{ height: 72 }} />

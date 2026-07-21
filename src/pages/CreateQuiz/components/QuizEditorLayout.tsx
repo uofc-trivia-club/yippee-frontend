@@ -22,12 +22,14 @@ import { TimelinePreviewItem } from "../createQuizTypes";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import InfoIcon from "@mui/icons-material/Info";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import QuizIcon from "@mui/icons-material/Quiz";
 
 interface QuizEditorLayoutProps {
   timelinePreviewItems: TimelinePreviewItem[];
   selectedTimelineId: string | null;
+  quizInfoTimelineId: string | null;
   sensors: any;
   onDragEnd: (event: DragEndEvent) => void;
   onSelectItem: (item: TimelinePreviewItem) => void;
@@ -40,16 +42,19 @@ interface QuizEditorLayoutProps {
   renderQuestionEditor: (
     item: Extract<TimelinePreviewItem, { kind: "question" }>,
   ) => React.ReactNode;
+  renderQuizInfoEditor: () => React.ReactNode;
 }
 
 function SidebarItem({
   item,
   isSelected,
+  isQuizInfo,
   onSelect,
   onDelete,
 }: {
   item: TimelinePreviewItem;
   isSelected: boolean;
+  isQuizInfo: boolean;
   onSelect: () => void;
   onDelete?: (slideId: string) => void;
 }) {
@@ -117,7 +122,9 @@ function SidebarItem({
         <DragIndicatorIcon fontSize="small" />
       </IconButton>
 
-      {item.kind === "slide" ? (
+      {isQuizInfo ? (
+        <InfoIcon fontSize="small" sx={{ color: theme.palette.warning.main, flexShrink: 0 }} />
+      ) : item.kind === "slide" ? (
         <SlideshowIcon fontSize="small" color="info" sx={{ flexShrink: 0 }} />
       ) : (
         <QuizIcon fontSize="small" color="secondary" sx={{ flexShrink: 0 }} />
@@ -128,9 +135,11 @@ function SidebarItem({
           variant="caption"
           sx={{ fontWeight: 700, display: "block", lineHeight: 1.2 }}
         >
-          {item.kind === "slide"
-            ? `Slide ${item.slideIndex + 1}`
-            : `Q${item.questionIndex + 1}`}
+          {isQuizInfo
+            ? "Quiz Info"
+            : item.kind === "slide"
+              ? `Slide ${item.slideIndex + 1}`
+              : `Q${item.questionIndex + 1}`}
         </Typography>
         <Typography
           variant="caption"
@@ -149,7 +158,7 @@ function SidebarItem({
         </Typography>
       </Box>
 
-      {item.kind === "slide" && onDelete && (
+      {!isQuizInfo && item.kind === "slide" && onDelete && (
         <IconButton
           size="small"
           onClick={(e) => {
@@ -168,6 +177,7 @@ function SidebarItem({
 export default function QuizEditorLayout({
   timelinePreviewItems,
   selectedTimelineId,
+  quizInfoTimelineId,
   sensors,
   onDragEnd,
   onSelectItem,
@@ -176,12 +186,21 @@ export default function QuizEditorLayout({
   onAddQuestion,
   renderSlideEditor,
   renderQuestionEditor,
+  renderQuizInfoEditor,
 }: QuizEditorLayoutProps) {
   const theme = useTheme();
 
   const selectedItem = timelinePreviewItems.find(
     (item) => item.timelineId === selectedTimelineId,
   );
+
+  const quizInfoItem = quizInfoTimelineId
+    ? timelinePreviewItems.find((item) => item.timelineId === quizInfoTimelineId) ?? null
+    : null;
+
+  const sortableItems = quizInfoTimelineId
+    ? timelinePreviewItems.filter((item) => item.timelineId !== quizInfoTimelineId)
+    : timelinePreviewItems;
 
   return (
     <Box
@@ -212,11 +231,22 @@ export default function QuizEditorLayout({
               Quiz Items
             </Typography>
             <Chip
-              label={timelinePreviewItems.length}
+              label={sortableItems.length}
               size="small"
               sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }}
             />
           </Box>
+
+          {quizInfoItem && (
+            <Box sx={{ mb: 1 }}>
+              <SidebarItem
+                item={quizInfoItem}
+                isSelected={selectedTimelineId === quizInfoItem.timelineId}
+                isQuizInfo={true}
+                onSelect={() => onSelectItem(quizInfoItem)}
+              />
+            </Box>
+          )}
 
           <DndContext
             sensors={sensors}
@@ -224,15 +254,16 @@ export default function QuizEditorLayout({
             onDragEnd={onDragEnd}
           >
             <SortableContext
-              items={timelinePreviewItems.map((item) => item.timelineId)}
+              items={sortableItems.map((item) => item.timelineId)}
               strategy={verticalListSortingStrategy}
             >
               <Box sx={{ display: "grid", gap: 0.75, mb: 1.5 }}>
-                {timelinePreviewItems.map((item) => (
+                {sortableItems.map((item) => (
                   <SidebarItem
                     key={item.timelineId}
                     item={item}
                     isSelected={selectedTimelineId === item.timelineId}
+                    isQuizInfo={false}
                     onSelect={() => onSelectItem(item)}
                     onDelete={onDeleteSlide}
                   />
@@ -282,7 +313,9 @@ export default function QuizEditorLayout({
       >
         <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
           {selectedItem ? (
-            selectedItem.kind === "slide" ? (
+            selectedItem.timelineId === quizInfoTimelineId ? (
+              renderQuizInfoEditor()
+            ) : selectedItem.kind === "slide" ? (
               renderSlideEditor(selectedItem)
             ) : (
               <DndContext sensors={[]} collisionDetection={closestCenter}>
