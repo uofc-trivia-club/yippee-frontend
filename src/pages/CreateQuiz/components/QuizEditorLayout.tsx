@@ -108,19 +108,21 @@ function SidebarItem({
         transition: "all 0.15s ease",
       }}
     >
-      <IconButton
-        size="small"
-        {...attributes}
-        {...listeners}
-        sx={{
-          cursor: "grab",
-          "&:active": { cursor: "grabbing" },
-          color: theme.palette.text.secondary,
-          p: 0.25,
-        }}
-      >
-        <DragIndicatorIcon fontSize="small" />
-      </IconButton>
+      {!isQuizInfo && (
+        <IconButton
+          size="small"
+          {...attributes}
+          {...listeners}
+          sx={{
+            cursor: "grab",
+            "&:active": { cursor: "grabbing" },
+            color: theme.palette.text.secondary,
+            p: 0.25,
+          }}
+        >
+          <DragIndicatorIcon fontSize="small" />
+        </IconButton>
+      )}
 
       {isQuizInfo ? (
         <InfoIcon fontSize="small" sx={{ color: theme.palette.warning.main, flexShrink: 0 }} />
