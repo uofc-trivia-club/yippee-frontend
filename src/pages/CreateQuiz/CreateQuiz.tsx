@@ -9,7 +9,6 @@ import {
   Checkbox,
   Chip,
   Collapse,
-  Divider,
   IconButton,
   MenuItem,
   Paper,
@@ -1818,7 +1817,7 @@ export default function CreateQuiz() {
   const [selectedTimelineId, setSelectedTimelineId] = useState<string | null>(
     null,
   );
-  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(
+  const [, setExpandedQuestions] = useState<Set<string>>(
     new Set([questions[0].id]),
   );
   const [currentPage, setCurrentPage] = useState(1);
@@ -1923,18 +1922,6 @@ export default function CreateQuiz() {
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  };
-
-  const toggleExpanded = (id: string) => {
-    setExpandedQuestions((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
   };
 
   const handleQuestionChange = <K extends keyof QuizQuestionForm>(
@@ -3088,14 +3075,6 @@ export default function CreateQuiz() {
 
   const handlePreviewClose = () => {
     setPreviewOpen(false);
-  };
-
-  const expandAll = () => {
-    setExpandedQuestions(new Set(paginatedQuestions.map((q) => q.id)));
-  };
-
-  const collapseAll = () => {
-    setExpandedQuestions(new Set());
   };
 
   const handleSelectTimelineItem = (item: TimelinePreviewItem) => {
