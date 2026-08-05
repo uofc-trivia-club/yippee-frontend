@@ -1,11 +1,18 @@
 // this slice handles the state of a game
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
-import { GameSettings, QuizItem, QuizQuestion, User } from "./types";
+import {
+  GameSettings,
+  QuizItem,
+  QuizMeta,
+  QuizQuestion,
+  User,
+} from "./types";
 
 interface GameState {
   user: User; // own user
   roomCode: string;
   clientsInLobby: User[];
+  quizMeta: QuizMeta | undefined;
   gameSettings: GameSettings | undefined;
   currentItem: QuizItem | undefined;
   currentItemIndex: number;
@@ -36,6 +43,7 @@ const initialState = {
   },
   roomCode: "",
   clientsInLobby: [],
+  quizMeta: undefined,
   gameSettings: undefined,
   currentItem: undefined,
   currentItemIndex: 0,
@@ -141,6 +149,9 @@ const gameSlice = createSlice({
     setGameSettings: (state, action: PayloadAction<GameSettings>) => {
       // console.log('setGameSettings:', { before: state.gameSettings, after: action.payload });
       state.gameSettings = action.payload;
+    },
+    setQuizMeta: (state, action: PayloadAction<QuizMeta>) => {
+      state.quizMeta = action.payload;
     },
     setCurrentQuestion: (
       state,

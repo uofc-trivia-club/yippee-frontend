@@ -7,9 +7,17 @@ let socket: WebSocket | null = null;
 
 export const getWebSocket = () => socket;
 
+const syncQuizMeta = (store: any, lobby: MessageResponse["lobby"]) => {
+  if (lobby?.quizMeta) {
+    store.dispatch(gameActions.setQuizMeta(lobby.quizMeta));
+  }
+};
+
 const syncLobbyTimelineState = (store: any, data: MessageResponse) => {
   const lobby = data.lobby;
   if (!lobby) return;
+
+  syncQuizMeta(store, lobby);
 
   if ("questionAnalytics" in lobby) {
     store.dispatch(

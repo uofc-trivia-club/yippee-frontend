@@ -1,5 +1,7 @@
 import {
+  Alert,
   Avatar,
+  Badge,
   Box,
   Button,
   Card,
@@ -11,7 +13,10 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
+  Drawer,
+  IconButton,
   Stack,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -19,17 +24,26 @@ import { GameSettings, Quiz, User } from "../../stores/types";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import ImageIcon from "@mui/icons-material/Image";
 import LobbyChatPanel from "./LobbyChatPanel";
+import LogoutIcon from "@mui/icons-material/Logout";
 import ManageGameSettings from "../quiz/ManageGameSettings";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PsychologyIcon from "@mui/icons-material/Psychology";
+import QuizIcon from "@mui/icons-material/Quiz";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import { RootState } from "../../stores/store";
 import SelectQuiz from "../quiz/SelectQuiz";
+import SettingsIcon from "@mui/icons-material/Settings";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import StarIcon from "@mui/icons-material/Star";
+import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import WhatshotIcon from "@mui/icons-material/Whatshot";
+import { backendUrl } from "../../util/backendConfig";
 import { executeWebSocketCommand } from "../../util/websocketUtil";
 import { gameActions } from "../../stores/gameSlice";
 import styles from "./LobbyRoomView.module.css";
@@ -49,6 +63,8 @@ export default function LobbyRoomView() {
   const userDetails = useSelector((state: RootState) => state.game.user); // get current user details from Redux
   const [error, setError] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatOpen, setChatOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [gameSettings, setGameSettings] = useState<GameSettings>({
     questionTime: 30,
     enableMessagesDuringGame: true,
@@ -58,8 +74,10 @@ export default function LobbyRoomView() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+
   // Handler for host leaving the lobby (ending the room)
   const handleBackToMainClick = () => {
+    setSettingsOpen(false);
     setConfirmLeaveOpen(true);
   };
 
@@ -127,7 +145,7 @@ export default function LobbyRoomView() {
       points: 0,
     } as User;
 
-    // execute the "createLobby" WebSocket command
+    // execute the "sendLobbyMessage" WebSocket command
     executeWebSocketCommand(
       "sendLobbyMessage",
       { roomCode: game.roomCode, user: user },
@@ -151,7 +169,6 @@ export default function LobbyRoomView() {
   };
 
   const handleStartGame = () => {
-    // TODO: ensure that there is at least one player
     console.log("Starting the Game");
     dispatch(gameActions.setGameSettings(gameSettings));
     executeWebSocketCommand(
@@ -179,222 +196,340 @@ export default function LobbyRoomView() {
     (user) => user.userRole === "player",
   );
 
-  // Move Back to Main Page button and dialog to the top
+  const quizMeta = game.quizMeta;
+  const quizImageUrl =
+    typeof quizMeta?.imageId === "string"
+      ? `${backendUrl}/api/images/${quizMeta.imageId}`
+      : null;
+
+  const HostIcon = getPlayerIcon(host?.userName || "host");
+  const isHost = userDetails.userRole === "host";
+
   return (
-    <Box sx={{ p: { xs: 2, md: 4 } }}>
-      {userDetails.userRole === "host" && (
-        <Box
-          sx={{
-            maxWidth: 980,
-            mx: "auto",
-            mb: 2,
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
+    <Box sx={{ p: { xs: 1.5, md: 3 } }}>
+      {/* Top bar */}
+      <Box sx={{ maxWidth: 1200, mx: "auto", mb: 3 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          spacing={2}
         >
-          <Button
-            variant="outlined"
-            color="secondary"
-            sx={{ fontWeight: 600 }}
-            onClick={handleBackToMainClick}
-          >
-            Back to Main Page
-          </Button>
-          <Dialog
-            open={confirmLeaveOpen}
-            onClose={handleCancelLeave}
-            aria-labelledby="confirm-leave-dialog-title"
-          >
-            <DialogTitle id="confirm-leave-dialog-title">
-              Leave Lobby and End Room?
-            </DialogTitle>
-            <DialogContent>
-              <DialogContentText>
-                Are you sure you want to leave and close this room? <br />
-                <b>
-                  All players will be disconnected and the room will be deleted.
-                </b>
-              </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCancelLeave} color="primary">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmLeave}
-                color="secondary"
-                variant="contained"
-                autoFocus
+          <Box>
+            <Chip
+              icon={<VpnKeyIcon />}
+              label={`Room Code: ${game.roomCode}`}
+              color="primary"
+              variant="outlined"
+              sx={{ mb: 1, fontWeight: 700, fontSize: "0.85rem" }}
+            />
+            <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+              Lobby Room
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Chat with players, swap quizzes, and prepare the game before the
+              host starts.
+            </Typography>
+          </Box>
+
+          <Stack direction="row" spacing={1}>
+            <Tooltip title={chatOpen ? "Hide chat" : "Show chat"}>
+              <IconButton
+                color={chatOpen ? "primary" : "default"}
+                onClick={() => setChatOpen((open) => !open)}
+                aria-label="toggle chat"
+                sx={{ border: `1px solid ${theme.palette.divider}` }}
               >
-                Yes, Leave and Close Room
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </Box>
-      )}
-      <Card
-        elevation={0}
+                <Badge badgeContent={chatMessages.length} color="primary">
+                  <ChatBubbleOutlineIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            {isHost && (
+              <Tooltip title="Host settings">
+                <IconButton
+                  color="secondary"
+                  onClick={() => setSettingsOpen(true)}
+                  aria-label="host settings"
+                  sx={{ border: `1px solid ${theme.palette.divider}` }}
+                >
+                  <SettingsIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Stack>
+        </Stack>
+      </Box>
+
+      {/* Main layout */}
+      <Box
         sx={{
-          maxWidth: 980,
+          maxWidth: 1200,
           mx: "auto",
-          borderRadius: 4,
-          border: `1px solid ${theme.palette.divider}`,
-          background:
-            theme.palette.mode === "dark"
-              ? "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))"
-              : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))",
-          boxShadow: "0 16px 40px rgba(0,0,0,0.08)",
-          overflow: "hidden",
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            lg: chatOpen ? "minmax(0, 1fr) 340px" : "minmax(0, 1fr)",
+          },
+          gap: 2.5,
+          alignItems: "start",
         }}
       >
-        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
-          <Stack spacing={3}>
-            <Box>
-              <Chip
-                icon={<StarIcon />}
-                label={`Room Code: ${game.roomCode}`}
-                color="primary"
-                variant="outlined"
-                sx={{ mb: 2, fontWeight: 700 }}
-              />
-              <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                Lobby Room
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Chat with players, swap quizzes, and prepare the game before the
-                host starts.
-              </Typography>
-            </Box>
+        {/* Main column */}
+        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+          {/* Quiz details card */}
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              background:
+                theme.palette.mode === "dark"
+                  ? "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))"
+                  : "linear-gradient(135deg, rgba(255,255,255,0.98), rgba(250,250,252,0.96))",
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2.5}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+              >
+                <Box
+                  sx={{
+                    width: 96,
+                    height: 96,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 2.5,
+                    overflow: "hidden",
+                    bgcolor: theme.palette.action.hover,
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  {quizImageUrl ? (
+                    <img
+                      src={quizImageUrl}
+                      alt={`${quizMeta?.quizName || "Quiz"} thumbnail`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <QuizIcon
+                      sx={{
+                        fontSize: 48,
+                        color: theme.palette.text.disabled,
+                      }}
+                    />
+                  )}
+                </Box>
 
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1.2fr 0.8fr" },
-                gap: 2,
-              }}
-            >
-              <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                <CardContent>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="overline" color="text.secondary">
                     Current Quiz
                   </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-                    {game.clientsInLobby.find(
-                      (user) => user.userRole === "host",
-                    )?.userName || "Loading..."}
-                  </Typography>
                   <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 1 }}
+                    variant="h5"
+                    sx={{ fontWeight: 800, mb: 0.5 }}
+                    noWrap
                   >
-                    {/* TODO: replace this with the actual quiz title from quizMeta */}
-                    The selected quiz is shown here while the lobby is active.
+                    {quizMeta?.quizName || host?.userName || "Loading..."}
                   </Typography>
-                </CardContent>
-              </Card>
+                  <Typography variant="body2" color="text.secondary" noWrap>
+                    {quizMeta?.quizDescription ||
+                      "The selected quiz is shown here while the lobby is active."}
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+                    <Chip
+                      size="small"
+                      icon={<HelpOutlineIcon />}
+                      label={
+                        quizMeta?.questionCount != null
+                          ? `${quizMeta.questionCount} questions`
+                          : "Quiz selected"
+                      }
+                      variant="outlined"
+                    />
+                    {quizMeta?.createdBy && (
+                      <Chip
+                        size="small"
+                        label={`by ${quizMeta.createdBy}`}
+                        variant="outlined"
+                      />
+                    )}
+                  </Stack>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
 
-              <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                <CardContent>
+          {/* Host card */}
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Avatar
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    bgcolor: theme.palette.secondary.main,
+                    fontSize: 28,
+                  }}
+                >
+                  <HostIcon fontSize="medium" />
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="overline" color="text.secondary">
                     Host
                   </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mt: 0.5 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 700, lineHeight: 1.2 }}
+                    noWrap
+                  >
                     {host?.userName || "Loading..."}
                   </Typography>
-                  {host?.userMessage && (
-                    <Chip
-                      label={host.userMessage}
-                      size="small"
-                      sx={{ mt: 1, maxWidth: "100%" }}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </Box>
+                </Box>
+                <Chip label="Host" color="secondary" size="small" />
+                {host?.userMessage && (
+                  <Chip
+                    label={host.userMessage}
+                    size="small"
+                    variant="outlined"
+                    sx={{ maxWidth: "100%" }}
+                  />
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
 
-            <Divider />
-
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+          {/* Players */}
+          <Box>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 2 }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Players
               </Typography>
-              {players.length > 0 ? (
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      sm: "1fr 1fr",
-                      lg: "1fr 1fr 1fr",
-                    },
-                    gap: 2,
-                  }}
-                >
-                  {players.map((player) => {
-                    const PlayerIcon = getPlayerIcon(player.userName);
-                    return (
-                      <Card
-                        key={player.userName}
-                        variant="outlined"
-                        sx={{
-                          borderRadius: 3,
-                          transition:
-                            "transform 0.15s ease, box-shadow 0.15s ease",
-                          "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
-                          },
-                        }}
-                      >
-                        <CardContent>
-                          <Stack
-                            direction="row"
-                            spacing={1.5}
-                            alignItems="center"
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`${players.length} joined`}
+              />
+            </Stack>
+
+            {players.length > 0 ? (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "1fr 1fr",
+                    md: chatOpen ? "1fr 1fr" : "1fr 1fr 1fr",
+                  },
+                  gap: 2,
+                }}
+              >
+                {players.map((player) => {
+                  const PlayerIcon = getPlayerIcon(player.userName);
+                  return (
+                    <Card
+                      key={player.userName}
+                      variant="outlined"
+                      sx={{
+                        borderRadius: 3,
+                        transition:
+                          "transform 0.15s ease, box-shadow 0.15s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                          boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
+                        },
+                      }}
+                    >
+                      <CardContent>
+                        <Stack
+                          direction="row"
+                          spacing={1.5}
+                          alignItems="center"
+                        >
+                          <Avatar
+                            sx={{
+                              bgcolor: theme.palette.primary.main,
+                              width: 40,
+                              height: 40,
+                            }}
                           >
-                            <Avatar
-                              sx={{ bgcolor: theme.palette.primary.main }}
+                            <PlayerIcon fontSize="small" />
+                          </Avatar>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography
+                              variant="subtitle1"
+                              sx={{ fontWeight: 700 }}
+                              noWrap
                             >
-                              <PlayerIcon fontSize="small" />
-                            </Avatar>
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography
-                                variant="subtitle1"
-                                sx={{ fontWeight: 700 }}
-                                noWrap
-                              >
-                                {player.userName}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                Player
-                              </Typography>
-                            </Box>
-                          </Stack>
-                          {player.userMessage && (
-                            <Chip
-                              label={player.userMessage}
-                              size="small"
-                              sx={{ mt: 1.5, maxWidth: "100%" }}
-                            />
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </Box>
-              ) : (
-                <Typography variant="body1" color="text.secondary">
-                  No players connected yet.
-                </Typography>
-              )}
-            </Box>
+                              {player.userName}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                            >
+                              Player
+                            </Typography>
+                          </Box>
+                        </Stack>
+                        {player.userMessage && (
+                          <Chip
+                            label={player.userMessage}
+                            size="small"
+                            sx={{ mt: 1.5, maxWidth: "100%" }}
+                          />
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
+            ) : (
+              <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Typography variant="body1" color="text.secondary">
+                    No players connected yet. Share the room code to invite
+                    them.
+                  </Typography>
+                </CardContent>
+              </Card>
+            )}
+          </Box>
 
-            <Divider />
+          {!isHost && (
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              You are a player. Wait for the host to start the game.
+            </Alert>
+          )}
+        </Stack>
 
+        {/* Chat column */}
+        {chatOpen && (
+          <Box
+            sx={{
+              position: { lg: "sticky" },
+              top: { lg: 16 },
+              minWidth: 0,
+            }}
+          >
             <LobbyChatPanel
               chatMessages={chatMessages}
               lobbyMessage={lobbyMessage}
@@ -403,67 +538,112 @@ export default function LobbyRoomView() {
               error={error}
               getPlayerIcon={getPlayerIcon}
             />
+          </Box>
+        )}
+      </Box>
 
-            {userDetails.userRole === "host" ? (
-              <Box
-                sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 2 }}
-              >
-                <Typography variant="body1">
-                  You are the host. Manage the game and start the quiz.
-                </Typography>
-
-                <ManageGameSettings onSettingsChange={setGameSettings} />
-
-                <Box
-                  sx={{
-                    mt: 1,
-                    p: 2,
-                    borderRadius: 2,
-                    border: `1px dashed ${theme.palette.divider}`,
-                    bgcolor:
-                      theme.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.02)"
-                        : "rgba(0,0,0,0.02)",
-                  }}
-                >
-                  <Typography variant="h6" sx={{ mb: 1 }}>
-                    Change Quiz
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 2 }}
-                  >
-                    Pick a different quiz for this room. The change will apply
-                    for everyone in the lobby.
-                  </Typography>
-                  <SelectQuiz onSelectQuiz={handleChangeQuiz} compact />
-                </Box>
-
-                <Button
-                  variant="contained"
-                  color="primary"
-                  sx={{
-                    mt: 1,
-                    fontWeight: "bold",
-                    color: "#ffffff",
-                  }}
-                  onClick={handleStartGame}
-                  className={styles.button}
-                >
-                  Start Game
-                </Button>
-              </Box>
-            ) : userDetails.userRole === "player" ? (
-              <Typography variant="body1">
-                You are a player. Wait for the host to start the game.
+      {/* Host settings drawer */}
+      <Drawer
+        anchor="left"
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      >
+        <Box
+          sx={{
+            width: { xs: "100vw", sm: 380 },
+            maxWidth: "100vw",
+            p: 3,
+          }}
+        >
+          <Stack spacing={2.5}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Host Settings
               </Typography>
-            ) : (
-              <Typography variant="body1">Loading...</Typography>
-            )}
+              <Typography variant="body2" color="text.secondary">
+                Configure the game and choose a quiz for the room.
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            <ManageGameSettings onSettingsChange={setGameSettings} />
+
+            <Box>
+              <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700 }}>
+                Change Quiz
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mb: 1.5 }}
+              >
+                Pick a different quiz for this room. The change will apply for
+                everyone in the lobby.
+              </Typography>
+              <SelectQuiz onSelectQuiz={handleChangeQuiz} compact />
+            </Box>
+
+            <Divider />
+
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PlayArrowIcon />}
+              sx={{
+                fontWeight: "bold",
+                color: "#ffffff",
+                py: 1.25,
+              }}
+              onClick={handleStartGame}
+              className={styles.button}
+            >
+              Start Game
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<LogoutIcon />}
+              onClick={handleBackToMainClick}
+            >
+              End Room
+            </Button>
           </Stack>
-        </CardContent>
-      </Card>
+        </Box>
+      </Drawer>
+
+      {/* Confirm leave dialog */}
+      <Dialog
+        open={confirmLeaveOpen}
+        onClose={handleCancelLeave}
+        aria-labelledby="confirm-leave-dialog-title"
+      >
+        <DialogTitle id="confirm-leave-dialog-title">
+          Leave Lobby and End Room?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to leave and close this room? <br />
+            <b>
+              All players will be disconnected and the room will be deleted.
+            </b>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelLeave} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmLeave}
+            color="secondary"
+            variant="contained"
+            autoFocus
+          >
+            Yes, Leave and Close Room
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

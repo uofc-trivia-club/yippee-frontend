@@ -2,8 +2,10 @@ import {
   Box,
   FormControlLabel,
   Slider,
+  Stack,
   Switch,
   Typography,
+  useTheme,
 } from "@mui/material";
 
 import { GameSettings } from "../../stores/types";
@@ -16,6 +18,7 @@ interface ManageGameSettingsProps {
 export default function ManageGameSettings({
   onSettingsChange,
 }: ManageGameSettingsProps) {
+  const theme = useTheme();
   const [gameSettings, setGameSettings] = useState<GameSettings>({
     questionTime: 30,
     enableMessagesDuringGame: true,
@@ -30,15 +33,25 @@ export default function ManageGameSettings({
   };
 
   return (
-    <Box sx={{ mt: 3, p: 2, border: "1px solid #ddd", borderRadius: 2 }}>
-      <Typography variant="h6" gutterBottom>
+    <Box
+      sx={{
+        p: 2.5,
+        borderRadius: 3,
+        border: `1px solid ${theme.palette.divider}`,
+        bgcolor:
+          theme.palette.mode === "dark"
+            ? "rgba(255,255,255,0.02)"
+            : "rgba(0,0,0,0.02)",
+      }}
+    >
+      <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
         Game Settings
       </Typography>
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 1.5 }}>
         <Typography gutterBottom>
-          Question Time:{" "}
+          Time Per Question:{" "}
           {gameSettings.questionTime === 0
-            ? "infinite seconds"
+            ? "Infinite"
             : `${gameSettings.questionTime} seconds`}
         </Typography>
         <Slider
@@ -57,37 +70,39 @@ export default function ManageGameSettings({
           valueLabelFormat={(value) => (value === 0 ? "∞" : `${value}s`)}
         />
       </Box>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={gameSettings.enableMessagesDuringGame}
-            onChange={(e) =>
-              handleChange("enableMessagesDuringGame", e.target.checked)
-            }
-          />
-        }
-        label="Show Messages During Game"
-      />
+      <Stack>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={gameSettings.enableMessagesDuringGame}
+              onChange={(e) =>
+                handleChange("enableMessagesDuringGame", e.target.checked)
+              }
+            />
+          }
+          label="Messages During Game"
+        />
 
-      <FormControlLabel
-        control={
-          <Switch
-            checked={gameSettings.showLeaderboard}
-            onChange={(e) => handleChange("showLeaderboard", e.target.checked)}
-          />
-        }
-        label="Show Leaderboard"
-      />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={gameSettings.showLeaderboard}
+              onChange={(e) => handleChange("showLeaderboard", e.target.checked)}
+            />
+          }
+          label="Show Leaderboard"
+        />
 
-      <FormControlLabel
-        control={
-          <Switch
-            checked={gameSettings.shuffleQuestions}
-            onChange={(e) => handleChange("shuffleQuestions", e.target.checked)}
-          />
-        }
-        label="Shuffle Questions"
-      />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={gameSettings.shuffleQuestions}
+              onChange={(e) => handleChange("shuffleQuestions", e.target.checked)}
+            />
+          }
+          label="Shuffle Questions"
+        />
+      </Stack>
     </Box>
   );
 }
