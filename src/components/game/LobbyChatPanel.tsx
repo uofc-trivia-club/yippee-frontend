@@ -11,10 +11,12 @@ import {
   ListItem,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useRef } from "react";
 
+import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 
 interface LobbyChatMessage {
@@ -31,6 +33,7 @@ interface LobbyChatPanelProps {
   onSendMessage: () => void;
   error: string | null;
   getPlayerIcon: (name: string) => React.ElementType;
+  onClose: () => void;
 }
 
 export default function LobbyChatPanel({
@@ -40,6 +43,7 @@ export default function LobbyChatPanel({
   onSendMessage,
   error,
   getPlayerIcon,
+  onClose,
 }: LobbyChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,7 +59,7 @@ export default function LobbyChatPanel({
       variant="outlined"
       sx={{
         borderRadius: 3,
-        height: { xs: 440, sm: 560 },
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         bgcolor: (theme) =>
@@ -86,10 +90,25 @@ export default function LobbyChatPanel({
             mb: 1,
           }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Chat
-          </Typography>
-          <Chip label={`${chatMessages.length} messages`} size="small" />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Chat
+            </Typography>
+            <Chip label={`${chatMessages.length} messages`} size="small" />
+          </Stack>
+          <Tooltip title="Hide chat">
+            <IconButton
+              aria-label="close chat"
+              onClick={onClose}
+              size="small"
+              sx={{
+                border: (theme) =>
+                  `1px solid ${theme.palette.divider}`,
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         <Divider sx={{ flexShrink: 0 }} />

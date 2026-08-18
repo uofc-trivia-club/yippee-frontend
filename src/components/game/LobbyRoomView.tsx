@@ -13,7 +13,6 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
-  Drawer,
   IconButton,
   Stack,
   Tooltip,
@@ -22,9 +21,11 @@ import {
 } from "@mui/material";
 import { GameSettings, Quiz, User } from "../../stores/types";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useMediaQuery } from "@mui/material";
 
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import CloseIcon from "@mui/icons-material/Close";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -73,7 +74,19 @@ export default function LobbyRoomView() {
   });
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  const [quizCardExpanded, setQuizCardExpanded] = useState(false);
+  const [quizCardNeedsExpand, setQuizCardNeedsExpand] = useState(false);
+  const quizTitleRef = useRef<HTMLHeadingElement | null>(null);
+  const quizDescRef = useRef<HTMLParagraphElement | null>(null);
+
+  const lineClamp = (lines: number) => ({
+    display: "-webkit-box",
+    WebkitLineClamp: lines,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  });
 
   // Handler for host leaving the lobby (ending the room)
   const handleBackToMainClick = () => {
@@ -205,10 +218,24 @@ export default function LobbyRoomView() {
   const HostIcon = getPlayerIcon(host?.userName || "host");
   const isHost = userDetails.userRole === "host";
 
+  useEffect(() => {
+    setQuizCardExpanded(false);
+  }, [quizMeta?.quizName]);
+
+  useEffect(() => {
+    if (quizCardExpanded) return;
+    const titleEl = quizTitleRef.current;
+    const descEl = quizDescRef.current;
+    const overflows =
+      (titleEl ? titleEl.scrollHeight > titleEl.clientHeight + 1 : false) ||
+      (descEl ? descEl.scrollHeight > descEl.clientHeight + 1 : false);
+    setQuizCardNeedsExpand(overflows);
+  }, [quizMeta?.quizName, quizMeta?.quizDescription, quizCardExpanded]);
+
   return (
-    <Box sx={{ p: { xs: 1.5, md: 3 } }}>
+    <Box sx={{ p: { xs: 1.5, md: 3 }, position: "relative", minHeight: "100%" }}>
       {/* Top bar */}
-      <Box sx={{ maxWidth: 1200, mx: "auto", mb: 3 }}>
+      <Box sx={{ maxWidth: 1600, mx: "auto", mb: 3 }}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           alignItems={{ xs: "flex-start", sm: "center" }}
@@ -264,15 +291,14 @@ export default function LobbyRoomView() {
       {/* Main layout */}
       <Box
         sx={{
-          maxWidth: 1200,
+          maxWidth: 1600,
           mx: "auto",
           display: "grid",
-          gridTemplateColumns: {
-            xs: "minmax(0, 1fr)",
-            lg: chatOpen ? "minmax(0, 1fr) 340px" : "minmax(0, 1fr)",
-          },
+          gridTemplateColumns:
+            isDesktop && chatOpen ? "minmax(0, 1fr) 360px" : "minmax(0, 1fr)",
           gap: 2.5,
           alignItems: "start",
+          transition: "grid-template-columns 0.25s ease",
         }}
       >
         {/* Main column */}
@@ -290,6 +316,23 @@ export default function LobbyRoomView() {
             }}
           >
             <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+              <Box sx={{ textAlign: "center", mb: 2.5 }}>
+                <Typography variant="overline" color="text.secondary">
+                  Current Quiz
+                </Typography>
+                <Typography
+                  ref={quizTitleRef}
+                  variant="h5"
+                  sx={{
+                    fontWeight: 800,
+                    mt: 0.25,
+                    ...(quizCardExpanded ? {} : lineClamp(2)),
+                  }}
+                >
+                  {quizMeta?.quizName || host?.userName || "Loading..."}
+                </Typography>
+              </Box>
+
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={2.5}
@@ -330,21 +373,20 @@ export default function LobbyRoomView() {
                 </Box>
 
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="overline" color="text.secondary">
-                    Current Quiz
-                  </Typography>
                   <Typography
-                    variant="h5"
-                    sx={{ fontWeight: 800, mb: 0.5 }}
-                    noWrap
+                    ref={quizDescRef}
+                    variant="body2"
+                    color="text.secondary"
+                    sx={quizCardExpanded ? undefined : lineClamp(3)}
                   >
-                    {quizMeta?.quizName || host?.userName || "Loading..."}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" noWrap>
                     {quizMeta?.quizDescription ||
                       "The selected quiz is shown here while the lobby is active."}
                   </Typography>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ mt: 1.5, flexWrap: "wrap", rowGap: 1 }}
+                  >
                     <Chip
                       size="small"
                       icon={<HelpOutlineIcon />}
@@ -363,6 +405,22 @@ export default function LobbyRoomView() {
                       />
                     )}
                   </Stack>
+                  {quizCardNeedsExpand && (
+                    <Button
+                      size="small"
+                      color="primary"
+                      onClick={() => setQuizCardExpanded((open) => !open)}
+                      sx={{
+                        mt: 1,
+                        p: 0,
+                        textTransform: "none",
+                        minWidth: 0,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {quizCardExpanded ? "Show less" : "Show more"}
+                    </Button>
+                  )}
                 </Box>
               </Stack>
             </CardContent>
@@ -438,7 +496,7 @@ export default function LobbyRoomView() {
                   gridTemplateColumns: {
                     xs: "1fr",
                     sm: "1fr 1fr",
-                    md: chatOpen ? "1fr 1fr" : "1fr 1fr 1fr",
+                    md: "1fr 1fr 1fr",
                   },
                   gap: 2,
                 }}
@@ -521,13 +579,37 @@ export default function LobbyRoomView() {
           )}
         </Stack>
 
-        {/* Chat column */}
-        {chatOpen && (
+        {/* Chat: grid column on desktop, overlay on smaller screens */}
+        {isDesktop ? (
+          chatOpen && (
+            <Box sx={{ minWidth: 0, alignSelf: "stretch" }}>
+              <LobbyChatPanel
+                chatMessages={chatMessages}
+                lobbyMessage={lobbyMessage}
+                onLobbyMessageChange={setLobbyMessage}
+                onSendMessage={handleSendMessage}
+                error={error}
+                getPlayerIcon={getPlayerIcon}
+                onClose={() => setChatOpen(false)}
+              />
+            </Box>
+          )
+        ) : (
           <Box
             sx={{
-              position: { lg: "sticky" },
-              top: { lg: 16 },
-              minWidth: 0,
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1200,
+              width: { xs: "min(100vw - 16px, 360px)", sm: 360 },
+              maxWidth: "100%",
+              transform: chatOpen
+                ? "translateX(0)"
+                : "translateX(calc(100% + 24px))",
+              transition: "transform 0.25s ease",
+              pointerEvents: chatOpen ? "auto" : "none",
+              opacity: chatOpen ? 1 : 0,
             }}
           >
             <LobbyChatPanel
@@ -537,81 +619,110 @@ export default function LobbyRoomView() {
               onSendMessage={handleSendMessage}
               error={error}
               getPlayerIcon={getPlayerIcon}
+              onClose={() => setChatOpen(false)}
             />
           </Box>
         )}
-      </Box>
 
-      {/* Host settings drawer */}
-      <Drawer
-        anchor="left"
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      >
+        {/* Host settings overlay panel */}
         <Box
           sx={{
-            width: { xs: "100vw", sm: 380 },
-            maxWidth: "100vw",
-            p: 3,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            bottom: 0,
+            zIndex: 1200,
+            width: { xs: "min(100vw - 16px, 400px)", sm: 400 },
+            maxWidth: "100%",
+            transform: settingsOpen
+              ? "translateX(0)"
+              : "translateX(calc(-100% - 24px))",
+            transition: "transform 0.25s ease",
+            pointerEvents: settingsOpen ? "auto" : "none",
+            opacity: settingsOpen ? 1 : 0,
+            overflowY: "auto",
+            bgcolor: "background.paper",
+            borderRight: `1px solid ${theme.palette.divider}`,
+            borderRadius: 3,
+            boxShadow:
+              theme.palette.mode === "dark"
+                ? "0px 4px 24px rgba(0, 0, 0, 0.5)"
+                : "0px 4px 24px rgba(0, 0, 0, 0.12)",
           }}
         >
-          <Stack spacing={2.5}>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Host Settings
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Configure the game and choose a quiz for the room.
-              </Typography>
-            </Box>
-
-            <Divider />
-
-            <ManageGameSettings onSettingsChange={setGameSettings} />
-
-            <Box>
-              <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700 }}>
-                Change Quiz
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mb: 1.5 }}
+          <Box sx={{ p: 3 }}>
+            <Stack spacing={2.5}>
+              <Stack
+                direction="row"
+                alignItems="flex-start"
+                justifyContent="space-between"
+                spacing={2}
               >
-                Pick a different quiz for this room. The change will apply for
-                everyone in the lobby.
-              </Typography>
-              <SelectQuiz onSelectQuiz={handleChangeQuiz} compact />
-            </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                    Host Settings
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Configure the game and choose a quiz for the room.
+                  </Typography>
+                </Box>
+                <IconButton
+                  aria-label="close host settings"
+                  onClick={() => setSettingsOpen(false)}
+                  sx={{ border: `1px solid ${theme.palette.divider}` }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Stack>
 
-            <Divider />
+              <Divider />
 
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<PlayArrowIcon />}
-              sx={{
-                fontWeight: "bold",
-                color: "#ffffff",
-                py: 1.25,
-              }}
-              onClick={handleStartGame}
-              className={styles.button}
-            >
-              Start Game
-            </Button>
+              <ManageGameSettings onSettingsChange={setGameSettings} />
 
-            <Button
-              variant="outlined"
-              color="secondary"
-              startIcon={<LogoutIcon />}
-              onClick={handleBackToMainClick}
-            >
-              End Room
-            </Button>
-          </Stack>
+              <Box>
+                <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700 }}>
+                  Change Quiz
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1.5 }}
+                >
+                  Pick a different quiz for this room. The change will apply
+                  for everyone in the lobby.
+                </Typography>
+                <SelectQuiz onSelectQuiz={handleChangeQuiz} compact />
+              </Box>
+
+              <Divider />
+
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<PlayArrowIcon />}
+                sx={{
+                  fontWeight: "bold",
+                  color: "#ffffff",
+                  py: 1.25,
+                }}
+                onClick={handleStartGame}
+                className={styles.button}
+              >
+                Start Game
+              </Button>
+
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<LogoutIcon />}
+                onClick={handleBackToMainClick}
+              >
+                End Room
+              </Button>
+            </Stack>
+          </Box>
         </Box>
-      </Drawer>
+      </Box>
 
       {/* Confirm leave dialog */}
       <Dialog
