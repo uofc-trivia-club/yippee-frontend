@@ -8,15 +8,21 @@ export default function ProtectedRoute({
 }: {
   children: React.ReactNode;
 }) {
+  const isDevelopment = process.env.NODE_ENV === "development";
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isDevelopment) {
+      setLoading(false);
+      return;
+    }
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
-  }, []);
+  }, [isDevelopment]);
 
   if (loading) {
     return (
@@ -33,7 +39,7 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!user) {
+  if (!isDevelopment && !user) {
     return (
       <Box
         sx={{
